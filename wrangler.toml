@@ -1,0 +1,19 @@
+name = "matched-worker"
+main = "worker/index.js"
+compatibility_date = "2024-09-01"
+
+[vars]
+ALLOWED_ORIGIN = "https://heee.github.io"
+
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "RoomDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RoomDO"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "matched-db"
+database_id = "cfa868ca-8088-4963-8b88-fede1910c324"
