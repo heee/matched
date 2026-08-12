@@ -74,6 +74,11 @@ a { color: var(--gold); }
   flex: 1;
   min-height: 0;
   padding-top: env(safe-area-inset-top, 0);
+  /* .tab-bar is position:fixed (always pinned, floating over content) and
+     so no longer reserves its own space in the flex flow — pad every
+     screen by its height so the bar never overlaps scrolled-to-bottom
+     content. */
+  padding-bottom: calc(86px + env(safe-area-inset-bottom, 0));
 }
 .screen.active { display: flex; }
 
@@ -151,16 +156,22 @@ a { color: var(--gold); }
 .pill.active { background: var(--gold); color: var(--gold-ink); font-weight: 700; }
 
 .tab-bar {
-  height: 86px;
+  height: calc(86px + env(safe-area-inset-bottom, 0));
   background: rgba(8,26,20,.85);
   backdrop-filter: blur(20px);
   border-top: 1px solid rgba(255,255,255,.1);
   display: flex;
   align-items: flex-start;
   padding-top: 11px;
-  position: sticky;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  position: fixed;
+  left: 50%;
   bottom: 0;
-  z-index: 20;
+  width: 100%;
+  max-width: 480px;
+  transform: translateX(-50%);
+  box-shadow: 0 -10px 28px rgba(0,0,0,.4);
+  z-index: 30;
 }
 .tab-item {
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
