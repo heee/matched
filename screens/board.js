@@ -284,6 +284,48 @@ export function renderBoard(root, ctx, params = {}) {
     setTimeout(() => ctx.navigate("results", { roomId: room.id }), 900);
   }
 
+  // Sends copies of the two matched tiles flying from their board position
+  // to the tray, while the real board/tray update instantly underneath —
+  // the clones are just a visual echo, not on the game-state critical path.
+  function flyToTray(idA, idB) {
+    const trayRect = trayStrip.getBoundingClientRect();
+    const clones = [idA, idB].map((id) => local.tileEls.get(id)).filter(Boolean).map((tileEl) => {
+      const rect = tileEl.getBoundingClientRect();
+      const clone = tileEl.cloneNode(true);
+      clone.className = "tile flying";
+      Object.assign(clone.style, {
+        position: "fixed", left: `${rect.left}px`, top: `${rect.top}px`,
+        width: `${rect.width}px`, height: `${rect.height}px`, margin: "0", zIndex: "500",
+      });
+      document.body.appendChild(clone);
+      return { clone, rect };
+    });
+    requestAnimationFrame(() => {
+      for (const { clone, rect } of clones) {
+        const dx = trayRect.left + trayRect.width / 2 - (rect.left + rect.width / 2);
+        const dy = trayRect.top + trayRect.height / 2 - (rect.top + rect.height / 2);
+        clone.style.transform = `translate(${dx}px, ${dy}px) scale(.3)`;
+        clone.style.opacity = "0";
+      }
+    });
+    setTimeout(() => { for (const { clone } of clones) clone.remove(); }, 480);
+  }
+
+  // Heavy wiggle on both tiles, then a clean slate — no tile stays selected
+  // after a miss, per the "start clean" request.
+  function shakeMismatch(idA, idB) {
+    local.selectedId = null;
+    updateTileSelection();
+    for (const id of [idA, idB]) {
+      const tileEl = local.tileEls.get(id);
+      if (!tileEl) continue;
+      tileEl.classList.remove("shake");
+      void tileEl.offsetWidth; // restart the animation even if one is mid-shake
+      tileEl.classList.add("shake");
+      tileEl.addEventListener("animationend", () => tileEl.classList.remove("shake"), { once: true });
+    }
+  }
+
   function tap(id) {
     if (!local.botsActive) startBots();
     const free = freeTiles(room.state.tiles).map((t) => t.id);
@@ -295,12 +337,13 @@ export function renderBoard(root, ctx, params = {}) {
       updateTileSelection();
       return;
     }
-    const result = clearPair(room.state.tiles, local.selectedId, id);
+    const firstId = local.selectedId;
+    const result = clearPair(room.state.tiles, firstId, id);
     if (result) {
-      performClear(local.selectedId, id, you);
+      flyToTray(firstId, id);
+      performClear(firstId, id, you);
     } else {
-      local.selectedId = id;
-      updateTileSelection();
+      shakeMismatch(firstId, id);
     }
   }
 
@@ -349,6 +392,7 @@ export function renderBoard(root, ctx, params = {}) {
       const pair = findHintPair(room.state.tiles);
       if (!pair) return;
       const bot = bots[Math.floor(Math.random() * bots.length)];
+      flyToTray(pair[0], pair[1]);
       performClear(pair[0], pair[1], bot);
     }, BOT_INTERVAL_MS);
   }

@@ -5,6 +5,64 @@
 import { el, avatarDot } from "./shared-ui.js";
 import { tierForPoints, nextTier, pointsToNextTier, TIER_UNLOCKS, TIERS } from "../game/scoring.js";
 
+const FELT_SWATCHES = {
+  Bone: "background:radial-gradient(120% 120% at 40% 20%,#20694e,#0e3527)",
+  Jade: "background:radial-gradient(120% 120% at 40% 20%,#0f4a38,#072019)",
+  Rosewood: "background:radial-gradient(120% 120% at 40% 20%,#5a3822,#2a1a0f)",
+  Dragon: "background:radial-gradient(120% 120% at 40% 20%,#241a17,#0a0706)",
+};
+const MATERIAL_SWATCHES = {
+  Bone: "background:linear-gradient(160deg,#f7f2e4,#e9e0cb);box-shadow:2px 3px 0 #b3a582",
+  Jade: "background:linear-gradient(160deg,#cfe6da,#9dc4b1);box-shadow:2px 3px 0 #6d9482",
+  Rosewood: "background:linear-gradient(160deg,#c9857a,#8b4a3d);box-shadow:2px 3px 0 #6b342a",
+  Dragon: "background:linear-gradient(160deg,#4a3d3a,#1c1513);box-shadow:2px 3px 0 #000",
+};
+
+function tierUnlocked(tierName, points) {
+  return points >= TIERS.find((t) => t.name === tierName).threshold;
+}
+
+// Resolves what's actually equipped: the user's saved choice if it's still
+// unlocked, otherwise falls back to the current tier's default.
+function equippedTierName(ctx, key, currentTierName) {
+  const stored = ctx.state.equipped?.[key];
+  if (stored && tierUnlocked(stored, ctx.state.points)) return stored;
+  return currentTierName;
+}
+
+// A 2-up grid of tier-gated cosmetic options (felt or tile material): the
+// unlocked ones are tappable to equip, locked ones show a padlock and what
+// it takes to unlock, mirroring the locked-layout-card convention in
+// design-reference.html.
+function cosmeticGrid(ctx, { key, swatches, nameFor, subFor }, currentTierName, rerender) {
+  const grid = el("div", { style: "padding:8px 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px" });
+  const equippedName = equippedTierName(ctx, key, currentTierName);
+  for (const tier of TIERS) {
+    const unlocked = tierUnlocked(tier.name, ctx.state.points);
+    const isEquipped = unlocked && equippedName === tier.name;
+    const cell = el("div", {
+      style: `position:relative;padding:12px;border-radius:13px;background:rgba(255,255,255,.06);display:flex;align-items:center;gap:10px;border:1.5px solid ${isEquipped ? "var(--gold)" : "transparent"};${unlocked ? "cursor:pointer" : ""}`,
+    });
+    cell.appendChild(el("div", { style: `width:26px;height:34px;border-radius:5px;${swatches[tier.name]}${unlocked ? "" : ";opacity:.4"}` }));
+    const info = el("div", { style: "flex:1;min-width:0" });
+    info.appendChild(el("div", { style: `font:600 13px Figtree,sans-serif;color:${unlocked ? "#f6f1e4" : "rgba(246,241,228,.55)"}`, text: nameFor(tier) }));
+    info.appendChild(el("div", { style: "font:10.5px Figtree,sans-serif;color:rgba(246,241,228,.5)", text: unlocked ? (isEquipped ? "Equipped" : subFor(tier)) : `Unlocks at ${tier.threshold.toLocaleString()} pts` }));
+    cell.appendChild(info);
+    if (!unlocked) {
+      cell.appendChild(el("div", { style: "position:absolute;top:10px;right:10px;font-size:14px;opacity:.7", text: "🔒" }));
+    } else {
+      cell.addEventListener("click", () => {
+        ctx.state.equipped = ctx.state.equipped || {};
+        ctx.state.equipped[key] = tier.name;
+        ctx.persist();
+        rerender();
+      });
+    }
+    grid.appendChild(cell);
+  }
+  return grid;
+}
+
 function monthStats(rooms, user) {
   const since = Date.now() - 30 * 24 * 3600 * 1000;
   let boards = 0, pairs = 0, timeS = 0, longestStreak = 0;
@@ -20,6 +78,8 @@ function monthStats(rooms, user) {
 }
 
 export function renderProfile(root, ctx) {
+  const rerender = () => renderProfile(root, ctx);
+  root.innerHTML = "";
   const user = ctx.state.currentUser;
   const tier = tierForPoints(ctx.state.points);
   const next = nextTier(ctx.state.points);
@@ -28,7 +88,6 @@ export function renderProfile(root, ctx) {
   const spanStart = TIERS[tierIdx].threshold;
   const spanEnd = next ? next.threshold : spanStart + 1;
   const progressPct = next ? Math.min(100, Math.round(((ctx.state.points - spanStart) / (spanEnd - spanStart)) * 100)) : 100;
-  const unlock = TIER_UNLOCKS[tier.name];
   const nextUnlock = next ? TIER_UNLOCKS[next.name] : null;
 
   const header = el("div", { style: "padding:8px 20px 16px;display:flex;align-items:center;gap:14px" });
@@ -56,26 +115,29 @@ export function renderProfile(root, ctx) {
     unlocksRow.appendChild(unlockCell(next.material, "Next unlock"));
     unlocksRow.appendChild(unlockCell(nextUnlock.layout || nextUnlock.felt, nextUnlock.layout ? "Layout" : "Felt"));
   } else {
-    unlocksRow.appendChild(unlockCell(unlock.felt, "Equipped felt"));
-    unlocksRow.appendChild(unlockCell(tier.material, "Equipped material"));
+    const equippedFelt = equippedTierName(ctx, "felt", tier.name);
+    const equippedMaterial = equippedTierName(ctx, "material", tier.name);
+    unlocksRow.appendChild(unlockCell(TIER_UNLOCKS[equippedFelt].felt, "Equipped felt"));
+    unlocksRow.appendChild(unlockCell(TIERS.find((t) => t.name === equippedMaterial).material, "Equipped material"));
   }
   tierCard.appendChild(unlocksRow);
   root.appendChild(tierCard);
 
   root.appendChild(el("div", { class: "section-label", style: "padding:0 16px 6px", text: "Your table" }));
-  const tableGrid = el("div", { style: "padding:8px 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px" });
-  const tableCell = (swatchStyle, name, sub) => {
-    const cell = el("div", { style: "padding:12px;border-radius:13px;background:rgba(255,255,255,.06);display:flex;align-items:center;gap:10px" });
-    cell.appendChild(el("div", { style: `width:26px;height:34px;border-radius:5px;${swatchStyle}` }));
-    const info = el("div");
-    info.appendChild(el("div", { style: "font:600 13px Figtree,sans-serif;color:#f6f1e4", text: name }));
-    info.appendChild(el("div", { style: "font:10.5px Figtree,sans-serif;color:rgba(246,241,228,.5)", text: sub }));
-    cell.appendChild(info);
-    return cell;
-  };
-  tableGrid.appendChild(tableCell(`background:linear-gradient(160deg,#f7f2e4,#e9e0cb);box-shadow:2px 3px 0 #b3a582`, tier.material, "Tiles"));
-  tableGrid.appendChild(tableCell(`background:radial-gradient(120% 120% at 40% 20%,#20694e,#0e3527)`, unlock.felt, "Table"));
-  root.appendChild(tableGrid);
+  root.appendChild(cosmeticGrid(ctx, {
+    key: "felt",
+    swatches: FELT_SWATCHES,
+    nameFor: (t) => TIER_UNLOCKS[t.name].felt,
+    subFor: () => "Table",
+  }, tier.name, rerender));
+
+  root.appendChild(el("div", { class: "section-label", style: "padding:0 16px 6px", text: "Your tiles" }));
+  root.appendChild(cosmeticGrid(ctx, {
+    key: "material",
+    swatches: MATERIAL_SWATCHES,
+    nameFor: (t) => t.material,
+    subFor: () => "Tiles",
+  }, tier.name, rerender));
 
   root.appendChild(el("div", { class: "section-label", style: "padding:0 16px 6px", text: "This month" }));
   const stats = monthStats(ctx.state.store.rooms || {}, user);

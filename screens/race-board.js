@@ -119,13 +119,27 @@ export function renderRaceBoard(root, ctx, params = {}) {
     }
   }
 
+  function shakeMismatch(idA, idB) {
+    local.selectedId = null;
+    updateTileSelection();
+    for (const id of [idA, idB]) {
+      const tileEl = local.tileEls.get(id);
+      if (!tileEl) continue;
+      tileEl.classList.remove("shake");
+      void tileEl.offsetWidth;
+      tileEl.classList.add("shake");
+      tileEl.addEventListener("animationend", () => tileEl.classList.remove("shake"), { once: true });
+    }
+  }
+
   function tap(id) {
     const mine = room.racers[you];
     const free = freeTiles(mine.tiles).map((t) => t.id);
     if (!free.includes(id)) return;
     if (local.selectedId === id) { local.selectedId = null; updateTileSelection(); return; }
     if (!local.selectedId) { local.selectedId = id; updateTileSelection(); return; }
-    const result = clearPair(mine.tiles, local.selectedId, id);
+    const firstId = local.selectedId;
+    const result = clearPair(mine.tiles, firstId, id);
     if (result) {
       mine.tiles = result.tiles;
       room.pairsCleared[you] = (room.pairsCleared[you] || 0) + 1;
@@ -135,8 +149,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
       renderMyBoard();
       if (mine.tiles.length === 0) finishRace();
     } else {
-      local.selectedId = id;
-      updateTileSelection();
+      shakeMismatch(firstId, id);
     }
   }
 

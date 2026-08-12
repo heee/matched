@@ -35,6 +35,7 @@ const state = {
   currentUser: jsonStorage.read(LOCAL_KEYS.currentUser, ""),
   settings: { ...DEFAULT_SETTINGS, ...jsonStorage.read(LOCAL_KEYS.settings, {}) },
   points: jsonStorage.read(LOCAL_KEYS.points, 0),
+  equipped: jsonStorage.read(LOCAL_KEYS.equipped, {}),
   dailyStreak: jsonStorage.read(LOCAL_KEYS.dailyStreak, 0),
   lastDailyCompleted: jsonStorage.read(LOCAL_KEYS.lastDailyCompleted, null),
   activeRoomId: jsonStorage.read(LOCAL_KEYS.activeRoom, null),
@@ -48,6 +49,7 @@ function persist() {
   jsonStorage.write(LOCAL_KEYS.currentUser, state.currentUser);
   jsonStorage.write(LOCAL_KEYS.settings, state.settings);
   jsonStorage.write(LOCAL_KEYS.points, state.points);
+  jsonStorage.write(LOCAL_KEYS.equipped, state.equipped);
   jsonStorage.write(LOCAL_KEYS.dailyStreak, state.dailyStreak);
   jsonStorage.write(LOCAL_KEYS.lastDailyCompleted, state.lastDailyCompleted);
   jsonStorage.write(LOCAL_KEYS.activeRoom, state.activeRoomId);
