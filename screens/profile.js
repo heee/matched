@@ -114,5 +114,8 @@ export function renderProfile(root, ctx) {
   settingsCard.appendChild(toggleRow("Haptics", "haptic"));
   root.appendChild(settingsCard);
 
+  const switchRow = el("button", { class: "row-link", type: "button", text: "Switch player", onClick: () => ctx.navigate("name-entry") });
+  root.appendChild(switchRow);
+
   root.appendChild(el("div", { style: "flex:1" }));
 }

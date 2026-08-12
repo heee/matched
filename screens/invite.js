@@ -2,14 +2,14 @@
 // chips, "Share invite" hands off to the OS share sheet. See
 // docs/design-reference.html #1n.
 
-import { el, avatarDot } from "./shared-ui.js";
+import { el, avatarDot, roomInviteUrl } from "./shared-ui.js";
 
 const RECENT_PEOPLE = ["Dana", "Mika", "Jules", "Robin"];
 
 export function renderInvite(root, ctx, params = {}) {
   const room = ctx.state.store.rooms[params.roomId];
   if (!room) { ctx.navigate("home"); return; }
-  const link = `matched.app/r/${room.id}`;
+  const link = roomInviteUrl(room.id);
 
   root.appendChild(el("div", { class: "bg-flat", style: "flex:1;display:flex;flex-direction:column" }, [
     (() => {
@@ -28,7 +28,7 @@ export function renderInvite(root, ctx, params = {}) {
       copyRow.appendChild(el("code", { text: link }));
       const copyBtn = el("button", { text: "Copy" });
       copyBtn.addEventListener("click", () => {
-        navigator.clipboard?.writeText(`https://${link}`).catch(() => {});
+        navigator.clipboard?.writeText(link).catch(() => {});
         copyBtn.textContent = "Copied";
         setTimeout(() => { copyBtn.textContent = "Copy"; }, 1400);
       });
@@ -46,7 +46,7 @@ export function renderInvite(root, ctx, params = {}) {
 
       const shareBtn = el("button", { class: "btn btn-primary btn-lg", style: "width:100%;margin-top:16px", text: "Share invite" });
       shareBtn.addEventListener("click", async () => {
-        const shareData = { title: room.title, text: `${ctx.state.currentUser} invited you to ${room.title}`, url: `https://${link}` };
+        const shareData = { title: room.title, text: `${ctx.state.currentUser} invited you to ${room.title}`, url: link };
         if (navigator.share) {
           try { await navigator.share(shareData); } catch (e) {}
         } else {

@@ -20,6 +20,10 @@ export function el(tag, attrs = {}, children = []) {
   return node;
 }
 
+export function roomInviteUrl(roomId) {
+  return `${location.origin}${location.pathname}#/r/${encodeURIComponent(roomId)}`;
+}
+
 export function initialFor(name) {
   return (name || "?").trim().charAt(0).toUpperCase() || "?";
 }

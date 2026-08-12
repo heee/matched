@@ -7,6 +7,7 @@ import { createJsonStorage, normalizeSharedData, LOCAL_KEYS, DEFAULT_SETTINGS } 
 import { createMutationQueue } from "./sync.js";
 import { el, TAB_DEFS } from "./screens/shared-ui.js";
 
+import { renderNameEntry } from "./screens/name-entry.js";
 import { renderHome } from "./screens/home.js";
 import { renderPlayCatalog } from "./screens/play-catalog.js";
 import { renderRoomSetup } from "./screens/room-setup.js";
@@ -31,7 +32,7 @@ function saveStore(store) {
 }
 
 const state = {
-  currentUser: jsonStorage.read(LOCAL_KEYS.currentUser, "") || "You",
+  currentUser: jsonStorage.read(LOCAL_KEYS.currentUser, ""),
   settings: { ...DEFAULT_SETTINGS, ...jsonStorage.read(LOCAL_KEYS.settings, {}) },
   points: jsonStorage.read(LOCAL_KEYS.points, 0),
   dailyStreak: jsonStorage.read(LOCAL_KEYS.dailyStreak, 0),
@@ -65,6 +66,7 @@ function toast(message) {
 }
 
 const SCREENS = {
+  "name-entry": renderNameEntry,
   home: renderHome,
   "play-catalog": renderPlayCatalog,
   "room-setup": renderRoomSetup,
@@ -80,6 +82,7 @@ const SCREENS = {
 // Screens not directly reachable from a tab keep whichever tab was active
 // (matches Boys Bonanza's TAB_FOR_SCREEN convention).
 const TAB_FOR_SCREEN = {
+  "name-entry": "home",
   home: "home",
   "play-catalog": "play-catalog",
   "room-setup": "room-setup",
@@ -100,6 +103,7 @@ const ctx = {
   toast,
   announce,
   navigate,
+  selectUser,
 };
 
 function navigate(screenId, params = {}) {
@@ -119,6 +123,8 @@ function navigate(screenId, params = {}) {
 function renderTabBar() {
   const bar = document.getElementById("tab-bar");
   bar.innerHTML = "";
+  bar.style.display = state.screen === "name-entry" ? "none" : "";
+  if (state.screen === "name-entry") return;
   const active = TAB_FOR_SCREEN[state.screen] || "home";
   for (const tab of TAB_DEFS) {
     const isActive = tab.id === active;
@@ -145,6 +151,57 @@ function renderTabBar() {
   }
 }
 
+function pendingRoomIdFromHash() {
+  const m = location.hash.match(/^#\/r\/([^/?#]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+async function joinRoomFromInvite(roomId) {
+  if (workerApi.configured()) {
+    try {
+      const data = await workerApi.fetchData();
+      state.store = normalizeSharedData({ ...state.store, ...data });
+      saveStore(state.store);
+    } catch {
+      // fall through to whatever's already cached locally
+    }
+  }
+  const room = state.store.rooms[roomId];
+  if (!room) {
+    toast("That invite link looks invalid or the room was deleted.");
+    navigate("home");
+    return;
+  }
+  if (!room.players.includes(state.currentUser)) {
+    room.players.push(state.currentUser);
+    room.pairsCleared[state.currentUser] = room.pairsCleared[state.currentUser] || 0;
+    room.streaks[state.currentUser] = room.streaks[state.currentUser] || 0;
+    state.store.rooms[roomId] = room;
+    persist();
+    if (workerApi.configured()) {
+      workerApi.joinRoom(roomId, state.currentUser).catch(() => mutationQueue.enqueue("join-room", { roomId, user: state.currentUser }));
+    }
+  }
+  navigate(room.mode === "race" ? "race-board" : "board", { roomId });
+}
+
+async function afterLogin() {
+  const roomId = pendingRoomIdFromHash();
+  if (roomId) {
+    history.replaceState(null, "", location.pathname + location.search);
+    await joinRoomFromInvite(roomId);
+    return;
+  }
+  navigate("home");
+}
+
+function selectUser(name) {
+  state.currentUser = name;
+  persist();
+  if (workerApi.configured()) workerApi.registerUser(name).catch(() => {});
+  afterLogin();
+}
+
 function render() {
   const root = document.getElementById("screen-root");
   root.innerHTML = "";
@@ -154,9 +211,22 @@ function render() {
   SCREENS[state.screen](screenEl, ctx, state.screenParams);
 }
 
-// First-run: make sure a user exists locally (and remotely, best-effort).
+// Hydrate the users/rooms cache in the background (best-effort — the app
+// still works offline off whatever's already in localStorage).
 if (workerApi.configured()) {
-  workerApi.registerUser(state.currentUser).catch(() => {});
+  workerApi.fetchData().then((data) => {
+    state.store = normalizeSharedData({ ...state.store, ...data });
+    saveStore(state.store);
+    // The name-entry picker builds its list synchronously from state.store,
+    // so if this resolves after it's already on screen, re-render to show
+    // the profiles that just came in.
+    if (state.screen === "name-entry") render();
+  }).catch(() => {});
 }
 
-navigate("home");
+if (state.currentUser) {
+  if (workerApi.configured()) workerApi.registerUser(state.currentUser).catch(() => {});
+  afterLogin();
+} else {
+  navigate("name-entry");
+}

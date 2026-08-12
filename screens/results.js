@@ -1,7 +1,7 @@
 // Matched — Results. Real 1-4 ranking, "worth mentioning" highlights,
 // points + tier progress, Share/Rematch/Done. See design-reference #1m.
 
-import { el, avatarDot, formatDuration } from "./shared-ui.js";
+import { el, avatarDot, formatDuration, roomInviteUrl } from "./shared-ui.js";
 import { PLAYER_COLORS, highlightsFromLog, pointsToNextTier, nextTier, tierForPoints } from "../game/scoring.js";
 import { buildLocalRoom } from "../game/room.js";
 
@@ -65,7 +65,7 @@ export function renderResults(root, ctx, params = {}) {
   const actions = el("div", { style: "display:flex;gap:9px;padding:0 16px 30px" });
   const shareBtn = el("button", { class: "btn btn-ghost", style: "flex:1;height:50px;border-radius:14px", text: "Share" });
   shareBtn.addEventListener("click", async () => {
-    const shareData = { title: room.title, text: `I just cleared ${room.title} in Matched — ${formatDuration(elapsedS)}.`, url: `https://matched.app/r/${room.id}` };
+    const shareData = { title: room.title, text: `I just cleared ${room.title} in Matched — ${formatDuration(elapsedS)}.`, url: roomInviteUrl(room.id) };
     if (navigator.share) { try { await navigator.share(shareData); } catch (e) {} }
     else { navigator.clipboard?.writeText(shareData.url).catch(() => {}); ctx.toast("Link copied"); }
   });
