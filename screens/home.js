@@ -21,16 +21,24 @@ function miniSilhouette(layoutId) {
   return wrap;
 }
 
+// All three hero card variants share this height so swiping between them
+// (e.g. no live room <-> today's board) doesn't visibly jump. Each card is
+// a flex column with its non-action content in a flex:1 wrapper, so the
+// bottom row (button/actions) always lands at the same height regardless
+// of how much the card above it has to say.
+const HERO_CARD_HEIGHT = 190;
+
 function liveNowCard(ctx, room) {
   const elapsedS = Math.floor((Date.now() - (room.startedAt || Date.now())) / 1000);
   const remaining = room.state.tiles.length;
   const cleared = room.tileCount - remaining;
   const pct = boardCompletion(room.tileCount, remaining);
-  const card = el("div", { class: "gold-card", style: "background:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.05));border-color:rgba(255,255,255,.14)" });
+  const card = el("div", { class: "gold-card", style: `background:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.05));border-color:rgba(255,255,255,.14);display:flex;flex-direction:column;min-height:${HERO_CARD_HEIGHT}px` });
+  const top = el("div", { style: "flex:1" });
   const head = el("div", { style: "display:flex;align-items:center;justify-content:space-between;margin-bottom:12px" });
   head.appendChild(el("span", { style: "font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#e8c887", text: "Live now" }));
   head.appendChild(el("span", { style: "font:12px Figtree,sans-serif;color:rgba(246,241,228,.6)", text: formatClock(elapsedS) }));
-  card.appendChild(head);
+  top.appendChild(head);
 
   const body = el("div", { style: "display:flex;gap:14px;align-items:center" });
   body.appendChild(miniSilhouette(room.layoutId));
@@ -44,7 +52,8 @@ function liveNowCard(ctx, room) {
   });
   info.appendChild(split);
   body.appendChild(info);
-  card.appendChild(body);
+  top.appendChild(body);
+  card.appendChild(top);
 
   const actions = el("div", { style: "display:flex;gap:10px;margin-top:14px" });
   actions.appendChild(el("button", {
@@ -57,9 +66,11 @@ function liveNowCard(ctx, room) {
 }
 
 function noLiveCard(ctx) {
-  const card = el("div", { class: "glass-card", style: "text-align:center" });
-  card.appendChild(el("div", { style: "font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#e8c887;margin-bottom:8px", text: "No board in progress" }));
-  card.appendChild(el("div", { style: "font:13.5px/1.5 Figtree,sans-serif;color:rgba(246,241,228,.65);margin-bottom:14px", text: "Start a room and clear it with friends, or go solo." }));
+  const card = el("div", { class: "glass-card", style: `text-align:center;display:flex;flex-direction:column;min-height:${HERO_CARD_HEIGHT}px` });
+  const top = el("div", { style: "flex:1;display:flex;flex-direction:column;justify-content:center" });
+  top.appendChild(el("div", { style: "font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#e8c887;margin-bottom:8px", text: "No board in progress" }));
+  top.appendChild(el("div", { style: "font:13.5px/1.5 Figtree,sans-serif;color:rgba(246,241,228,.65)", text: "Start a room and clear it with friends, or go solo." }));
+  card.appendChild(top);
   card.appendChild(el("button", { class: "btn btn-primary", style: "width:100%", text: "Start a room", onClick: () => ctx.navigate("room-setup") }));
   return card;
 }
@@ -71,14 +82,16 @@ function dailyCard(ctx) {
   const ms = msUntilNextReset();
   const hours = Math.floor(ms / 3600000);
   const mins = Math.floor((ms % 3600000) / 60000);
-  const card = el("div", { class: "gold-card" });
+  const card = el("div", { class: "gold-card", style: `display:flex;flex-direction:column;min-height:${HERO_CARD_HEIGHT}px` });
+  const top = el("div", { style: "flex:1" });
   const head = el("div", { style: "display:flex;align-items:center;justify-content:space-between;margin-bottom:10px" });
   head.appendChild(el("span", { style: "font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#e8c887", text: "Today's board" }));
   head.appendChild(el("span", { style: "font:12px Figtree,sans-serif;color:rgba(246,241,228,.6)", text: `Resets in ${hours}h ${mins}m` }));
-  card.appendChild(head);
-  card.appendChild(el("div", { class: "title-serif", style: "font-size:24px", text: layout.name }));
+  top.appendChild(head);
+  top.appendChild(el("div", { class: "title-serif", style: "font-size:24px", text: layout.name }));
   const done = ctx.state.lastDailyCompleted === date;
-  card.appendChild(el("div", { style: "font:13px Figtree,sans-serif;color:rgba(246,241,228,.65);margin-top:6px", text: done ? "You finished today's board." : "Everyone plays the same board. One attempt." }));
+  top.appendChild(el("div", { style: "font:13px Figtree,sans-serif;color:rgba(246,241,228,.65);margin-top:6px", text: done ? "You finished today's board." : "Everyone plays the same board. One attempt." }));
+  card.appendChild(top);
   const actions = el("div", { style: "display:flex;gap:10px;margin-top:14px" });
   actions.appendChild(el("button", { class: "btn btn-primary", style: "flex:1", text: "Play daily", onClick: () => ctx.navigate("daily") }));
   actions.appendChild(el("button", { class: "btn btn-outline", style: "padding:0 16px;height:44px", text: "Results", onClick: () => ctx.navigate("daily") }));
@@ -163,14 +176,31 @@ export function renderHome(root, ctx) {
   }
   prevBtn.addEventListener("click", () => setHero(heroIndex - 1));
   nextBtn.addEventListener("click", () => setHero(heroIndex + 1));
+
+  // Swipe/drag between cards. touch-action:pan-y leaves vertical page
+  // scroll alone but tells the browser not to treat a horizontal drag here
+  // as a scroll gesture, and pointer capture keeps the up-event landing on
+  // cardSlot even if the finger/cursor strays outside it mid-swipe.
+  cardSlot.style.touchAction = "pan-y";
+  cardSlot.style.userSelect = "none";
   let dragStartX = null;
-  cardSlot.addEventListener("pointerdown", (e) => { dragStartX = e.clientX; });
+  let dragPointerId = null;
+  cardSlot.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("button")) return; // let the card's own buttons work untouched
+    e.preventDefault(); // stop desktop text-selection drag from competing with the swipe
+    dragStartX = e.clientX;
+    dragPointerId = e.pointerId;
+    cardSlot.setPointerCapture(e.pointerId);
+  });
   cardSlot.addEventListener("pointerup", (e) => {
     if (dragStartX == null) return;
     const dx = e.clientX - dragStartX;
     if (Math.abs(dx) > 40) setHero(heroIndex + (dx < 0 ? 1 : -1));
     dragStartX = null;
+    dragPointerId = null;
   });
+  cardSlot.addEventListener("pointercancel", () => { dragStartX = null; dragPointerId = null; });
+  cardSlot.addEventListener("lostpointercapture", () => { dragStartX = null; dragPointerId = null; });
   heroWrap.appendChild(prevBtn);
   heroWrap.appendChild(cardSlot);
   heroWrap.appendChild(nextBtn);
