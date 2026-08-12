@@ -1,0 +1,118 @@
+// Matched — You / Profile. Tier bar above stats, "Your table" equips,
+// "This month" stats, settings flattened onto the screen. See
+// design-reference.html #1l.
+
+import { el, avatarDot } from "./shared-ui.js";
+import { tierForPoints, nextTier, pointsToNextTier, TIER_UNLOCKS, TIERS } from "../game/scoring.js";
+
+function monthStats(rooms, user) {
+  const since = Date.now() - 30 * 24 * 3600 * 1000;
+  let boards = 0, pairs = 0, timeS = 0, longestStreak = 0;
+  for (const room of Object.values(rooms)) {
+    if (!room.completedAt || Date.parse(room.completedAt) < since) continue;
+    if (!room.players.includes(user)) continue;
+    boards += 1;
+    pairs += room.pairsCleared[user] || 0;
+    if (room.startedAt) timeS += Math.max(1, Math.round((Date.parse(room.completedAt) - room.startedAt) / 1000));
+    longestStreak = Math.max(longestStreak, (room.peakStreaks && room.peakStreaks[user]) || room.streaks[user] || 0);
+  }
+  return { boards, pairs, avgTimeS: boards ? Math.round(timeS / boards) : 0, longestStreak };
+}
+
+export function renderProfile(root, ctx) {
+  const user = ctx.state.currentUser;
+  const tier = tierForPoints(ctx.state.points);
+  const next = nextTier(ctx.state.points);
+  const toNext = pointsToNextTier(ctx.state.points);
+  const tierIdx = TIERS.findIndex((t) => t.name === tier.name);
+  const spanStart = TIERS[tierIdx].threshold;
+  const spanEnd = next ? next.threshold : spanStart + 1;
+  const progressPct = next ? Math.min(100, Math.round(((ctx.state.points - spanStart) / (spanEnd - spanStart)) * 100)) : 100;
+  const unlock = TIER_UNLOCKS[tier.name];
+  const nextUnlock = next ? TIER_UNLOCKS[next.name] : null;
+
+  const header = el("div", { style: "padding:8px 20px 16px;display:flex;align-items:center;gap:14px" });
+  header.appendChild(avatarDot(user, 0, 62));
+  const nameWrap = el("div");
+  nameWrap.appendChild(el("div", { class: "title-serif", style: "font-size:26px", text: user }));
+  nameWrap.appendChild(el("div", { style: "font:12.5px Figtree,sans-serif;color:rgba(246,241,228,.55);margin-top:5px", text: `${tier.name} tier · ${ctx.state.points.toLocaleString()} points` }));
+  header.appendChild(nameWrap);
+  root.appendChild(header);
+
+  const tierCard = el("div", { style: "margin:0 16px 16px;padding:15px;border-radius:16px;background:linear-gradient(150deg,rgba(95,191,155,.2),rgba(255,255,255,.05));border:1px solid rgba(95,191,155,.3)" });
+  const tierHead = el("div", { style: "display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px" });
+  tierHead.appendChild(el("span", { style: "font:700 13px Figtree,sans-serif;color:#f6f1e4", text: tier.name }));
+  tierHead.appendChild(el("span", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.6)", text: next ? `${toNext.toLocaleString()} to ${next.name}` : "Top tier reached" }));
+  tierCard.appendChild(tierHead);
+  tierCard.appendChild(el("div", { style: "height:8px;border-radius:4px;background:rgba(0,0,0,.28);overflow:hidden", html: `<div style="width:${progressPct}%;height:100%;background:linear-gradient(90deg,#5fbf9b,#d9a441);border-radius:4px"></div>` }));
+  const unlocksRow = el("div", { style: "display:flex;gap:10px;margin-top:13px" });
+  const unlockCell = (title, sub) => {
+    const cell = el("div", { style: "flex:1;padding:9px;border-radius:11px;background:rgba(0,0,0,.2);text-align:center" });
+    cell.appendChild(el("div", { style: "font:700 15px Figtree,sans-serif;color:#f6f1e4", text: title }));
+    cell.appendChild(el("div", { style: "font:10px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:2px", text: sub }));
+    return cell;
+  };
+  if (nextUnlock) {
+    unlocksRow.appendChild(unlockCell(next.material, "Next unlock"));
+    unlocksRow.appendChild(unlockCell(nextUnlock.layout || nextUnlock.felt, nextUnlock.layout ? "Layout" : "Felt"));
+  } else {
+    unlocksRow.appendChild(unlockCell(unlock.felt, "Equipped felt"));
+    unlocksRow.appendChild(unlockCell(tier.material, "Equipped material"));
+  }
+  tierCard.appendChild(unlocksRow);
+  root.appendChild(tierCard);
+
+  root.appendChild(el("div", { class: "section-label", style: "padding:0 16px 6px", text: "Your table" }));
+  const tableGrid = el("div", { style: "padding:8px 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px" });
+  const tableCell = (swatchStyle, name, sub) => {
+    const cell = el("div", { style: "padding:12px;border-radius:13px;background:rgba(255,255,255,.06);display:flex;align-items:center;gap:10px" });
+    cell.appendChild(el("div", { style: `width:26px;height:34px;border-radius:5px;${swatchStyle}` }));
+    const info = el("div");
+    info.appendChild(el("div", { style: "font:600 13px Figtree,sans-serif;color:#f6f1e4", text: name }));
+    info.appendChild(el("div", { style: "font:10.5px Figtree,sans-serif;color:rgba(246,241,228,.5)", text: sub }));
+    cell.appendChild(info);
+    return cell;
+  };
+  tableGrid.appendChild(tableCell(`background:linear-gradient(160deg,#f7f2e4,#e9e0cb);box-shadow:2px 3px 0 #b3a582`, tier.material, "Tiles"));
+  tableGrid.appendChild(tableCell(`background:radial-gradient(120% 120% at 40% 20%,#20694e,#0e3527)`, unlock.felt, "Table"));
+  root.appendChild(tableGrid);
+
+  root.appendChild(el("div", { class: "section-label", style: "padding:0 16px 6px", text: "This month" }));
+  const stats = monthStats(ctx.state.store.rooms || {}, user);
+  const statGrid = el("div", { style: "padding:8px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px" });
+  const statCell = (value, label) => {
+    const cell = el("div", { style: "padding:13px;border-radius:13px;background:rgba(255,255,255,.06)" });
+    cell.appendChild(el("div", { style: "font:700 22px Figtree,sans-serif;color:#f6f1e4", text: String(value) }));
+    cell.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:3px", text: label }));
+    return cell;
+  };
+  statGrid.appendChild(statCell(stats.boards, "Boards cleared"));
+  statGrid.appendChild(statCell(stats.pairs, "Pairs cleared"));
+  const avgM = Math.floor(stats.avgTimeS / 60), avgS = stats.avgTimeS % 60;
+  statGrid.appendChild(statCell(stats.boards ? `${avgM}:${String(avgS).padStart(2, "0")}` : "—", "Average time"));
+  statGrid.appendChild(statCell(stats.longestStreak, "Longest streak"));
+  root.appendChild(statGrid);
+
+  root.appendChild(el("div", { class: "section-label", style: "padding-top:8px", text: "Settings" }));
+  const settingsCard = el("div", { style: "margin:0 16px 16px;display:flex;flex-direction:column;gap:1px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.07)" });
+  const toggleRow = (label, key) => {
+    const row = el("div", { class: "toggle-row" });
+    row.appendChild(el("span", { text: label }));
+    const t = el("button", { class: `toggle${ctx.state.settings[key] ? " on" : ""}`, type: "button" });
+    t.appendChild(el("div", { class: "knob" }));
+    t.addEventListener("click", () => {
+      ctx.state.settings[key] = !ctx.state.settings[key];
+      t.classList.toggle("on", ctx.state.settings[key]);
+      ctx.persist();
+    });
+    row.appendChild(t);
+    return row;
+  };
+  settingsCard.appendChild(toggleRow("Free tiles glow", "freeTilesGlow"));
+  settingsCard.appendChild(toggleRow("Hints allowed", "hintsAllowed"));
+  settingsCard.appendChild(toggleRow("Sound", "sound"));
+  settingsCard.appendChild(toggleRow("Haptics", "haptic"));
+  root.appendChild(settingsCard);
+
+  root.appendChild(el("div", { style: "flex:1" }));
+}

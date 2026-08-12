@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Figtree:wght@400;500;600;700;800&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet"><style>
+body{margin:0;background:#0f1512;font-family:Figtree,system-ui,sans-serif}
+a{color:#d9a441}a:hover{color:#f0c069}
+.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(255,255,255,.08);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#e8e2d4;color:#141a16;border-radius:4px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 Figtree,system-ui,sans-serif;color:#e8e2d4}
+.dv-opts{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(255,255,255,.12);color:#e8e2d4;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 Figtree,system-ui,sans-serif;color:rgba(232,226,212,.6)}
+.dv-card{max-width:100%;border-radius:8px;overflow:hidden}
+.dv-opt:target .dv-oid{background:#d9a441;color:#20160a}
+.dv-next{margin:22px 0 0;font:12px/1.5 Figtree,system-ui,sans-serif;color:rgba(232,226,212,.45)}
+@keyframes popIn{from{opacity:0;transform:translateY(6px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes floatUp{0%{opacity:0;transform:translateY(8px)}12%{opacity:1;transform:none}80%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-6px)}}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 0 0 rgba(217,164,65,0)}50%{box-shadow:0 0 0 3px rgba(217,164,65,.55)}}
+</style></helmet>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Matched — first pass </span></div>
+
+<div style="max-width:900px;margin:0 0 34px;padding:22px 26px;background:#18201b;border:1px solid rgba(255,255,255,.09);border-radius:12px;color:#cfd6ce;font:14px/1.65 Figtree,system-ui,sans-serif">
+<div style="font:400 26px/1.1 'Instrument Serif',Georgia,serif;color:#f2ede0;margin-bottom:14px">What I assumed, and why</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px 34px">
+<div><div style="font-weight:700;color:#e8dfc9;font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Carried over from Across</div>Invite-by-link rooms, live sync, contribution-style rankings, daily puzzle, streaks. Same 5-tab bottom nav shape: Home · Play · + · Ranking · You. Sentence case throughout.</div>
+<div><div style="font-weight:700;color:#e8dfc9;font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">New visual identity</div>Tile-first: felt table, warm wood rail, real bone tiles with a physical edge. Instrument Serif for the wordmark, Figtree for UI. Two board colors max (felt green, night slate for low light).</div>
+<div><div style="font-weight:700;color:#e8dfc9;font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Board math</div>Whole board always fits, never pans. That caps a phone layout at roughly 8 columns × 5 rows per layer — so the classic 144-tile turtle is a tablet layout. On iPhone the catalog tops out near 72 tiles, which also serves easy mode.</div>
+<div><div style="font-weight:700;color:#e8dfc9;font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Tile art</div>Faces here are placeholders built from type and geometry. Every face is a slot sized 40×52 at 1× — drop real art in and nothing else moves. Flowers and seasons are marked as empty slots.</div>
+</div>
+<div style="margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.09);font-size:13px;color:#9aa89c">Board <a class="dv-oid" href="#1f">1f</a> is live — tap two matching free tiles. The other players clear tiles on their own while you watch.</div>
+</div>
+
+<div class="dv-opts">
+
+<div class="dv-opt" id="1b"><div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>App icon — Matched</div>
+<div class="dv-card" style="display:flex;gap:16px;align-items:flex-end">
+<div style="width:180px;height:180px;border-radius:40px;background:radial-gradient(120% 120% at 30% 20%,#2a7a5c 0%,#14513c 55%,#0d3a2b 100%);position:relative;overflow:hidden;box-shadow:0 12px 30px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center">
+<div style="width:88px;height:112px;border-radius:10px;background:linear-gradient(#fbf7ec,#ece2cc);box-shadow:0 10px 24px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;position:relative">
+<span style="font:700 56px 'Noto Serif SC',serif;color:#b5322c">中</span>
+<div style="position:absolute;right:-9px;bottom:-9px;width:34px;height:34px;border-radius:50%;background:#d9a441;display:flex;align-items:center;justify-content:center;font:800 17px Figtree,sans-serif;color:#3a2708">✓</div>
+</div>
+</div>
+</div>
+<div style="font:11px/1.5 Figtree,sans-serif;color:rgba(232,226,212,.45);max-width:376px">One tile plus the confirm tick on felt. Reads at 60px.</div>
+</div>
+
+<div class="dv-opt" id="1c"><div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Tile materials — the tier unlocks</div>
+<div class="dv-card" style="width:420px;padding:22px;background:#18201b;border:1px solid rgba(255,255,255,.09);display:flex;flex-direction:column;gap:18px">
+<sc-for list="{{ materials }}" as="m" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:16px">
+<div style="{{ m.tileStyle }}"><span style="{{ m.glyphStyle }}">發</span></div>
+<div style="{{ m.tileStyle2 }}"><span style="{{ m.glyphStyle }}">東</span></div>
+<div style="flex:1;min-width:0">
+<div style="display:flex;align-items:baseline;gap:8px"><span style="font:700 15px Figtree,sans-serif;color:#f2ede0">{{ m.name }}</span><span style="{{ m.tierStyle }}">{{ m.tier }}</span></div>
+<div style="font:12px/1.45 Figtree,sans-serif;color:#8d9a8f;margin-top:3px">{{ m.note }}</div>
+</div>
+</div>
+</sc-for>
+<div style="padding-top:14px;border-top:1px solid rgba(255,255,255,.09);font:11px/1.5 Figtree,sans-serif;color:rgba(232,226,212,.45)">Four named tiers, each a batch: material + a felt + one layout. Face art is a slot, so a material is a frame and edge treatment only — your art drops into all four.</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1d"><div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Home — the table</div>
+<div class="dv-card" style="display:flex;gap:20px;align-items:flex-start">
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+<div style="height:100%;background:radial-gradient(120% 90% at 50% 0%,#1d6349 0%,#123f2f 60%,#0c2c21 100%);display:flex;flex-direction:column;padding-top:56px;box-sizing:border-box">
+<div style="padding:10px 20px 14px;display:flex;align-items:center;justify-content:space-between">
+<div style="flex:1;min-width:0;padding-right:12px"><div style="font:400 32px/1 'Instrument Serif',serif;color:#f6f1e4">Matched</div><div style="font:12px Figtree,sans-serif;color:rgba(246,241,228,.55);margin-top:4px">4 friends playing now</div></div>
+<div style="width:40px;height:40px;border-radius:50%;background:#d9a441;display:flex;align-items:center;justify-content:center;font:800 15px Figtree,sans-serif;color:#3a2708">H</div>
+</div>
+<div style="display:flex;align-items:center;gap:3px;margin:4px 10px 0">
+<div style="{{ heroPrevStyle }}" onClick="{{ heroPrev }}">‹</div>
+<div style="flex:1;min-width:0" onPointerDown="{{ heroDown }}" onPointerUp="{{ heroUp }}">
+<sc-if value="{{ heroLive }}" hint-placeholder-val="{{ true }}">
+<div style="padding:16px;border-radius:18px;background:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.05));border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(8px);animation:popIn .22s ease both">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#e8c887">Live now</span><span style="font:12px Figtree,sans-serif;color:rgba(246,241,228,.6)">14:22</span></div>
+<div style="display:flex;gap:14px;align-items:center">
+<div style="width:74px;height:60px;position:relative;flex:none">
+<div style="position:absolute;left:0;top:8px;width:16px;height:21px;border-radius:3px;background:#f2ecdc;box-shadow:2px 2px 0 #a89a78"></div>
+<div style="position:absolute;left:20px;top:2px;width:16px;height:21px;border-radius:3px;background:#f2ecdc;box-shadow:2px 2px 0 #a89a78"></div>
+<div style="position:absolute;left:40px;top:8px;width:16px;height:21px;border-radius:3px;background:#f2ecdc;box-shadow:2px 2px 0 #a89a78"></div>
+<div style="position:absolute;left:10px;top:30px;width:16px;height:21px;border-radius:3px;background:#f2ecdc;box-shadow:2px 2px 0 #a89a78"></div>
+<div style="position:absolute;left:30px;top:30px;width:16px;height:21px;border-radius:3px;background:#f2ecdc;box-shadow:2px 2px 0 #a89a78"></div>
+</div>
+<div style="flex:1;min-width:0">
+<div style="font:700 17px Figtree,sans-serif;color:#f6f1e4">Dragon's Nest</div>
+<div style="font:12.5px Figtree,sans-serif;color:rgba(246,241,228,.62);margin-top:3px">Shared board · 72 tiles · 61% cleared</div>
+<div style="height:5px;border-radius:3px;background:rgba(0,0,0,.3);margin-top:9px;overflow:hidden;display:flex"><div style="width:26%;background:#d9a441"></div><div style="width:18%;background:#5fbf9b"></div><div style="width:11%;background:#e08a6a"></div><div style="width:6%;background:#7aa8e0"></div></div>
+</div>
+</div>
+<div style="display:flex;gap:10px;margin-top:14px">
+<div style="flex:1;height:44px;border-radius:12px;background:#d9a441;display:flex;align-items:center;justify-content:center;font:700 15px Figtree,sans-serif;color:#33230a">Jump back in</div>
+<div style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:17px">💬</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ heroDaily }}">
+<div style="padding:16px;border-radius:18px;background:linear-gradient(155deg,rgba(217,164,65,.24),rgba(255,255,255,.05));border:1px solid rgba(217,164,65,.34);backdrop-filter:blur(8px);animation:popIn .22s ease both">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><span style="font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#e8c887">Today's board</span><span style="font:12px Figtree,sans-serif;color:rgba(246,241,228,.6)">Resets in 6h</span></div>
+<div style="font:400 24px/1.2 'Instrument Serif',serif;color:#f6f1e4">Eight Winds</div>
+<div style="font:13px Figtree,sans-serif;color:rgba(246,241,228,.65);margin-top:6px">3 of 5 in your group have finished. Best time 4:12.</div>
+<div style="display:flex;gap:10px;margin-top:14px">
+<div style="flex:1;height:44px;border-radius:12px;background:#d9a441;display:flex;align-items:center;justify-content:center;font:700 15px Figtree,sans-serif;color:#33230a">Play daily</div>
+<div style="padding:0 16px;height:44px;border-radius:12px;border:1px solid rgba(246,241,228,.28);display:flex;align-items:center;font:600 14px Figtree,sans-serif;color:#f6f1e4">Results</div>
+</div>
+</div>
+</sc-if>
+</div>
+<div style="{{ heroNextStyle }}" onClick="{{ heroNext }}">›</div>
+</div>
+<div style="display:flex;justify-content:center;gap:6px;margin-top:10px">
+<sc-for list="{{ heroDots }}" as="d" hint-placeholder-count="2"><div style="{{ d.style }}" onClick="{{ d.onTap }}"></div></sc-for>
+</div>
+<div style="padding:20px 20px 8px;font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:rgba(246,241,228,.5)">Continue playing</div>
+<div style="padding:0 16px;display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{ darkRooms }}" as="r" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07)">
+<div style="{{ r.thumbStyle }}"></div>
+<div style="flex:1;min-width:0"><div style="font:600 14.5px Figtree,sans-serif;color:#f6f1e4">{{ r.name }}</div><div style="font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:2px">{{ r.sub }}</div>
+<div style="height:4px;border-radius:2px;background:rgba(0,0,0,.3);margin-top:7px;overflow:hidden"><div style="{{ r.barStyle }}"></div></div></div>
+<div style="{{ r.avStyle }}">{{ r.av }}</div>
+</div>
+</sc-for>
+</div>
+<div style="padding:20px 20px 8px;font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:rgba(246,241,228,.5)">Open rooms</div>
+<div style="padding:0 16px;display:flex;flex-direction:column;gap:9px">
+<sc-for list="{{ openRooms }}" as="r" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:13px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08)">
+<div style="{{ r.chipStyle }}">{{ r.tiles }}</div>
+<div style="flex:1;min-width:0"><div style="font:600 15px Figtree,sans-serif;color:#f6f1e4">{{ r.name }}</div><div style="font:12px Figtree,sans-serif;color:rgba(246,241,228,.55);margin-top:2px">{{ r.sub }}</div></div>
+<div style="font:600 12px Figtree,sans-serif;color:#d9a441">Join</div>
+</div>
+</sc-for>
+</div>
+<div style="flex:1"></div>
+<div style="height:86px;background:rgba(8,26,20,.85);backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:flex-start;padding-top:11px">
+<sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="5">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+<sc-if value="{{ tb.isRank }}"><div style="height:19px;display:flex;align-items:flex-end;gap:3px"><div style="{{ tb.bar1 }}"></div><div style="{{ tb.bar2 }}"></div><div style="{{ tb.bar3 }}"></div></div></sc-if>
+<sc-if value="{{ tb.notRank }}" hint-placeholder-val="{{ true }}"><div style="{{ tb.iconStyle }}">{{ tb.icon }}</div></sc-if>
+<div style="{{ tb.labelStyle }}">{{ tb.label }}</div></div>
+</sc-for>
+</div>
+</div>
+</x-import>
+
+<div style="width:300px;flex:none;padding:18px 20px;background:#18201b;border:1px solid rgba(255,255,255,.09);border-radius:12px;color:#cfd6ce;font:12.5px/1.55 Figtree,sans-serif;box-sizing:border-box">
+<div style="font:700 10.5px Figtree,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#e8c887;margin-bottom:12px">Home</div>
+<ul style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:9px">
+<li>Entry point. The hero card swipes between the room you are currently in and today’s board — chevrons outside both edges, dots below, pointer-drag also works.</li>
+<li>Split progress bar breaks the room’s 61% into each player’s share, colored by player identity.</li>
+<li><b>Continue playing</b> holds rooms you have joined but are not in right now; the thin bar is that board’s completion.</li>
+<li><b>Open rooms</b> are joinable in one tap. Joining only commits when you clear your first pair.</li>
+<li>Tabs are fixed at five: Home · Play · + · Ranking · You.</li>
+<li>Copy is sentence case, action-led: “Jump back in”, not “Resume Game”.</li>
+</ul>
+</div>
+</div>
+<div style="font:11px/1.5 Figtree,sans-serif;color:rgba(232,226,212,.45);max-width:402px">The live room is the hero, now swipeable: card two is today's board. Chevrons and dots sit outside the card; drag works too.</div>
+</div>
+
+<div class="dv-opt" id="1f"><div class="dv-olabel"><a class="dv-oid" href="#1f">1f</a>Board — HUD + tray · live, tap two matching tiles</div>
+<div class="dv-card" style="display:flex;gap:20px;align-items:flex-start">
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+<div style="height:100%;background:radial-gradient(130% 80% at 50% 38%,#20694e 0%,#134130 62%,#0a2a1f 100%);display:flex;flex-direction:column;padding-top:52px;box-sizing:border-box;position:relative;overflow:hidden">
+
+<div style="padding:6px 16px 0;display:flex;align-items:center;gap:10px">
+<div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.13);display:flex;align-items:center;justify-content:center;font-size:15px">⌂</div>
+<div style="flex:1;min-width:0"><div style="font:600 15px Figtree,sans-serif;color:#f6f1e4">Dragon's Nest</div><div style="font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.55)">{{ clearedCount }} of 52 cleared · {{ clock }}</div></div>
+<div style="{{ hintBtnStyle }}" onClick="{{ onHint }}">✦</div>
+</div>
+
+<div style="margin:12px 16px 0;display:flex;gap:7px">
+<sc-for list="{{ players }}" as="p" hint-placeholder-count="4">
+<div style="{{ p.cardStyle }}">
+<div style="display:flex;align-items:center;gap:6px"><div style="{{ p.dotStyle }}">{{ p.initial }}</div><span style="font:700 13px Figtree,sans-serif;color:#f6f1e4">{{ p.score }}</span></div>
+<div style="font:10.5px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:3px">{{ p.streakLabel }}</div>
+</div>
+</sc-for>
+</div>
+
+<div style="flex:1;display:flex;align-items:center;justify-content:center;position:relative">
+<div style="position:relative;width:328px;height:220px">
+<sc-for list="{{ tiles }}" as="t" hint-placeholder-count="30">
+<div style="{{ t.style }}" onClick="{{ t.onTap }}">
+<div style="position:absolute;inset:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden">
+<sc-if value="{{ t.isChar }}" hint-placeholder-val="{{ true }}"><div style="{{ t.charStyle }}">{{ t.top }}</div></sc-if>
+<sc-if value="{{ t.isChar2 }}"><div style="{{ t.charStyle2 }}">{{ t.bot }}</div></sc-if>
+<sc-if value="{{ t.isPip }}"><div style="position:relative;width:100%;height:100%"><sc-for list="{{ t.pips }}" as="p" hint-placeholder-count="3"><div style="{{ p.style }}"></div></sc-for></div></sc-if>
+<sc-if value="{{ t.isSlot }}"><div style="width:74%;height:70%;border:1px dashed rgba(23,61,47,.4);border-radius:3px;display:flex;align-items:center;justify-content:center;font:700 6px ui-monospace,Menlo,monospace;color:rgba(23,61,47,.55);letter-spacing:.06em;text-align:center">ART<br>SLOT</div></sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+<div style="{{ toastStyle }}">{{ toastText }}</div>
+</div>
+
+<div style="margin:0 16px 10px;padding:11px 12px;border-radius:16px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:9px">
+<div style="display:flex;align-items:center;justify-content:space-between"><span style="font:700 10px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:rgba(246,241,228,.5)">Cleared</span><span style="font:11px Figtree,sans-serif;color:rgba(246,241,228,.45)">{{ myPairsLabel }}</span></div>
+<div style="display:flex;gap:6px;align-items:center;height:34px;overflow:hidden">
+<sc-for list="{{ tray }}" as="c" hint-placeholder-count="6">
+<div style="{{ c.style }}">{{ c.face }}</div>
+</sc-for>
+<sc-if value="{{ trayEmpty }}"><div style="font:12px Figtree,sans-serif;color:rgba(246,241,228,.35)">Matched pairs land here, tinted by who took them.</div></sc-if>
+</div>
+</div>
+
+<div style="display:flex;gap:8px;padding:0 16px 22px;align-items:center">
+<div style="{{ btnStyle }}" onClick="{{ onShuffle }}">Shuffle</div>
+<div style="{{ btnStyle }}" onClick="{{ onUndo }}">Undo</div>
+<div style="flex:1"></div>
+<sc-for list="{{ reactions }}" as="r" hint-placeholder-count="2">
+<div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:19px" onClick="{{ r.onTap }}">{{ r.emoji }}</div>
+</sc-for>
+</div>
+
+<sc-if value="{{ floatingReaction }}"><div style="position:absolute;right:34px;bottom:96px;font-size:34px;animation:floatUp 1.6s ease-out forwards;pointer-events:none">{{ floatingReaction }}</div></sc-if>
+</div>
+</x-import>
+
+<div style="width:300px;flex:none;padding:18px 20px;background:#18201b;border:1px solid rgba(255,255,255,.09);border-radius:12px;color:#cfd6ce;font:12.5px/1.55 Figtree,sans-serif;box-sizing:border-box">
+<div style="font:700 10.5px Figtree,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#e8c887;margin-bottom:12px">Board — shared, free-for-all</div>
+<ul style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:9px">
+<li>52 tiles across 2 layers. The whole board always fits; it never pans or zooms.</li>
+<li>Tap a free tile to select, tap its match to clear. Blocked tiles are dimmed, desaturated, and reject the tap.</li>
+<li>Four score cards on top show pairs taken. At two or more in a row the player’s name is replaced by their streak.</li>
+<li>Cleared pairs fly to the tray and stay tinted with the taker’s color — permanent attribution, the mahjong equivalent of Across’s per-letter coloring.</li>
+<li>✦ opens assists: hint, shuffle, undo, and the no-moves-remain flag. Usage counts against leaderboard credit.</li>
+<li>Reactions fire from the bottom right and float over the felt; a toast announces another player’s take, outlined in their color.</li>
+<li>Simulated players stay idle until your first match so the board is intact when you arrive.</li>
+<li><b>Table backgrounds under consideration:</b> felt green (shown) as the default; night slate, used here for race mode, as a low-light option; and tier-unlocked felts — deep felt at Jade, a wood-rail table at Rosewood. Cap is two colors in play at once so tiles stay the only source of color.</li>
+</ul>
+</div>
+</div>
+<div style="font:11px/1.5 Figtree,sans-serif;color:rgba(232,226,212,.45);max-width:402px">Score cards along the top, tray along the bottom. Free tiles carry a faint gold edge; blocked tiles sit dimmer and refuse the tap.</div>
+</div>
+
+<div class="dv-opt" id="1h"><div class="dv-olabel"><a class="dv-oid" href="#1h">1h</a>Board — race mode, separate boards</div>
+<div class="dv-card" style="display:flex;gap:20px;align-items:flex-start">
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+<div style="height:100%;background:radial-gradient(130% 80% at 50% 40%,#1d5f6e 0%,#123742 62%,#0a232b 100%);display:flex;flex-direction:column;padding-top:52px;box-sizing:border-box">
+<div style="padding:6px 16px 0;display:flex;align-items:center;gap:10px">
+<div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.13);display:flex;align-items:center;justify-content:center;font-size:15px">⌂</div>
+<div style="flex:1"><div style="font:600 15px Figtree,sans-serif;color:#f0f4f3">Race · Eight Winds</div><div style="font:11.5px Figtree,sans-serif;color:rgba(240,244,243,.55)">Same layout, own board · 03:41</div></div>
+<div style="width:34px;height:34px;border-radius:50%;background:rgba(217,164,65,.22);display:flex;align-items:center;justify-content:center;font-size:15px;color:#e8c887">✦</div>
+</div>
+<div style="margin:12px 16px 0;padding:12px;border-radius:16px;background:rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ racers }}" as="r" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:9px">
+<div style="{{ r.dotStyle }}">{{ r.initial }}</div>
+<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="{{ r.nameStyle }}">{{ r.name }}</span><span style="font:600 11px Figtree,sans-serif;color:rgba(240,244,243,.6)">{{ r.pct }}</span></div>
+<div style="height:6px;border-radius:3px;background:rgba(255,255,255,.1);margin-top:5px;overflow:hidden"><div style="{{ r.barStyle }}"></div></div></div>
+</div>
+</sc-for>
+</div>
+<div style="flex:1;display:flex;align-items:center;justify-content:center">
+<div style="position:relative;width:300px;height:200px">
+<sc-for list="{{ raceTiles }}" as="t" hint-placeholder-count="20">
+<div style="{{ t.style }}"><span style="{{ t.charStyle }}">{{ t.top }}</span></div>
+</sc-for>
+</div>
+</div>
+<div style="margin:0 16px 22px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.08);display:flex;align-items:center;gap:10px">
+<span style="font-size:17px">😮</span><span style="font:13px/1.35 Figtree,sans-serif;color:rgba(240,244,243,.8)">Dana just passed you with 11 pairs left.</span>
+</div>
+</div>
+</x-import>
+
+<div style="width:300px;flex:none;padding:18px 20px;background:#18201b;border:1px solid rgba(255,255,255,.09);border-radius:12px;color:#cfd6ce;font:12.5px/1.55 Figtree,sans-serif;box-sizing:border-box">
+<div style="font:700 10.5px Figtree,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#e8c887;margin-bottom:12px">Board — race mode</div>
+<ul style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:9px">
+<li>Same layout, separate boards. Nobody can take a tile out from under you.</li>
+<li>Night-slate felt instead of green so the mode is obvious in a screenshot or a glance.</li>
+<li>Live progress bars, one per player, ordered by position rather than by seat.</li>
+<li>Standing changes surface in the bottom strip instead of a toast, since there is no shared board to interrupt.</li>
+<li>No tray: your cleared pairs are implied by your own bar.</li>
+</ul>
+</div>
+</div>
+<div style="font:11px/1.5 Figtree,sans-serif;color:rgba(232,226,212,.45);max-width:402px">Night-slate felt separates race from shared play at a glance. Live bars replace the tray; nobody can take your tile.</div>
+</div>
+
+<div class="dv-opt" id="1i"><div class="dv-olabel"><a class="dv-oid" href="#1i">1i</a>Room setup — one scrollable screen</div>
+<div class="dv-card" style="display:flex;gap:20px;align-items:flex-start">
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+<div style="height:100%;background:#0f2a20;display:flex;flex-direction:column;padding-top:58px;box-sizing:border-box;overflow:hidden">
+<div style="padding:6px 20px 16px;display:flex;align-items:baseline;justify-content:space-between"><div style="font:400 30px/1 'Instrument Serif',serif;color:#f6f1e4">New room</div><div style="font:600 14px Figtree,sans-serif;color:rgba(246,241,228,.5)">Cancel</div></div>
+<div style="padding:0 16px;display:flex;flex-direction:column;gap:18px">
+<div>
+<div style="font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:rgba(246,241,228,.5);margin-bottom:9px">Mode</div>
+<div style="display:flex;gap:8px">
+<div style="flex:1;padding:12px;border-radius:15px;background:rgba(217,164,65,.16);border:1.5px solid #d9a441">
+<div style="display:flex;gap:3px;margin-bottom:9px;height:20px"><div style="width:13px;height:18px;border-radius:3px;background:#f2ecdc"></div><div style="width:13px;height:18px;border-radius:3px;background:#f2ecdc"></div><div style="width:13px;height:18px;border-radius:3px;background:#f2ecdc"></div></div>
+<div style="font:700 13.5px Figtree,sans-serif;color:#f6f1e4">Shared</div>
+<div style="font:11px/1.4 Figtree,sans-serif;color:rgba(246,241,228,.6);margin-top:3px">One board, everyone tapping. First to a pair takes it.</div>
+</div>
+<div style="flex:1;padding:12px;border-radius:15px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1)">
+<div style="display:flex;flex-direction:column;justify-content:center;gap:4px;margin-bottom:9px;height:20px"><div style="width:30px;height:5px;border-radius:3px;background:#5fbf9b"></div><div style="width:19px;height:5px;border-radius:3px;background:#e08a6a"></div></div>
+<div style="font:700 13.5px Figtree,sans-serif;color:#f6f1e4">Race</div>
+<div style="font:11px/1.4 Figtree,sans-serif;color:rgba(246,241,228,.6);margin-top:3px">Same layout, own board. Live progress bars.</div>
+</div>
+<div style="flex:1;padding:12px;border-radius:15px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1)">
+<div style="display:flex;align-items:center;gap:3px;margin-bottom:9px;height:20px"><div style="width:13px;height:18px;border-radius:3px;background:#f2ecdc"></div><div style="width:13px;height:18px;border-radius:3px;border:1.5px dashed rgba(242,236,220,.35);box-sizing:border-box"></div></div>
+<div style="font:700 13.5px Figtree,sans-serif;color:#f6f1e4">Solo</div>
+<div style="font:11px/1.4 Figtree,sans-serif;color:rgba(246,241,228,.6);margin-top:3px">Just you. Times still count toward Ranking.</div>
+</div>
+</div>
+</div>
+<div>
+<div style="font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:rgba(246,241,228,.5);margin-bottom:9px">Layout</div>
+<div style="display:flex;align-items:center;gap:13px;padding:13px 14px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.09)">
+<div style="flex:none;width:46px;height:40px;position:relative">
+<div style="position:absolute;left:0;top:6px;width:13px;height:17px;border-radius:2px;background:#f2ecdc"></div>
+<div style="position:absolute;left:16px;top:0;width:13px;height:17px;border-radius:2px;background:#f2ecdc"></div>
+<div style="position:absolute;left:32px;top:6px;width:13px;height:17px;border-radius:2px;background:#f2ecdc"></div>
+<div style="position:absolute;left:8px;top:21px;width:13px;height:17px;border-radius:2px;background:#f2ecdc"></div>
+<div style="position:absolute;left:24px;top:21px;width:13px;height:17px;border-radius:2px;background:#f2ecdc"></div>
+</div>
+<div style="flex:1"><div style="font:600 15px Figtree,sans-serif;color:#f6f1e4">Dragon's Nest</div><div style="font:12px Figtree,sans-serif;color:rgba(246,241,228,.55);margin-top:2px">52 tiles · 2 layers · medium</div></div>
+<div style="font:600 13px Figtree,sans-serif;color:#d9a441">Change</div>
+</div>
+</div>
+<div>
+<div style="font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:rgba(246,241,228,.5);margin-bottom:9px">Difficulty</div>
+<div style="display:flex;gap:8px">
+<div style="flex:1;height:44px;border-radius:12px;background:rgba(255,255,255,.07);display:flex;flex-direction:column;align-items:center;justify-content:center"><span style="font:600 14px Figtree,sans-serif;color:#f6f1e4">Easy</span><span style="font:10px Figtree,sans-serif;color:rgba(246,241,228,.45)">36 tiles</span></div>
+<div style="flex:1;height:44px;border-radius:12px;background:#d9a441;display:flex;flex-direction:column;align-items:center;justify-content:center"><span style="font:700 14px Figtree,sans-serif;color:#33230a">Medium</span><span style="font:10px Figtree,sans-serif;color:rgba(51,35,10,.65)">52 tiles</span></div>
+<div style="flex:1;height:44px;border-radius:12px;background:rgba(255,255,255,.07);display:flex;flex-direction:column;align-items:center;justify-content:center"><span style="font:600 14px Figtree,sans-serif;color:#f6f1e4">Hard</span><span style="font:10px Figtree,sans-serif;color:rgba(246,241,228,.45)">72 tiles</span></div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:1px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.07)">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px"><span style="flex:1;min-width:0;padding-right:12px;font:500 15px Figtree,sans-serif;color:#f6f1e4">Free tiles glow</span><div style="width:48px;height:28px;border-radius:999px;background:#d9a441;display:flex;align-items:center;justify-content:flex-end;padding:0 3px;box-sizing:border-box"><div style="width:22px;height:22px;border-radius:50%;background:#fff"></div></div></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px"><span style="flex:1;min-width:0;padding-right:12px;font:500 15px Figtree,sans-serif;color:#f6f1e4">Hints allowed</span><div style="width:48px;height:28px;border-radius:999px;background:#d9a441;display:flex;align-items:center;justify-content:flex-end;padding:0 3px;box-sizing:border-box"><div style="width:22px;height:22px;border-radius:50%;background:#fff"></div></div></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px"><span style="flex:1;min-width:0;padding-right:12px;font:500 15px Figtree,sans-serif;color:#f6f1e4">Open to anyone with the link</span><div style="width:48px;height:28px;border-radius:999px;background:rgba(255,255,255,.16);display:flex;align-items:center;padding:0 3px;box-sizing:border-box"><div style="width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.6)"></div></div></div>
+</div>
+</div>
+<div style="flex:1"></div>
+<div style="padding:14px 16px 30px"><div style="height:52px;border-radius:15px;background:#d9a441;display:flex;align-items:center;justify-content:center;font:700 16px Figtree,sans-serif;color:#33230a">Create &amp; invite</div></div>
+</div>
+</x-import>
+
+<div style="width:300px;flex:none;padding:18px 20px;background:#18201b;border:1px solid rgba(255,255,255,.09);border-radius:12px;color:#cfd6ce;font:12.5px/1.55 Figtree,sans-serif;box-sizing:border-box">
+<div style="font:700 10.5px Figtree,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#e8c887;margin-bottom:12px">Room setup</div>
+<ul style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:9px">
+<li>One scrollable screen, never a wizard — the target is under a minute from tap to invite.</li>
+<li>Mode is the first question because it changes the board, the scoring, and the presence model. Three options: shared, race, solo — solo still reports into Ranking and the daily streak.</li>
+<li>Layout opens the catalog; difficulty presets set tile count (36 / 52 / 72) and double as easy mode.</li>
+<li>Toggles cover the easy-mode affordances (free-tile glow, hints) and link visibility.</li>
+<li>One primary action creates the room and opens the invite sheet immediately.</li>
+</ul>
+</div>
+</div>
+<div style="font:11px/1.5 Figtree,sans-serif;color:rgba(232,226,212,.45);max-width:402px">Mode is the first question, per your call. Everything else is presets on one scroll — no wizard.</div>
+</div>
+
+<div class="dv-opt" id="1j"><div class="dv-olabel"><a class="dv-oid" href="#1j">1j</a>Layout catalog</div>
+<div class="dv-card" style="display:flex;gap:20px;align-items:flex-start">
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+<div style="height:100%;background:#0f2a20;display:flex;flex-direction:column;padding-top:58px;box-sizing:border-box;overflow:hidden">
+<div style="padding:6px 20px 12px;font:400 30px/1 'Instrument Serif',serif;color:#f6f1e4">Layouts</div>
+<div style="padding:0 16px 12px;display:flex;gap:7px">
+<div style="padding:7px 13px;border-radius:999px;background:#d9a441;font:700 12.5px Figtree,sans-serif;color:#33230a">All</div>
+<div style="padding:7px 13px;border-radius:999px;background:rgba(255,255,255,.08);font:600 12.5px Figtree,sans-serif;color:rgba(246,241,228,.75)">Easy</div>
+<div style="padding:7px 13px;border-radius:999px;background:rgba(255,255,255,.08);font:600 12.5px Figtree,sans-serif;color:rgba(246,241,228,.75)">Classic</div>
+<div style="padding:7px 13px;border-radius:999px;background:rgba(255,255,255,.08);font:600 12.5px Figtree,sans-serif;color:rgba(246,241,228,.75)">Locked</div>
+</div>
+<div style="padding:0 16px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+<sc-for list="{{ catalog }}" as="c" hint-placeholder-count="6">
+<div style="{{ c.cardStyle }}">
+<div style="height:88px;position:relative;background:radial-gradient(120% 120% at 50% 30%,#1d6349,#0e3527)">
+<sc-for list="{{ c.blocks }}" as="b" hint-placeholder-count="6"><div style="{{ b.style }}"></div></sc-for>
+<sc-if value="{{ c.locked }}"><div style="position:absolute;inset:0;background:rgba(8,26,20,.72);display:flex;align-items:center;justify-content:center;font-size:19px">🔒</div></sc-if>
+</div>
+<div style="padding:10px 12px 12px">
+<div style="font:600 14px Figtree,sans-serif;color:#f6f1e4">{{ c.name }}</div>
+<div style="{{ c.subStyle }}">{{ c.sub }}</div>
+</div>
+</div>
+</sc-for>
+</div>
+<div style="flex:1"></div>
+<div style="height:86px;background:rgba(8,26,20,.85);border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:flex-start;padding-top:11px">
+<sc-for list="{{ playTabs }}" as="tb" hint-placeholder-count="5">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+<sc-if value="{{ tb.isRank }}"><div style="height:19px;display:flex;align-items:flex-end;gap:3px"><div style="{{ tb.bar1 }}"></div><div style="{{ tb.bar2 }}"></div><div style="{{ tb.bar3 }}"></div></div></sc-if>
+<sc-if value="{{ tb.notRank }}" hint-placeholder-val="{{ true }}"><div style="{{ tb.iconStyle }}">{{ tb.icon }}</div></sc-if>
+<div style="{{ tb.labelStyle }}">{{ tb.label }}</div></div>
+</sc-for>
+</div>
+</div>
+</x-import>
+
+<div style="width:300px;flex:none;padding:18px 20px;background:#18201b;border:1px solid rgba(255,255,255,.09);border-radius:12px;color:#cfd6ce;font:12.5px/1.55 Figtree,sans-serif;box-sizing:border-box">
+<div style="font:700 10.5px Figtree,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#e8c887;margin-bottom:12px">Layout catalog</div>
+<ul style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:9px">
+<li>Layouts are curated, not generated — mahjong geometry does not benefit from AI the way crossword fill does.</li>
+<li>Thumbnails draw the actual tile silhouette, the same principle as Across’s real grid minis.</li>
+<li>Filters: All · Easy · Classic · Locked.</li>
+<li>Locked layouts stay visible with a tier lock so progression always has a named target.</li>
+</ul>
+</div>
+</div>
+<div style="font:11px/1.5 Figtree,sans-serif;color:rgba(232,226,212,.45);max-width:402px">Thumbnails are the actual tile silhouette, like Across used real grid patterns. Locked layouts stay visible so the tier has something to want.</div>
+</div>
+
+<div class="dv-opt" id="1k"><div class="dv-olabel"><a class="dv-oid" href="#1k">1k</a>Rankings</div>
+<div class="dv-card" style="display:flex;gap:20px;align-items:flex-start">
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+<div style="height:100%;background:#0f2a20;display:flex;flex-direction:column;padding-top:58px;box-sizing:border-box;overflow:hidden">
+<div style="padding:6px 20px 12px;font:400 30px/1 'Instrument Serif',serif;color:#f6f1e4">Ranking</div>
+<div style="padding:0 16px 14px;display:flex;gap:7px">
+<div style="padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.08);font:600 12px Figtree,sans-serif;color:rgba(246,241,228,.7)">Today</div>
+<div style="padding:6px 12px;border-radius:999px;background:#d9a441;font:700 12px Figtree,sans-serif;color:#33230a">Week</div>
+<div style="padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.08);font:600 12px Figtree,sans-serif;color:rgba(246,241,228,.7)">Month</div>
+<div style="padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.08);font:600 12px Figtree,sans-serif;color:rgba(246,241,228,.7)">All time</div>
+</div>
+<div style="margin:0 16px 14px;padding:13px 15px;border-radius:14px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between">
+<div><div style="font:700 10px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:rgba(246,241,228,.45)">Ranking by</div><div style="font:600 15px Figtree,sans-serif;color:#f6f1e4;margin-top:2px">Pairs cleared</div></div>
+<div style="padding:7px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.2);font:600 12.5px Figtree,sans-serif;color:#e8c887">Change</div>
+</div>
+<div style="padding:0 16px;display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{ ranks }}" as="r" hint-placeholder-count="6">
+<div style="{{ r.rowStyle }}">
+<div style="{{ r.numStyle }}">{{ r.n }}</div>
+<div style="{{ r.avStyle }}">{{ r.initial }}</div>
+<div style="flex:1;min-width:0"><div style="{{ r.nameStyle }}">{{ r.name }}</div><div style="font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.45);margin-top:2px">{{ r.sub }}</div></div>
+<div style="font:700 17px Figtree,sans-serif;color:#f6f1e4">{{ r.val }}</div>
+</div>
+</sc-for>
+</div>
+<div style="flex:1"></div>
+<div style="height:86px;background:rgba(8,26,20,.85);border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:flex-start;padding-top:11px">
+<sc-for list="{{ rankTabs }}" as="tb" hint-placeholder-count="5">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+<sc-if value="{{ tb.isRank }}"><div style="height:19px;display:flex;align-items:flex-end;gap:3px"><div style="{{ tb.bar1 }}"></div><div style="{{ tb.bar2 }}"></div><div style="{{ tb.bar3 }}"></div></div></sc-if>
+<sc-if value="{{ tb.notRank }}" hint-placeholder-val="{{ true }}"><div style="{{ tb.iconStyle }}">{{ tb.icon }}</div></sc-if>
+<div style="{{ tb.labelStyle }}">{{ tb.label }}</div></div>
+</sc-for>
+</div>
+</div>
+</x-import>
+
+<div style="width:300px;flex:none;padding:18px 20px;background:#18201b;border:1px solid rgba(255,255,255,.09);border-radius:12px;color:#cfd6ce;font:12.5px/1.55 Figtree,sans-serif;box-sizing:border-box">
+<div style="font:700 10.5px Figtree,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#e8c887;margin-bottom:12px">Ranking</div>
+<ul style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:9px">
+<li>Time filters: today, week, month, all time.</li>
+<li>One metric at a time behind a Change control — pairs cleared, speed to clear, board share. Never a dense table.</li>
+<li>Your own row is highlighted in gold wherever it lands.</li>
+<li>First place gets a gold rank numeral only. No medals, no podium.</li>
+</ul>
+</div>
+</div>
+<div style="font:11px/1.5 Figtree,sans-serif;color:rgba(232,226,212,.45);max-width:402px">One metric at a time with a Change control, exactly as Across settled it. Speed and board share live behind the same switch.</div>
+</div>
+
+<div class="dv-opt" id="1l"><div class="dv-olabel"><a class="dv-oid" href="#1l">1l</a>Profile — tiers and unlocks</div>
+<div class="dv-card" style="display:flex;gap:20px;align-items:flex-start">
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+<div style="height:100%;background:#0f2a20;display:flex;flex-direction:column;padding-top:58px;box-sizing:border-box;overflow:hidden">
+<div style="padding:8px 20px 16px;display:flex;align-items:center;gap:14px">
+<div style="width:62px;height:62px;border-radius:50%;background:#d9a441;display:flex;align-items:center;justify-content:center;font:800 24px Figtree,sans-serif;color:#33230a">H</div>
+<div><div style="font:400 26px/1 'Instrument Serif',serif;color:#f6f1e4">Henning</div><div style="font:12.5px Figtree,sans-serif;color:rgba(246,241,228,.55);margin-top:5px">Jade tier · 9,140 points</div></div>
+</div>
+<div style="margin:0 16px 16px;padding:15px;border-radius:16px;background:linear-gradient(150deg,rgba(95,191,155,.2),rgba(255,255,255,.05));border:1px solid rgba(95,191,155,.3)">
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px"><span style="font:700 13px Figtree,sans-serif;color:#f6f1e4">Jade</span><span style="font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.6)">10,860 to Dragon</span></div>
+<div style="height:8px;border-radius:4px;background:rgba(0,0,0,.28);overflow:hidden"><div style="width:46%;height:100%;background:linear-gradient(90deg,#5fbf9b,#d9a441);border-radius:4px"></div></div>
+<div style="display:flex;gap:10px;margin-top:13px">
+<div style="flex:1;padding:9px;border-radius:11px;background:rgba(0,0,0,.2);text-align:center"><div style="font:700 15px Figtree,sans-serif;color:#f6f1e4">Rosewood</div><div style="font:10px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:2px">Next unlock</div></div>
+<div style="flex:1;padding:9px;border-radius:11px;background:rgba(0,0,0,.2);text-align:center"><div style="font:700 15px Figtree,sans-serif;color:#f6f1e4">Nine Gates</div><div style="font:10px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:2px">Layout</div></div>
+</div>
+</div>
+<div style="padding:0 16px 6px;font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:rgba(246,241,228,.45)">Your table</div>
+<div style="padding:8px 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+<div style="padding:12px;border-radius:13px;background:rgba(255,255,255,.06);display:flex;align-items:center;gap:10px"><div style="width:26px;height:34px;border-radius:5px;background:linear-gradient(160deg,#cfe6da,#9dc4b1);box-shadow:2px 3px 0 #6d9482"></div><div><div style="font:600 13px Figtree,sans-serif;color:#f6f1e4">Jade</div><div style="font:10.5px Figtree,sans-serif;color:rgba(246,241,228,.5)">Tiles</div></div></div>
+<div style="padding:12px;border-radius:13px;background:rgba(255,255,255,.06);display:flex;align-items:center;gap:10px"><div style="width:26px;height:34px;border-radius:5px;background:radial-gradient(120% 120% at 40% 20%,#20694e,#0e3527)"></div><div><div style="font:600 13px Figtree,sans-serif;color:#f6f1e4">Deep felt</div><div style="font:10.5px Figtree,sans-serif;color:rgba(246,241,228,.5)">Table</div></div></div>
+</div>
+<div style="padding:0 16px 6px;font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:rgba(246,241,228,.45)">This month</div>
+<div style="padding:8px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+<sc-for list="{{ stats }}" as="s" hint-placeholder-count="4">
+<div style="padding:13px;border-radius:13px;background:rgba(255,255,255,.06)"><div style="font:700 22px Figtree,sans-serif;color:#f6f1e4">{{ s.v }}</div><div style="font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:3px">{{ s.k }}</div></div>
+</sc-for>
+</div>
+<div style="flex:1"></div>
+<div style="height:86px;background:rgba(8,26,20,.85);border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:flex-start;padding-top:11px">
+<sc-for list="{{ youTabs }}" as="tb" hint-placeholder-count="5">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+<sc-if value="{{ tb.isRank }}"><div style="height:19px;display:flex;align-items:flex-end;gap:3px"><div style="{{ tb.bar1 }}"></div><div style="{{ tb.bar2 }}"></div><div style="{{ tb.bar3 }}"></div></div></sc-if>
+<sc-if value="{{ tb.notRank }}" hint-placeholder-val="{{ true }}"><div style="{{ tb.iconStyle }}">{{ tb.icon }}</div></sc-if>
+<div style="{{ tb.labelStyle }}">{{ tb.label }}</div></div>
+</sc-for>
+</div>
+</div>
+</x-import>
+
+<div style="width:300px;flex:none;padding:18px 20px;background:#18201b;border:1px solid rgba(255,255,255,.09);border-radius:12px;color:#cfd6ce;font:12.5px/1.55 Figtree,sans-serif;box-sizing:border-box">
+<div style="font:700 10.5px Figtree,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#e8c887;margin-bottom:12px">Profile — tiers</div>
+<ul style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:9px">
+<li>The tier bar sits above stats because progression is the reason to come back.</li>
+<li>Four named tiers: Bamboo → Bone → Jade → Dragon. Each unlocks a batch — a tile material, a felt, and a layout.</li>
+<li><b>Your table</b> shows what is currently applied, and is where a new unlock gets equipped.</li>
+<li>Stats are the same metrics Ranking sorts by, so the two screens never disagree.</li>
+<li>Settings stay flattened onto this screen — no sub-pages, no account or sign-out rows.</li>
+</ul>
+</div>
+</div>
+<div style="font:11px/1.5 Figtree,sans-serif;color:rgba(232,226,212,.45);max-width:402px">Tier bar sits above stats because progression is the reason to come back. Settings stay flattened below the fold, no sub-pages.</div>
+</div>
+
+<div class="dv-opt" id="1m"><div class="dv-olabel"><a class="dv-oid" href="#1m">1m</a>Results</div>
+<div class="dv-card" style="display:flex;gap:20px;align-items:flex-start">
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+<div style="height:100%;background:radial-gradient(120% 80% at 50% 10%,#20694e,#0b2b20 70%);display:flex;flex-direction:column;padding-top:70px;box-sizing:border-box;overflow:hidden">
+<div style="text-align:center;padding:0 24px">
+<div style="font:700 11px Figtree,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#e8c887">Board cleared</div>
+<div style="font:400 38px/1.1 'Instrument Serif',serif;color:#f6f1e4;margin-top:8px">Dragon's Nest</div>
+<div style="font:14px Figtree,sans-serif;color:rgba(246,241,228,.6);margin-top:8px">14:22 · 4 players · 52 tiles</div>
+</div>
+<div style="margin:22px 16px 0;padding:16px;border-radius:18px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:12px">
+<sc-for list="{{ results }}" as="r" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:12px">
+<div style="{{ r.medalStyle }}">{{ r.n }}</div>
+<div style="{{ r.avStyle }}">{{ r.initial }}</div>
+<div style="flex:1;min-width:0"><div style="{{ r.nameStyle }}">{{ r.name }}</div>
+<div style="height:6px;border-radius:3px;background:rgba(255,255,255,.1);margin-top:6px;overflow:hidden"><div style="{{ r.barStyle }}"></div></div></div>
+<div style="text-align:right"><div style="font:700 16px Figtree,sans-serif;color:#f6f1e4">{{ r.pairs }}</div><div style="font:10px Figtree,sans-serif;color:rgba(246,241,228,.45)">pairs</div></div>
+</div>
+</sc-for>
+</div>
+<div style="margin:14px 16px 0;padding:15px;border-radius:16px;background:rgba(255,255,255,.06);display:flex;flex-direction:column;gap:9px">
+<div style="font:700 10px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:rgba(246,241,228,.45)">Worth mentioning</div>
+<div style="font:13.5px/1.45 Figtree,sans-serif;color:rgba(246,241,228,.85)">Dana ran a 7-pair streak in the last minute and took it from you.</div>
+<div style="font:13.5px/1.45 Figtree,sans-serif;color:rgba(246,241,228,.85)">Jules cleared the final pair with 4 seconds of thinking.</div>
+<div style="font:13.5px/1.45 Figtree,sans-serif;color:rgba(246,241,228,.85)">Nobody shuffled. First time this month.</div>
+</div>
+<div style="margin:14px 16px 0;padding:13px 15px;border-radius:14px;background:rgba(217,164,65,.14);border:1px solid rgba(217,164,65,.35);display:flex;align-items:center;gap:12px">
+<div style="font-size:20px">✦</div><div style="font:13px/1.4 Figtree,sans-serif;color:#f2e6cc">+640 points · 1,720 to Rosewood</div>
+</div>
+<div style="flex:1"></div>
+<div style="display:flex;gap:9px;padding:0 16px 30px">
+<div style="flex:1;height:50px;border-radius:14px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font:600 14px Figtree,sans-serif;color:#f6f1e4">Share</div>
+<div style="flex:1;height:50px;border-radius:14px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font:600 14px Figtree,sans-serif;color:#f6f1e4">Rematch</div>
+<div style="flex:1;height:50px;border-radius:14px;background:#d9a441;display:flex;align-items:center;justify-content:center;font:700 14px Figtree,sans-serif;color:#33230a">Done</div>
+</div>
+</div>
+</x-import>
+
+<div style="width:300px;flex:none;padding:18px 20px;background:#18201b;border:1px solid rgba(255,255,255,.09);border-radius:12px;color:#cfd6ce;font:12.5px/1.55 Figtree,sans-serif;box-sizing:border-box">
+<div style="font:700 10.5px Figtree,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#e8c887;margin-bottom:12px">Results</div>
+<ul style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:9px">
+<li>A real 1–4 ranking by pairs cleared, each with their share as a bar.</li>
+<li>Three highlight lines generated from the match log, written competitively rather than congratulatory.</li>
+<li>Points earned and the remaining distance to the next tier, so the loop closes back into progression.</li>
+<li>Share hands off to the OS share sheet with a prefilled message and deep link — no in-app share screen.</li>
+<li>Three actions in one row: Share · Rematch · Done.</li>
+</ul>
+</div>
+</div>
+<div style="font:11px/1.5 Figtree,sans-serif;color:rgba(232,226,212,.45);max-width:402px">Real 1–4 ranking, three highlight lines, three actions in one row. Share hands off to the OS sheet.</div>
+</div>
+
+<div class="dv-opt" id="1n"><div class="dv-olabel"><a class="dv-oid" href="#1n">1n</a>Invite · join by link</div>
+<div class="dv-card" style="display:flex;gap:20px;align-items:flex-start">
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+<div style="height:100%;background:#0f2a20;display:flex;flex-direction:column;padding-top:58px;box-sizing:border-box;position:relative">
+<div style="opacity:.32;padding:0 16px">
+<div style="font:400 30px/1 'Instrument Serif',serif;color:#f6f1e4;padding:6px 4px 16px">Dragon's Nest</div>
+<div style="height:180px;border-radius:16px;background:radial-gradient(120% 120% at 50% 30%,#1d6349,#0e3527)"></div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;background:#18241e;border-radius:26px 26px 0 0;padding:10px 20px 34px;border-top:1px solid rgba(255,255,255,.1)">
+<div style="width:38px;height:5px;border-radius:3px;background:rgba(255,255,255,.25);margin:0 auto 18px"></div>
+<div style="font:400 26px/1.1 'Instrument Serif',serif;color:#f6f1e4">Bring your people</div>
+<div style="font:13.5px/1.5 Figtree,sans-serif;color:rgba(246,241,228,.6);margin-top:7px">Anyone with the link joins instantly. No account, no download prompt until they finish a board.</div>
+<div style="margin-top:16px;padding:14px;border-radius:14px;background:rgba(255,255,255,.07);display:flex;align-items:center;gap:10px">
+<div style="flex:1;font:13px ui-monospace,Menlo,monospace;color:#e8c887;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">matched.app/r/dragons-nest</div>
+<div style="padding:7px 12px;border-radius:9px;background:rgba(255,255,255,.12);font:600 12px Figtree,sans-serif;color:#f6f1e4">Copy</div>
+</div>
+<div style="display:flex;gap:9px;margin-top:12px">
+<sc-for list="{{ invitees }}" as="i" hint-placeholder-count="4">
+<div style="flex:1;padding:11px 6px;border-radius:13px;background:rgba(255,255,255,.06);display:flex;flex-direction:column;align-items:center;gap:6px">
+<div style="{{ i.avStyle }}">{{ i.initial }}</div><div style="font:600 11px Figtree,sans-serif;color:rgba(246,241,228,.7)">{{ i.name }}</div>
+</div>
+</sc-for>
+</div>
+<div style="height:52px;border-radius:15px;background:#d9a441;display:flex;align-items:center;justify-content:center;font:700 16px Figtree,sans-serif;color:#33230a;margin-top:16px">Share invite</div>
+</div>
+</div>
+</x-import>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+<div style="height:100%;background:radial-gradient(120% 80% at 50% 20%,#20694e,#0b2b20 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 30px;box-sizing:border-box;text-align:center">
+<div style="display:flex;gap:8px;margin-bottom:26px">
+<div style="width:46px;height:60px;border-radius:7px;background:linear-gradient(160deg,#fbf7ec,#efe7d3);box-shadow:4px 5px 0 #b9a983;display:flex;align-items:center;justify-content:center;font:700 28px 'Noto Serif SC',serif;color:#1f7a4d;transform:rotate(-5deg)">發</div>
+<div style="width:46px;height:60px;border-radius:7px;background:linear-gradient(160deg,#fbf7ec,#efe7d3);box-shadow:4px 5px 0 #b9a983;display:flex;align-items:center;justify-content:center;font:700 28px 'Noto Serif SC',serif;color:#1f7a4d;transform:rotate(4deg)">發</div>
+</div>
+<div style="font:400 34px/1.15 'Instrument Serif',serif;color:#f6f1e4">Dana invited you to Dragon's Nest</div>
+<div style="font:14px/1.6 Figtree,sans-serif;color:rgba(246,241,228,.62);margin-top:12px">Shared board · 52 tiles · 3 already playing. You join the moment you clear your first pair.</div>
+<div style="display:flex;gap:-8px;margin-top:22px">
+<div style="width:38px;height:38px;border-radius:50%;background:#5fbf9b;border:2px solid #0f2a20;display:flex;align-items:center;justify-content:center;font:800 14px Figtree,sans-serif;color:#0b2b20">D</div>
+<div style="width:38px;height:38px;border-radius:50%;background:#e08a6a;border:2px solid #0f2a20;margin-left:-10px;display:flex;align-items:center;justify-content:center;font:800 14px Figtree,sans-serif;color:#2b1409">M</div>
+<div style="width:38px;height:38px;border-radius:50%;background:#7aa8e0;border:2px solid #0f2a20;margin-left:-10px;display:flex;align-items:center;justify-content:center;font:800 14px Figtree,sans-serif;color:#0a1a2b">J</div>
+</div>
+<div style="width:100%;height:54px;border-radius:15px;background:#d9a441;display:flex;align-items:center;justify-content:center;font:700 16px Figtree,sans-serif;color:#33230a;margin-top:30px">Take a seat</div>
+<div style="font:13px Figtree,sans-serif;color:rgba(246,241,228,.45);margin-top:16px">Just watching for now</div>
+</div>
+</x-import>
+
+<div style="width:300px;flex:none;padding:18px 20px;background:#18201b;border:1px solid rgba(255,255,255,.09);border-radius:12px;color:#cfd6ce;font:12.5px/1.55 Figtree,sans-serif;box-sizing:border-box">
+<div style="font:700 10.5px Figtree,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#e8c887;margin-bottom:12px">Invite · join by link</div>
+<ul style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:9px">
+<li>Left: the invite sheet. Copyable link, recent people as one-tap invites, OS share as the primary action.</li>
+<li>Right: what the recipient sees. Names the inviter and the room, and shows who is already playing.</li>
+<li>No account and no download wall — “Take a seat” enters as a guest.</li>
+<li>Joining commits at the first cleared pair, matching the crossword rule.</li>
+<li>“Just watching for now” enters spectator mode; spectators see the board but cannot take tiles.</li>
+</ul>
+</div>
+</div>
+<div style="font:11px/1.5 Figtree,sans-serif;color:rgba(232,226,212,.45);max-width:820px">Invite sheet on the left, the link recipient's first screen on the right. Joining is deferred until first match, same rule as Across.</div>
+</div>
+
+<div class="dv-opt" id="1o"><div class="dv-olabel"><a class="dv-oid" href="#1o">1o</a>Daily puzzle</div>
+<div class="dv-card" style="display:flex;gap:20px;align-items:flex-start">
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+<div style="height:100%;background:#0f2a20;display:flex;flex-direction:column;padding-top:58px;box-sizing:border-box;overflow:hidden">
+<div style="padding:6px 20px 4px;display:flex;align-items:baseline;justify-content:space-between">
+<div style="font:400 30px/1 'Instrument Serif',serif;color:#f6f1e4">Today</div>
+<div style="font:12.5px Figtree,sans-serif;color:rgba(246,241,228,.5)">Resets in 6h 12m</div>
+</div>
+<div style="padding:14px 16px 0">
+<div style="padding:18px;border-radius:18px;background:linear-gradient(155deg,rgba(217,164,65,.2),rgba(255,255,255,.05));border:1px solid rgba(217,164,65,.3)">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#e8c887">Board 214</span><span style="padding:5px 11px;border-radius:999px;background:rgba(0,0,0,.28);font:700 12px Figtree,sans-serif;color:#f6f1e4">🔥 12 day streak</span></div>
+<div style="font:400 28px/1.1 'Instrument Serif',serif;color:#f6f1e4;margin:11px 0 6px">Eight Winds</div>
+<div style="font:13px Figtree,sans-serif;color:rgba(246,241,228,.6)">Everyone plays the same board. One attempt.</div>
+<div style="height:54px;border-radius:15px;background:#d9a441;display:flex;align-items:center;justify-content:center;font:700 16px Figtree,sans-serif;color:#33230a;margin-top:16px">Start · 48 tiles</div>
+</div>
+</div>
+<div style="padding:22px 20px 8px;font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:rgba(246,241,228,.45)">Your group today</div>
+<div style="padding:0 16px;display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{ dailyRows }}" as="d" hint-placeholder-count="5">
+<div style="{{ d.rowStyle }}">
+<div style="{{ d.avStyle }}">{{ d.initial }}</div>
+<div style="flex:1;min-width:0"><div style="{{ d.nameStyle }}">{{ d.name }}</div><div style="font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.45);margin-top:2px">{{ d.sub }}</div></div>
+<div style="{{ d.timeStyle }}">{{ d.time }}</div>
+</div>
+</sc-for>
+</div>
+<div style="margin:16px;padding:13px 15px;border-radius:14px;background:rgba(255,255,255,.05);font:12.5px/1.5 Figtree,sans-serif;color:rgba(246,241,228,.55)">Times stay hidden until you finish, so nobody plays with a target in their head.</div>
+<div style="flex:1"></div>
+<div style="height:86px;background:rgba(8,26,20,.85);border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:flex-start;padding-top:11px">
+<sc-for list="{{ dailyTabs }}" as="tb" hint-placeholder-count="5">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+<sc-if value="{{ tb.isRank }}"><div style="height:19px;display:flex;align-items:flex-end;gap:3px"><div style="{{ tb.bar1 }}"></div><div style="{{ tb.bar2 }}"></div><div style="{{ tb.bar3 }}"></div></div></sc-if>
+<sc-if value="{{ tb.notRank }}" hint-placeholder-val="{{ true }}"><div style="{{ tb.iconStyle }}">{{ tb.icon }}</div></sc-if>
+<div style="{{ tb.labelStyle }}">{{ tb.label }}</div></div>
+</sc-for>
+</div>
+</div>
+</x-import>
+
+<div style="width:300px;flex:none;padding:18px 20px;background:#18201b;border:1px solid rgba(255,255,255,.09);border-radius:12px;color:#cfd6ce;font:12.5px/1.55 Figtree,sans-serif;box-sizing:border-box">
+<div style="font:700 10.5px Figtree,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#e8c887;margin-bottom:12px">Daily puzzle</div>
+<ul style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:9px">
+<li>One board for everyone, one attempt, resets on a 24h clock.</li>
+<li>The streak lives here rather than on Home, so it is tied to the habit that earns it.</li>
+<li>Group times stay hidden until you finish — the one place I argued against pure competition.</li>
+<li>Finishing feeds the same metrics Ranking sorts by; the daily is not a separate scoreboard.</li>
+</ul>
+</div>
+</div>
+<div style="font:11px/1.5 Figtree,sans-serif;color:rgba(232,226,212,.45);max-width:402px">The streak lives here, not on Home. Group times are blurred until you play — the one place I'd argue against pure competition.</div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "add a running match rail to <a class="dv-oid" href="#1f">1f</a>" · "swap the felt for night slate" · "show me the remaining screens"</p>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1500,&quot;height&quot;:1100}}">
+const PC = ['#d9a441', '#5fbf9b', '#e08a6a', '#7aa8e0'];
+const PN = ['You', 'Dana', 'Mika', 'Jules'];
+
+const INK = '#23201c', RED = '#b5322c', GRN = '#1f7a4d', BLU = '#2b5f9e';
+
+function faceSet() {
+  const f = [];
+  const nums = ['一','二','三','四','五','六','七','八','九'];
+  nums.forEach((n, i) => f.push({ id: 'c' + i, k: 'char', top: n, bot: '萬', c: i % 2 ? BLU : RED }));
+  ['東','南','西','北'].forEach((w, i) => f.push({ id: 'w' + i, k: 'char', top: w, bot: '', c: INK }));
+  f.push({ id: 'd0', k: 'char', top: '中', bot: '', c: RED });
+  f.push({ id: 'd1', k: 'char', top: '發', bot: '', c: GRN });
+  f.push({ id: 'd2', k: 'char', top: '□', bot: '', c: BLU });
+  for (let n = 1; n <= 5; n++) f.push({ id: 'p' + n, k: 'dot', n, c: n % 2 ? RED : GRN });
+  for (let n = 2; n <= 5; n++) f.push({ id: 'b' + n, k: 'bam', n, c: GRN });
+  f.push({ id: 'fl', k: 'slot' });
+  return f;
+}
+
+const TW = 40, TH = 52, SX = 40, SY = 40, OFF = 5;
+
+function coords() {
+  const c = [];
+  for (let y = 0; y < 5; y++) for (let x = 0; x < 8; x++) c.push({ x, y, z: 0 });
+  for (let y = 1; y <= 3; y++) for (let x = 2; x <= 5; x++) c.push({ x, y, z: 1 });
+  return c;
+}
+
+function isFree(t, live) {
+  const above = live.some(o => o.z === t.z + 1 && o.x === t.x && o.y === t.y);
+  if (above) return false;
+  const l = live.some(o => o.z === t.z && o.y === t.y && o.x === t.x - 1);
+  const r = live.some(o => o.z === t.z && o.y === t.y && o.x === t.x + 1);
+  return !(l && r);
+}
+
+function generate() {
+  const pos = coords();
+  const faces = faceSet();
+  const remaining = pos.map((p, i) => ({ ...p, i, face: null }));
+  const out = [];
+  let fi = 0;
+  let guard = 0;
+  while (remaining.length >= 2 && guard++ < 400) {
+    const free = remaining.filter(t => isFree(t, remaining));
+    if (free.length < 2) break;
+    const a = free[Math.floor(Math.random() * free.length)];
+    const rest = free.filter(t => t !== a);
+    const b = rest[Math.floor(Math.random() * rest.length)];
+    const face = faces[fi % faces.length]; fi++;
+    [a, b].forEach(t => { t.face = face; out.push(t); remaining.splice(remaining.indexOf(t), 1); });
+  }
+  return out.map((t, n) => ({ ...t, id: 'T' + n }));
+}
+
+class Component extends DCLogic {
+  state = { tiles: [], sel: null, hint: [], tray: [], scores: [0, 0, 0, 0], streaks: [0, 0, 0, 0], toast: null, seconds: 0, react: null, hist: [] };
+
+  componentDidMount() {
+    this.setState({ tiles: generate() });
+    this.tick = setInterval(() => this.setState(s => ({ seconds: s.seconds + 1 })), 1000);
+    this.bot = setInterval(() => this.botMove(), 5200);
+    this.botsOn = false;
+  }
+  componentWillUnmount() { clearInterval(this.tick); clearInterval(this.bot); }
+
+  freeIds() {
+    const live = this.state.tiles;
+    return live.filter(t => isFree(t, live)).map(t => t.id);
+  }
+  findPair(free) {
+    const live = this.state.tiles;
+    const byFace = {};
+    for (const t of live) {
+      if (!free.includes(t.id)) continue;
+      const k = t.face.id;
+      if (byFace[k]) return [byFace[k], t.id];
+      byFace[k] = t.id;
+    }
+    return null;
+  }
+  clearPair(ids, who) {
+    this.setState(s => {
+      const a = s.tiles.find(t => t.id === ids[0]);
+      const tiles = s.tiles.filter(t => !ids.includes(t.id));
+      const scores = s.scores.slice(); scores[who] += 1;
+      const streaks = s.streaks.map((v, i) => i === who ? v + 1 : 0);
+      const tray = [{ id: ids.join(''), face: a.face, who }, ...s.tray].slice(0, 14);
+      const toast = who === 0 ? null : { text: PN[who] + ' took a pair' + (streaks[who] > 2 ? ' · ' + streaks[who] + ' streak' : ''), who };
+      return { tiles, tray, scores, streaks, toast, sel: null, hint: [], hist: [{ ids, who, a, b: s.tiles.find(t => t.id === ids[1]) }, ...s.hist] };
+    });
+    if (who !== 0) setTimeout(() => this.setState({ toast: null }), 2600);
+  }
+  botMove() {
+    if (!this.botsOn) return;
+    const s = this.state;
+    const botPairs = s.scores[1] + s.scores[2] + s.scores[3];
+    if (s.tiles.length <= 14 || botPairs >= 10) return;
+    const free = this.freeIds();
+    const p = this.findPair(free);
+    if (!p) return;
+    this.clearPair(p, 1 + Math.floor(Math.random() * 3));
+  }
+  tap(id) {
+    this.botsOn = true;
+    const free = this.freeIds();
+    if (!free.includes(id)) return;
+    const { sel, tiles } = this.state;
+    if (sel === id) { this.setState({ sel: null }); return; }
+    if (!sel) { this.setState({ sel: id, hint: [] }); return; }
+    const a = tiles.find(t => t.id === sel), b = tiles.find(t => t.id === id);
+    if (a && b && a.face.id === b.face.id) this.clearPair([sel, id], 0);
+    else this.setState({ sel: id });
+  }
+
+  tileStyle(t, free, sel, hinted) {
+    const px = t.x * SX + t.z * OFF, py = t.y * SY - t.z * OFF;
+    const base = t.z === 1 ? '#fffdf6' : '#f7f2e4';
+    return [
+      'position:absolute', 'box-sizing:border-box',
+      'left:' + px + 'px', 'top:' + py + 'px',
+      'width:' + TW + 'px', 'height:' + TH + 'px',
+      'z-index:' + (t.z * 10 + t.y),
+      'border-radius:6px',
+      'background:linear-gradient(160deg,' + base + ',#e9e0cb)',
+      'box-shadow:3px 4px 0 #b3a582,0 6px 12px rgba(0,0,0,' + (t.z ? .38 : .26) + ')' + (sel ? ',0 0 0 3px #d9a441' : hinted ? ',0 0 0 3px rgba(217,164,65,.6)' : ''),
+      'transform:' + (sel ? 'translateY(-3px)' : 'none'),
+      'transition:transform .12s ease,box-shadow .12s ease',
+      'opacity:' + (free ? 1 : .74),
+      'filter:' + (free ? 'none' : 'saturate(.55) brightness(.9)'),
+      'cursor:' + (free ? 'pointer' : 'default'),
+      'animation:popIn .25s ease both'
+    ].join(';');
+  }
+  pips(f) {
+    const out = [];
+    if (f.k === 'dot') {
+      const grid = { 1: [[50, 50]], 2: [[50, 26], [50, 74]], 3: [[28, 22], [50, 50], [72, 78]], 4: [[30, 28], [70, 28], [30, 72], [70, 72]], 5: [[28, 24], [72, 24], [50, 50], [28, 76], [72, 76]] }[f.n];
+      grid.forEach((g, i) => out.push({ id: i, style: 'position:absolute;left:' + g[0] + '%;top:' + g[1] + '%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;border:2.5px solid ' + (i % 2 ? RED : f.c) }));
+    } else {
+      const n = f.n, cols = n <= 3 ? n : 2, rows = Math.ceil(n / cols);
+      for (let i = 0; i < n; i++) {
+        const c = i % cols, r = Math.floor(i / cols);
+        const l = cols === 1 ? 50 : 30 + (c * 40 / (cols - 1 || 1));
+        const tp = rows === 1 ? 50 : 24 + (r * 52 / (rows - 1 || 1));
+        out.push({ id: i, style: 'position:absolute;left:' + l + '%;top:' + tp + '%;width:4px;height:15px;margin:-7px 0 0 -2px;border-radius:2px;background:' + (i === 0 && n === 5 ? RED : f.c) });
+      }
+    }
+    return out;
+  }
+
+  renderVals() {
+    const s = this.state;
+    const live = s.tiles;
+    const free = live.filter(t => isFree(t, live)).map(t => t.id);
+    const tiles = live.map(t => {
+      const isF = free.includes(t.id), isS = s.sel === t.id, isH = s.hint.includes(t.id);
+      const f = t.face;
+      const big = f.k === 'char' && !f.bot;
+      return {
+        id: t.id, style: this.tileStyle(t, isF, isS, isH), onTap: () => this.tap(t.id),
+        isChar: f.k === 'char', isChar2: f.k === 'char' && !!f.bot, top: f.top || '', bot: f.bot || '',
+        charStyle: 'font:700 ' + (big ? 26 : 16) + 'px "Noto Serif SC",serif;color:' + (f.c || INK) + ';line-height:1',
+        charStyle2: 'font:700 15px "Noto Serif SC",serif;color:' + (f.c || INK) + ';line-height:1;margin-top:2px',
+        isPip: f.k === 'dot' || f.k === 'bam', pips: this.pips(f), isSlot: f.k === 'slot'
+      };
+    });
+    const cleared = 52 - live.length;
+    const mm = String(Math.floor(s.seconds / 60)).padStart(2, '0'), ss = String(s.seconds % 60).padStart(2, '0');
+
+    const players = PN.map((n, i) => ({
+      id: i, initial: n === 'You' ? 'H' : n[0], score: s.scores[i],
+      streakLabel: s.streaks[i] > 1 ? s.streaks[i] + ' streak' : n,
+      cardStyle: 'flex:1;padding:8px 9px;border-radius:12px;background:' + (i === 0 ? 'rgba(217,164,65,.16)' : 'rgba(255,255,255,.07)') + ';border:1px solid ' + (i === 0 ? 'rgba(217,164,65,.4)' : 'rgba(255,255,255,.08)'),
+      dotStyle: 'width:18px;height:18px;border-radius:50%;background:' + PC[i] + ';display:flex;align-items:center;justify-content:center;font:800 9px Figtree,sans-serif;color:#20160a'
+    }));
+
+    const tray = s.tray.map(c => ({
+      id: c.id, face: c.face.k === 'char' ? c.face.top : c.face.k === 'slot' ? '❀' : String(c.face.n),
+      style: 'flex:none;width:26px;height:34px;border-radius:5px;background:linear-gradient(160deg,#f9f4e6,#e7dec8);box-shadow:0 0 0 2px ' + PC[c.who] + ',0 2px 5px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;font:700 13px "Noto Serif SC",serif;color:' + (c.face.c || INK) + ';animation:popIn .3s ease both'
+    }));
+
+    const materials = [
+      { name: 'Bone', tier: 'Start', note: 'Ivory face, sand edge. The default.', bg: 'linear-gradient(160deg,#f9f4e6,#e7dec8)', edge: '#b3a582', glyph: GRN, tc: '#8d9a8f' },
+      { name: 'Jade', tier: 'Tier 2 · 2,500', note: 'Cool green stone, pale engraved faces.', bg: 'linear-gradient(160deg,#cfe6da,#9dc4b1)', edge: '#6d9482', glyph: '#14513c', tc: '#5fbf9b' },
+      { name: 'Rosewood', tier: 'Tier 3 · 8,000', note: 'Dark grain with a gold inlay line.', bg: 'linear-gradient(160deg,#7a4a2b,#54301a)', edge: '#331c0e', glyph: '#e8c887', tc: '#e08a6a' },
+      { name: 'Lacquer', tier: 'Tier 4 · 20,000', note: 'Black gloss, vermilion faces. Dragon tier.', bg: 'linear-gradient(160deg,#2a2724,#131110)', edge: '#000', glyph: '#e2564a', tc: '#d9a441' }
+    ].map((m, i) => ({
+      id: i, name: m.name, tier: m.tier, note: m.note,
+      tileStyle: 'flex:none;width:38px;height:50px;border-radius:6px;background:' + m.bg + ';box-shadow:3px 4px 0 ' + m.edge + ';display:flex;align-items:center;justify-content:center',
+      tileStyle2: 'flex:none;width:38px;height:50px;border-radius:6px;background:' + m.bg + ';box-shadow:3px 4px 0 ' + m.edge + ';display:flex;align-items:center;justify-content:center;opacity:.92',
+      glyphStyle: 'font:700 22px "Noto Serif SC",serif;color:' + m.glyph,
+      tierStyle: 'flex:none;white-space:nowrap;font:700 10px/1.4 Figtree,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:' + m.tc
+    }));
+
+    const openRooms = [
+      { name: 'Eight Winds', sub: 'Race · 48 tiles · 2 joined', tiles: '48' },
+      { name: 'Garden Gate', sub: 'Shared · 60 tiles · 1 joined', tiles: '60' },
+      { name: 'Two Bridges', sub: 'Shared · 36 tiles · easy', tiles: '36' }
+    ].map((r, i) => ({ ...r, id: i, chipStyle: 'flex:none;width:40px;height:40px;border-radius:11px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font:700 13px Figtree,sans-serif;color:#e8c887' }));
+
+    const hero = s.hero || 0;
+    const setHero = (n) => this.setState({ hero: (n + 2) % 2 });
+    const chev = (en) => 'flex:none;width:18px;height:56px;display:flex;align-items:center;justify-content:center;font:300 22px Figtree,sans-serif;color:rgba(246,241,228,' + (en ? '.55' : '.18') + ');cursor:pointer;user-select:none';
+    const heroDots = [0, 1].map(i => ({
+      id: i, onTap: () => setHero(i),
+      style: 'width:' + (i === hero ? 18 : 6) + 'px;height:6px;border-radius:3px;background:' + (i === hero ? '#d9a441' : 'rgba(246,241,228,.25)') + ';transition:width .2s;cursor:pointer'
+    }));
+
+    const darkRooms = [
+      { name: 'Eight Winds', sub: 'Race · you lead by 3 pairs', pct: 38, av: 'M', c: PC[2] },
+      { name: 'Two Bridges', sub: 'Waiting on Jules', pct: 12, av: 'J', c: PC[3] }
+    ].map((r, i) => ({
+      id: i, name: r.name, sub: r.sub, av: r.av,
+      thumbStyle: 'flex:none;width:42px;height:42px;border-radius:11px;background:repeating-linear-gradient(90deg,rgba(0,0,0,.35) 0 8px,#e4dcc8 8px 11px)',
+      barStyle: 'height:100%;width:' + r.pct + '%;background:#d9a441;border-radius:2px',
+      avStyle: 'flex:none;width:26px;height:26px;border-radius:50%;background:' + r.c + ';display:flex;align-items:center;justify-content:center;font:800 10px Figtree,sans-serif;color:#2a2008'
+    }));
+
+    const feedRooms = [
+      { name: "Dragon's Nest", sub: '4 playing · 61% cleared', pct: 61, av: 'D', c: PC[1] },
+      { name: 'Eight Winds', sub: 'Race · you lead by 3 pairs', pct: 38, av: 'M', c: PC[2] },
+      { name: 'Two Bridges', sub: 'Waiting on Jules', pct: 12, av: 'J', c: PC[3] }
+    ].map((r, i) => ({
+      id: i, name: r.name, sub: r.sub, av: r.av,
+      thumbStyle: 'flex:none;width:44px;height:44px;border-radius:11px;background:repeating-linear-gradient(90deg,#173d2f 0 8px,#e4dcc8 8px 11px),#173d2f;opacity:.85',
+      barStyle: 'height:100%;width:' + r.pct + '%;background:#173d2f;border-radius:2px',
+      avStyle: 'flex:none;width:28px;height:28px;border-radius:50%;background:' + r.c + ';display:flex;align-items:center;justify-content:center;font:800 11px Figtree,sans-serif;color:#2a2008'
+    }));
+
+    const mkTabs = (dark, act) => ['Home', 'Play', '', 'Ranking', 'You'].map((l, i) => {
+      const on = i === (act === undefined ? 0 : act);
+      const col = on ? (dark ? '#d9a441' : '#173d2f') : (dark ? 'rgba(246,241,228,.45)' : 'rgba(23,61,47,.4)');
+      const bar = (h) => 'width:4px;height:' + h + 'px;border:1.5px solid ' + col + ';border-radius:1.5px;box-sizing:border-box';
+      return {
+        id: i, label: l, icon: ['⌂', '▦', '+', '', '◍'][i],
+        isRank: i === 3, notRank: i !== 3,
+        bar1: bar(8), bar2: bar(13), bar3: bar(18),
+        iconStyle: i === 2
+          ? 'width:44px;height:34px;border-radius:11px;background:#d9a441;display:flex;align-items:center;justify-content:center;font:700 20px Figtree,sans-serif;color:#33230a'
+          : 'font-size:19px;line-height:1;color:' + col,
+        labelStyle: 'font:600 10px Figtree,sans-serif;color:' + col
+      };
+    });
+
+    const mkBlocks = (pat) => pat.map((p, i) => ({
+      id: i,
+      style: 'position:absolute;left:' + p[0] + '%;top:' + p[1] + '%;width:9px;height:12px;margin:-6px 0 0 -4.5px;border-radius:2px;background:#f2ecdc;box-shadow:1px 1px 0 rgba(0,0,0,.3)'
+    }));
+    const catalog = [
+      { name: 'Two Bridges', sub: '36 tiles · easy', pat: [[30, 35], [42, 35], [54, 35], [66, 35], [36, 62], [48, 62], [60, 62]] },
+      { name: "Dragon's Nest", sub: '52 tiles · medium', pat: [[28, 30], [40, 30], [52, 30], [64, 30], [34, 52], [46, 52], [58, 52], [40, 72], [52, 72]] },
+      { name: 'Eight Winds', sub: '48 tiles · medium', pat: [[24, 40], [38, 28], [52, 28], [66, 40], [38, 58], [52, 58], [30, 70], [62, 70]] },
+      { name: 'Garden Gate', sub: '60 tiles · hard', pat: [[26, 26], [40, 26], [54, 26], [68, 26], [26, 48], [68, 48], [26, 70], [40, 70], [54, 70], [68, 70]] },
+      { name: 'Nine Gates', sub: '72 tiles · Rosewood', locked: true, pat: [[30, 30], [46, 30], [62, 30], [30, 52], [46, 52], [62, 52], [30, 74], [46, 74], [62, 74]] },
+      { name: 'Long Table', sub: '64 tiles · Dragon', locked: true, pat: [[22, 50], [36, 50], [50, 50], [64, 50], [78, 50], [36, 30], [64, 30]] }
+    ].map((c, i) => ({
+      id: i, name: c.name, sub: c.sub, locked: !!c.locked, blocks: mkBlocks(c.pat),
+      cardStyle: 'border-radius:15px;overflow:hidden;background:rgba(255,255,255,.06);border:1px solid ' + (c.locked ? 'rgba(255,255,255,.07)' : 'rgba(255,255,255,.12)') + (c.locked ? ';opacity:.72' : ''),
+      subStyle: 'font:11.5px Figtree,sans-serif;color:' + (c.locked ? '#e08a6a' : 'rgba(246,241,228,.5)') + ';margin-top:3px'
+    }));
+
+    const ranks = [
+      { name: 'Dana', sub: '9 boards · 4:38 avg', val: 214, c: PC[1] },
+      { name: 'Henning', sub: '11 boards · 5:02 avg', val: 198, c: PC[0], me: true },
+      { name: 'Mika', sub: '7 boards · 4:12 avg', val: 176, c: PC[2] },
+      { name: 'Jules', sub: '6 boards · 6:20 avg', val: 141, c: PC[3] },
+      { name: 'Robin', sub: '4 boards · 5:55 avg', val: 98, c: '#b58ed0' },
+      { name: 'Sam', sub: '3 boards · 7:04 avg', val: 62, c: '#9ab06a' }
+    ].map((r, i) => ({
+      id: i, n: i + 1, name: r.name, sub: r.sub, val: r.val, initial: r.name[0],
+      rowStyle: 'display:flex;align-items:center;gap:11px;padding:12px 13px;border-radius:14px;background:' + (r.me ? 'rgba(217,164,65,.14)' : 'rgba(255,255,255,.06)') + ';border:1px solid ' + (r.me ? 'rgba(217,164,65,.35)' : 'rgba(255,255,255,.07)'),
+      numStyle: 'width:22px;font:700 15px Figtree,sans-serif;color:' + (i === 0 ? '#d9a441' : 'rgba(246,241,228,.4)'),
+      avStyle: 'flex:none;width:34px;height:34px;border-radius:50%;background:' + r.c + ';display:flex;align-items:center;justify-content:center;font:800 13px Figtree,sans-serif;color:#20160a',
+      nameStyle: 'font:' + (r.me ? '700' : '500') + ' 15px Figtree,sans-serif;color:#f6f1e4'
+    }));
+
+    const stats = [
+      { v: '11', k: 'Boards cleared' }, { v: '198', k: 'Pairs cleared' },
+      { v: '5:02', k: 'Average time' }, { v: '7', k: 'Longest streak' }
+    ].map((s2, i) => ({ ...s2, id: i }));
+
+    const results = [
+      { name: 'Dana', pairs: 9, pct: 100, c: PC[1] },
+      { name: 'You', pairs: 7, pct: 78, c: PC[0], me: true },
+      { name: 'Mika', pairs: 6, pct: 67, c: PC[2] },
+      { name: 'Jules', pairs: 4, pct: 44, c: PC[3] }
+    ].map((r, i) => ({
+      id: i, n: i + 1, name: r.name, pairs: r.pairs, initial: r.name === 'You' ? 'H' : r.name[0],
+      medalStyle: 'width:22px;font:700 15px Figtree,sans-serif;color:' + (i === 0 ? '#d9a441' : 'rgba(246,241,228,.4)'),
+      avStyle: 'flex:none;width:32px;height:32px;border-radius:50%;background:' + r.c + ';display:flex;align-items:center;justify-content:center;font:800 12px Figtree,sans-serif;color:#20160a',
+      nameStyle: 'font:' + (r.me ? '700' : '500') + ' 14.5px Figtree,sans-serif;color:#f6f1e4',
+      barStyle: 'height:100%;width:' + r.pct + '%;background:' + r.c + ';border-radius:3px'
+    }));
+
+    const invitees = [
+      { name: 'Dana', c: PC[1] }, { name: 'Mika', c: PC[2] }, { name: 'Jules', c: PC[3] }, { name: 'Robin', c: '#b58ed0' }
+    ].map((p, i) => ({
+      id: i, name: p.name, initial: p.name[0],
+      avStyle: 'width:32px;height:32px;border-radius:50%;background:' + p.c + ';display:flex;align-items:center;justify-content:center;font:800 12px Figtree,sans-serif;color:#20160a'
+    }));
+
+    const dailyRows = [
+      { name: 'Mika', sub: 'Finished', time: '3:58', c: PC[2] },
+      { name: 'Dana', sub: 'Finished', time: '4:12', c: PC[1] },
+      { name: 'Jules', sub: 'Finished', time: '5:31', c: PC[3] },
+      { name: 'Henning', sub: 'Not played yet', time: '—', c: PC[0], me: true },
+      { name: 'Robin', sub: 'Playing now', time: 'live', c: '#b58ed0' }
+    ].map((d, i) => ({
+      id: i, name: d.name, sub: d.sub, time: d.time, initial: d.name[0],
+      rowStyle: 'display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:13px;background:' + (d.me ? 'rgba(217,164,65,.13)' : 'rgba(255,255,255,.05)'),
+      avStyle: 'flex:none;width:30px;height:30px;border-radius:50%;background:' + d.c + ';display:flex;align-items:center;justify-content:center;font:800 12px Figtree,sans-serif;color:#20160a',
+      nameStyle: 'font:' + (d.me ? '700' : '500') + ' 14px Figtree,sans-serif;color:#f6f1e4',
+      timeStyle: 'font:700 14px Figtree,sans-serif;color:' + (d.time === 'live' ? '#5fbf9b' : d.time === '—' ? 'rgba(246,241,228,.3)' : '#f6f1e4')
+    }));
+
+    const smallFaces = ['東','發','中','南','西','北','一','五','九','萬','三','七'];
+    const mkStatic = (cols, rows, tw, th, skip) => {
+      const out = [];
+      let n = 0;
+      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+        n++;
+        if (skip.includes(n)) continue;
+        const f = smallFaces[n % smallFaces.length];
+        out.push({
+          id: 's' + n,
+          style: 'position:absolute;box-sizing:border-box;left:' + (x * (tw - 3)) + 'px;top:' + (y * (th - 14)) + 'px;width:' + tw + 'px;height:' + th + 'px;border-radius:5px;background:linear-gradient(160deg,#f9f4e6,#e7dec8);box-shadow:2px 3px 0 #b3a582,0 5px 10px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;z-index:' + y,
+          top: f,
+          charStyle: 'font:700 17px "Noto Serif SC",serif;color:' + (n % 3 === 0 ? RED : n % 3 === 1 ? GRN : INK)
+        });
+      }
+      return out;
+    };
+
+    const railFeed = [
+      { who: 'Dana', meta: 'just now', c: PC[1], face: '發' },
+      { who: 'You', meta: '4s', c: PC[0], face: '東' },
+      { who: 'Mika', meta: '9s', c: PC[2], face: '中' },
+      { who: 'Dana', meta: '15s', c: PC[1], face: '五' },
+      { who: 'Jules', meta: '22s', c: PC[3], face: '北' }
+    ].map((f, i) => ({
+      id: i, who: f.who, meta: f.meta, face: f.face,
+      rowStyle: 'display:flex;align-items:center;gap:7px;padding:6px;border-radius:10px;background:rgba(255,255,255,' + (i === 0 ? '.13' : '.06') + ');border-left:3px solid ' + f.c,
+      tileStyle: 'flex:none;width:20px;height:26px;border-radius:4px;background:linear-gradient(160deg,#f9f4e6,#e7dec8);display:flex;align-items:center;justify-content:center;font:700 11px "Noto Serif SC",serif;color:' + INK,
+      metaStyle: 'font:10px Figtree,sans-serif;color:rgba(246,241,228,.45)'
+    }));
+
+    const racers = ['You', 'Dana', 'Mika', 'Jules'].map((n, i) => {
+      const pct = [64, 71, 52, 38][i];
+      return {
+        id: i, name: n, pct: pct + '%', initial: n === 'You' ? 'H' : n[0],
+        dotStyle: 'flex:none;width:26px;height:26px;border-radius:50%;background:' + PC[i] + ';display:flex;align-items:center;justify-content:center;font:800 11px Figtree,sans-serif;color:#20160a',
+        nameStyle: 'font:' + (i === 0 ? '700' : '500') + ' 13px Figtree,sans-serif;color:#f0f4f3',
+        barStyle: 'height:100%;width:' + pct + '%;background:' + PC[i] + ';border-radius:3px'
+      };
+    });
+
+    return {
+      tiles, clearedCount: cleared, clock: mm + ':' + ss, players, tray,
+      trayEmpty: s.tray.length === 0,
+      myPairsLabel: 'You ' + s.scores[0] + (s.scores[0] === 1 ? ' pair' : ' pairs') + ' · board ' + Math.round(cleared / 52 * 100) + '%',
+      toastText: s.toast ? s.toast.text : '',
+      toastStyle: 'position:absolute;bottom:6px;left:50%;transform:translateX(-50%);padding:8px 14px;border-radius:999px;background:rgba(10,32,24,.9);border:1px solid ' + (s.toast ? PC[s.toast.who] : 'transparent') + ';font:600 12.5px Figtree,sans-serif;color:#f6f1e4;white-space:nowrap;opacity:' + (s.toast ? 1 : 0) + ';transition:opacity .3s;pointer-events:none',
+      hintBtnStyle: 'width:34px;height:34px;border-radius:50%;background:rgba(217,164,65,.22);border:1px solid rgba(217,164,65,.45);display:flex;align-items:center;justify-content:center;font-size:15px;color:#e8c887;cursor:pointer',
+      btnStyle: 'height:42px;padding:0 16px;border-radius:12px;background:rgba(255,255,255,.1);display:flex;align-items:center;font:600 13.5px Figtree,sans-serif;color:#f6f1e4;cursor:pointer',
+      onHint: () => { const p = this.findPair(free); if (p) this.setState({ hint: p, sel: null }); },
+      onShuffle: () => this.setState(st => {
+        const faces = st.tiles.map(t => t.face).sort(() => Math.random() - .5);
+        return { tiles: st.tiles.map((t, i) => ({ ...t, face: faces[i] })), sel: null, hint: [] };
+      }),
+      onUndo: () => this.setState(st => {
+        if (!st.hist.length) return {};
+        const h = st.hist[0];
+        const scores = st.scores.slice(); scores[h.who] = Math.max(0, scores[h.who] - 1);
+        return { tiles: [...st.tiles, h.a, h.b], tray: st.tray.slice(1), scores, hist: st.hist.slice(1), sel: null };
+      }),
+      reactions: ['🔥', '😮'].map((e, i) => ({ id: i, emoji: e, onTap: () => { this.setState({ react: e }); setTimeout(() => this.setState({ react: null }), 1600); } })),
+      floatingReaction: s.react,
+      materials, openRooms, feedRooms, racers, railFeed, darkRooms, heroDots,
+      heroLive: hero === 0, heroDaily: hero === 1,
+      heroPrevStyle: chev(hero > 0), heroNextStyle: chev(hero < 1),
+      heroPrev: () => setHero(hero - 1), heroNext: () => setHero(hero + 1),
+      heroDown: (e) => { this.dragX = e.clientX; },
+      heroUp: (e) => { const d = e.clientX - (this.dragX || e.clientX); if (Math.abs(d) > 40) setHero(hero + (d < 0 ? 1 : -1)); },
+      tabs: mkTabs(true), lightTabs: mkTabs(false),
+      rankTabs: mkTabs(true, 3), youTabs: mkTabs(true, 4), dailyTabs: mkTabs(true, 0), playTabs: mkTabs(true, 1),
+      catalog, ranks, stats, results, invitees, dailyRows,
+      railTiles: mkStatic(7, 5, 40, 52, [1, 7, 8, 14, 29, 30, 33]),
+      raceTiles: mkStatic(8, 4, 40, 52, [1, 2, 9, 16, 17, 24, 25, 31])
+    };
+  }
+}
+
+</script>
+</body>
+</html>
