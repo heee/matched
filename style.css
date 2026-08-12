@@ -187,13 +187,21 @@ a { color: var(--gold); }
   box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.26);
   transition: transform .12s ease, box-shadow .12s ease;
   cursor: pointer;
-  animation: popIn .22s ease both;
+  animation: popIn .22s ease;
 }
 .tile.upper { background: linear-gradient(160deg, #fffdf6, var(--bone-b)); }
-.tile.selected { transform: translateY(-3px); box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.3), 0 0 0 3px var(--gold); }
-.tile.hinted { box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.3), 0 0 0 3px rgba(217,164,65,.6); }
 .tile.blocked { opacity: .74; filter: saturate(.55) brightness(.9); cursor: default; }
 .tile.free.glow { box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.26), 0 0 0 2px rgba(217,164,65,.28); }
+/* .free.glow (3 classes) outranks the plain 2-class rules below by CSS
+   specificity, so .selected/.hinted need the 3-class form too or a
+   selected-but-glowing tile silently loses its highlight to the glow ring. */
+.tile.selected, .tile.free.glow.selected {
+  transform: translateY(-3px);
+  box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.3), 0 0 0 3px var(--gold);
+}
+.tile.hinted, .tile.free.glow.hinted {
+  box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.3), 0 0 0 3px rgba(217,164,65,.6);
+}
 .tile-face { position: absolute; inset: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; pointer-events: none; }
 .tile-char { font-family: var(--font-tile); font-weight: 700; line-height: 1; }
 .tile-pip { position: absolute; border-radius: 50%; }

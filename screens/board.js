@@ -23,6 +23,7 @@ export function renderBoard(root, ctx, params = {}) {
   const local = {
     selectedId: null,
     hintPair: [],
+    tileEls: new Map(),
     history: [], // { removed:[a,b], user }
     toast: null,
     reaction: null,
@@ -119,6 +120,12 @@ export function renderBoard(root, ctx, params = {}) {
     };
   }
 
+  // Rebuilds every tile element — only for actual board changes (clear,
+  // shuffle, undo, initial load). Selection/hint state alone must never hit
+  // this path: destroying and recreating 50+ nodes replays each tile's
+  // popIn entrance animation simultaneously (looks like the board
+  // "vibrating") and also means the .selected lift/glow can't transition,
+  // since the new element starts already in its target state.
   function renderBoardTiles() {
     const tiles = room.state.tiles;
     const free = new Set(freeTiles(tiles).map((t) => t.id));
@@ -130,18 +137,15 @@ export function renderBoard(root, ctx, params = {}) {
     const scale = Math.min(1, availW / box.width, availH / box.height);
     boardWrap.style.transform = `scale(${scale})`;
     boardWrap.innerHTML = "";
+    local.tileEls = new Map();
 
     for (const t of tiles) {
       const isF = free.has(t.id);
-      const isSel = local.selectedId === t.id;
-      const isHint = local.hintPair.includes(t.id);
       const px = t.x * STEP_X + t.z * LAYER_OFFSET;
       const py = t.y * STEP_Y - t.z * LAYER_OFFSET + box.padTop;
       const cls = ["tile"];
       if (t.z > 0) cls.push("upper");
       if (!isF) cls.push("blocked"); else if (room.freeTilesGlow) cls.push("free", "glow");
-      if (isSel) cls.push("selected");
-      if (isHint) cls.push("hinted");
       const tileEl = el("div", {
         class: cls.join(" "),
         style: `left:${px}px;top:${py}px;width:${TILE_W}px;height:${TILE_H}px;z-index:${t.z * 100 + t.y}`,
@@ -151,6 +155,17 @@ export function renderBoard(root, ctx, params = {}) {
       tileEl.appendChild(face);
       tileEl.addEventListener("click", () => tap(t.id));
       boardWrap.appendChild(tileEl);
+      local.tileEls.set(t.id, tileEl);
+    }
+    updateTileSelection();
+  }
+
+  // Cheap update for selection/hint state: toggles classes on the tile
+  // elements that already exist rather than rebuilding the board.
+  function updateTileSelection() {
+    for (const [id, tileEl] of local.tileEls) {
+      tileEl.classList.toggle("selected", local.selectedId === id);
+      tileEl.classList.toggle("hinted", local.hintPair.includes(id));
     }
   }
 
@@ -273,11 +288,11 @@ export function renderBoard(root, ctx, params = {}) {
     if (!local.botsActive) startBots();
     const free = freeTiles(room.state.tiles).map((t) => t.id);
     if (!free.includes(id)) return;
-    if (local.selectedId === id) { local.selectedId = null; renderBoardTiles(); return; }
+    if (local.selectedId === id) { local.selectedId = null; updateTileSelection(); return; }
     if (!local.selectedId) {
       local.selectedId = id;
       local.hintPair = [];
-      renderBoardTiles();
+      updateTileSelection();
       return;
     }
     const result = clearPair(room.state.tiles, local.selectedId, id);
@@ -285,7 +300,7 @@ export function renderBoard(root, ctx, params = {}) {
       performClear(local.selectedId, id, you);
     } else {
       local.selectedId = id;
-      renderBoardTiles();
+      updateTileSelection();
     }
   }
 
@@ -293,7 +308,7 @@ export function renderBoard(root, ctx, params = {}) {
     if (!room.hintsAllowed) { ctx.toast("Hints are off for this room."); return; }
     room.assistsUsed[you] = (room.assistsUsed[you] || 0) + 1;
     const pair = findHintPair(room.state.tiles);
-    if (pair) { local.hintPair = pair; local.selectedId = null; renderBoardTiles(); }
+    if (pair) { local.hintPair = pair; local.selectedId = null; updateTileSelection(); }
     else ctx.toast("No matching pair is currently free.");
   }
 

@@ -16,7 +16,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
   const you = ctx.state.currentUser;
   const totalPairs = room.tileCount / 2;
 
-  const local = { selectedId: null, lastStandingLeader: null };
+  const local = { selectedId: null, lastStandingLeader: null, tileEls: new Map() };
   root.classList.add("bg-slate");
 
   const header = el("div", { class: "screen-header", style: "padding-top:6px" });
@@ -80,6 +80,10 @@ export function renderRaceBoard(root, ctx, params = {}) {
     return { width: (maxX + 1) * STEP_X + TILE_W + maxZ * LAYER_OFFSET, height: (maxY + 1) * STEP_Y + TILE_H + maxZ * LAYER_OFFSET, padTop: maxZ * LAYER_OFFSET };
   }
 
+  // Full rebuild — only for actual tile changes (clear, initial load). See
+  // board.js's renderBoardTiles for why selection alone must not hit this:
+  // recreating every node replays each tile's popIn entrance at once
+  // (looks like the board "vibrating") and can't transition .selected.
   function renderMyBoard() {
     const mine = room.racers[you];
     const tiles = mine.tiles;
@@ -90,21 +94,28 @@ export function renderRaceBoard(root, ctx, params = {}) {
     const scale = Math.min(1, (boardArea.clientWidth - 24) / box.width, 210 / box.height);
     boardWrap.style.transform = `scale(${scale})`;
     boardWrap.innerHTML = "";
+    local.tileEls = new Map();
     for (const t of tiles) {
       const isF = free.has(t.id);
-      const isSel = local.selectedId === t.id;
       const px = t.x * STEP_X + t.z * LAYER_OFFSET;
       const py = t.y * STEP_Y - t.z * LAYER_OFFSET + box.padTop;
       const cls = ["tile"];
       if (t.z > 0) cls.push("upper");
       if (!isF) cls.push("blocked");
-      if (isSel) cls.push("selected");
       const tileEl = el("div", { class: cls.join(" "), style: `left:${px}px;top:${py}px;width:${TILE_W}px;height:${TILE_H}px;z-index:${t.z * 100 + t.y}` });
       const face = el("div", { class: "tile-face" });
       renderTileFace(face, t.face);
       tileEl.appendChild(face);
       tileEl.addEventListener("click", () => tap(t.id));
       boardWrap.appendChild(tileEl);
+      local.tileEls.set(t.id, tileEl);
+    }
+    updateTileSelection();
+  }
+
+  function updateTileSelection() {
+    for (const [id, tileEl] of local.tileEls) {
+      tileEl.classList.toggle("selected", local.selectedId === id);
     }
   }
 
@@ -112,8 +123,8 @@ export function renderRaceBoard(root, ctx, params = {}) {
     const mine = room.racers[you];
     const free = freeTiles(mine.tiles).map((t) => t.id);
     if (!free.includes(id)) return;
-    if (local.selectedId === id) { local.selectedId = null; renderMyBoard(); return; }
-    if (!local.selectedId) { local.selectedId = id; renderMyBoard(); return; }
+    if (local.selectedId === id) { local.selectedId = null; updateTileSelection(); return; }
+    if (!local.selectedId) { local.selectedId = id; updateTileSelection(); return; }
     const result = clearPair(mine.tiles, local.selectedId, id);
     if (result) {
       mine.tiles = result.tiles;
@@ -125,7 +136,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
       if (mine.tiles.length === 0) finishRace();
     } else {
       local.selectedId = id;
-      renderMyBoard();
+      updateTileSelection();
     }
   }
 
