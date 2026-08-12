@@ -6,9 +6,32 @@ import { LAYOUTS, defaultLayoutForDifficulty, DIFFICULTY_TILE_COUNTS } from "../
 import { buildLocalRoom } from "../game/room.js";
 
 const MODES = [
-  { id: "shared", name: "Shared", desc: "One board, everyone tapping. First to a pair takes it." },
-  { id: "race", name: "Race", desc: "Same layout, own board. Live progress bars." },
-  { id: "solo", name: "Solo", desc: "Just you. Times still count toward Ranking." },
+  {
+    id: "shared", name: "Shared", desc: "One board, everyone tapping. First to a pair takes it.",
+    icon: () => {
+      const wrap = el("div", { style: "display:flex;gap:3px;margin-bottom:9px;height:20px" });
+      for (let i = 0; i < 3; i++) wrap.appendChild(el("div", { style: "width:13px;height:18px;border-radius:3px;background:#f2ecdc" }));
+      return wrap;
+    },
+  },
+  {
+    id: "race", name: "Race", desc: "Same layout, own board. Live progress bars.",
+    icon: () => {
+      const wrap = el("div", { style: "display:flex;flex-direction:column;justify-content:center;gap:4px;margin-bottom:9px;height:20px" });
+      wrap.appendChild(el("div", { style: "width:30px;height:5px;border-radius:3px;background:#5fbf9b" }));
+      wrap.appendChild(el("div", { style: "width:19px;height:5px;border-radius:3px;background:#e08a6a" }));
+      return wrap;
+    },
+  },
+  {
+    id: "solo", name: "Solo", desc: "Just you. Times still count toward Ranking.",
+    icon: () => {
+      const wrap = el("div", { style: "display:flex;align-items:center;gap:3px;margin-bottom:9px;height:20px" });
+      wrap.appendChild(el("div", { style: "width:13px;height:18px;border-radius:3px;background:#f2ecdc" }));
+      wrap.appendChild(el("div", { style: "width:13px;height:18px;border-radius:3px;border:1.5px dashed rgba(242,236,220,.35);box-sizing:border-box" }));
+      return wrap;
+    },
+  },
 ];
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
@@ -41,6 +64,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
       const card = el("div", {
         style: `flex:1;padding:12px;border-radius:15px;background:${active ? "rgba(217,164,65,.16)" : "rgba(255,255,255,.06)"};border:1.5px solid ${active ? "#d9a441" : "rgba(255,255,255,.1)"};cursor:pointer`,
       });
+      card.appendChild(m.icon());
       card.appendChild(el("div", { style: "font:700 13.5px Figtree,sans-serif;color:#f6f1e4", text: m.name }));
       card.appendChild(el("div", { style: "font:11px/1.4 Figtree,sans-serif;color:rgba(246,241,228,.6);margin-top:3px", text: m.desc }));
       card.addEventListener("click", () => { local.mode = m.id; renderModes(); });
