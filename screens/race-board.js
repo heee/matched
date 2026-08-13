@@ -39,7 +39,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
 
   const boardArea = el("div", { style: "flex:1;display:flex;align-items:center;justify-content:center;position:relative;min-height:0" });
   const boardViewport = el("div", { style: "position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center" });
-  const boardWrap = el("div", { style: "position:relative" });
+  const boardWrap = el("div", { class: "board-wrap", style: "position:relative" });
   boardViewport.appendChild(boardWrap);
   boardArea.appendChild(boardViewport);
   root.appendChild(boardArea);
@@ -141,6 +141,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
   }
 
   function shakeMismatch(idA, idB) {
+    haptic(ctx.state.settings.haptic, [12, 40, 12]);
     local.selectedId = null;
     updateTileSelection();
     for (const id of [idA, idB]) {

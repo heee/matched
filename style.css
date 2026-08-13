@@ -29,7 +29,7 @@
   --glass-border: rgba(255, 255, 255, 0.09);
   --font-serif: "Instrument Serif", Georgia, serif;
   --font-ui: "Figtree", system-ui, sans-serif;
-  --font-tile: "Noto Serif SC", serif;
+  --font-tile: "Noto Sans SC", system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -200,11 +200,22 @@ a { color: var(--gold); }
 .tab-item.active .rank-bars span { border-color: var(--gold); }
 
 /* ---------------- tiles ---------------- */
+/* One shadow for the whole tile mass: drop-shadow() follows the union
+   silhouette of every tile in the wrapper, so the board casts onto the
+   felt like a single slab instead of each tile blurring onto its flush
+   neighbor (see .tile's box-shadow comment). */
+.board-wrap { filter: drop-shadow(2px 9px 10px rgba(0, 0, 0, 0.34)); }
 .tile {
   position: absolute; box-sizing: border-box;
-  border-radius: 7px;
+  border-radius: 4px;
   background: linear-gradient(160deg, var(--bone-a), var(--bone-b));
-  box-shadow: 3px 4px 0 var(--bone-edge), 0 2px 3px rgba(0,0,0,.16), 0 6px 12px rgba(0,0,0,.26);
+  /* Thickness only: a thin edge dropping almost straight down (1px right,
+     3px down), no blur. Same-layer tiles sit flush (STEP_X == TILE_W), so
+     any per-tile blur paints onto the neighbor — physically wrong, tiles
+     resting on one layer don't cast on each other. The cast shadow onto
+     the felt is a single drop-shadow on .board-wrap instead, which shadows
+     the union silhouette of all tiles as one slab. */
+  box-shadow: 1px 3px 0 var(--bone-edge);
   transition: transform .12s ease, box-shadow .12s ease;
   cursor: pointer;
   animation: popIn .22s ease;
@@ -217,41 +228,45 @@ a { color: var(--gold); }
 .tile::before {
   content: ""; position: absolute; inset: 0; border-radius: inherit;
   background:
-    linear-gradient(155deg, rgba(255,255,255,.6) 0%, rgba(255,255,255,0) 34%),
-    linear-gradient(345deg, rgba(120,104,66,.22) 0%, rgba(120,104,66,0) 30%);
+    linear-gradient(155deg, rgba(255,255,255,.35) 0%, rgba(255,255,255,0) 28%),
+    linear-gradient(345deg, rgba(120,104,66,.12) 0%, rgba(120,104,66,0) 24%);
   pointer-events: none;
 }
 .tile.upper {
   background: linear-gradient(160deg, #fffdf6, var(--bone-b));
-  /* A bigger, softer shadow than the base layer's so stacked tiles read as
-     physically lifted above whatever they're sitting on. */
-  box-shadow: 4px 6px 0 var(--bone-edge), 0 3px 4px rgba(0,0,0,.2), 0 10px 16px rgba(0,0,0,.4);
+  /* Upper tiles genuinely sit above another layer, so they alone keep a
+     cast blur — tight, so it reads as falling on the layer directly
+     beneath rather than smearing across same-level neighbors. */
+  box-shadow: 1px 3px 0 var(--bone-edge), 0 5px 6px rgba(0,0,0,.35);
 }
 .tile.upper::before {
   background:
-    linear-gradient(155deg, rgba(255,255,255,.75) 0%, rgba(255,255,255,0) 36%),
-    linear-gradient(345deg, rgba(120,104,66,.18) 0%, rgba(120,104,66,0) 28%);
+    linear-gradient(155deg, rgba(255,255,255,.45) 0%, rgba(255,255,255,0) 30%),
+    linear-gradient(345deg, rgba(120,104,66,.1) 0%, rgba(120,104,66,0) 22%);
 }
-/* Full opacity at every layer — dimming a tile to convey "blocked" read as
-   the whole board looking washed-out/translucent. A mild filter (no
-   opacity change) still marks it non-tappable; the real depth cue is the
-   per-layer shadow set inline per tile (see board.js), which grows with z
-   so higher layers visibly lift off the ones under them. */
-.tile.blocked { filter: saturate(.72) brightness(.93); cursor: default; }
-.tile.free.glow { box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.26), 0 0 0 2px rgba(217,164,65,.28); }
+/* No visual dimming on blocked tiles — any brightness/saturation delta
+   between neighbors reads as physically impossible lighting, not as a
+   tappability cue (tried twice: opacity first, then a mild filter; both
+   confused more than they informed). Blocked-ness is conveyed by the
+   free-tiles-glow setting and the shake on a rejected tap. */
+.tile.blocked { cursor: default; }
+.tile.free.glow { box-shadow: 1px 3px 0 var(--bone-edge), 0 0 0 2px rgba(217,164,65,.28); }
+.tile.upper.free.glow { box-shadow: 1px 3px 0 var(--bone-edge), 0 5px 6px rgba(0,0,0,.35), 0 0 0 2px rgba(217,164,65,.28); }
 /* .free.glow (3 classes) outranks the plain 2-class rules below by CSS
    specificity, so .selected needs the 3-class form too or a
    selected-but-glowing tile silently loses its highlight to the glow ring.
    The inset shadow is a fill tint (not just the outer ring) so the pick
    reads clearly at a glance, not just as a thin outline. */
-.tile.selected, .tile.free.glow.selected {
+/* Selected tiles are lifted, so a cast blur is physically right here even
+   on the base layer. */
+.tile.selected, .tile.free.glow.selected, .tile.upper.free.glow.selected {
   transform: translateY(-3px);
-  box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.3), 0 0 0 3px var(--gold), inset 0 0 0 999px rgba(217,164,65,.2);
+  box-shadow: 1px 3px 0 var(--bone-edge), 0 7px 9px rgba(0,0,0,.32), 0 0 0 3px var(--gold), inset 0 0 0 999px rgba(217,164,65,.2);
 }
 .tile.shine { animation: tileShine 1.3s ease; }
 @keyframes tileShine {
-  0%, 100% { box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.26), 0 0 0 0 rgba(217,164,65,0), inset 0 0 0 999px rgba(217,164,65,0); }
-  20% { box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.3), 0 0 0 4px rgba(217,164,65,.95), inset 0 0 0 999px rgba(217,164,65,.28); }
+  0%, 100% { box-shadow: 1px 3px 0 var(--bone-edge), 0 0 0 0 rgba(217,164,65,0), inset 0 0 0 999px rgba(217,164,65,0); }
+  20% { box-shadow: 1px 3px 0 var(--bone-edge), 0 0 0 4px rgba(217,164,65,.95), inset 0 0 0 999px rgba(217,164,65,.28); }
 }
 /* Shuffle: each tile flies from its old board position, through a random
    scattered waypoint (set per-tile via --sx1/--sy1/--srot1 in board.js),
@@ -312,11 +327,27 @@ a { color: var(--gold); }
   100% { transform: translate(var(--dx), var(--dy)) scale(.2); opacity: 0; }
 }
 .tile-face { position: absolute; inset: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; pointer-events: none; z-index: 1; }
-/* Faint light-below/dark-above shadow reads as engraved-and-inked rather
-   than a flat-printed glyph. */
-.tile-char { font-family: var(--font-tile); font-weight: 700; line-height: 1; text-shadow: 0 1.5px 0 rgba(255,255,255,.55), 0 -1px 1px rgba(0,0,0,.15); }
-.tile-pip { position: absolute; border-radius: 50%; }
-.tile-stick { position: absolute; border-radius: 2.5px; box-shadow: 0 1px 1.5px rgba(0,0,0,.3); }
+/* Ink painted into a carved groove rather than flat-printed: the gradient
+   varies paint density across every stroke (thinner where the brush lifted
+   at the top-left, pooling darker at the bottom-right) and is clipped to
+   the glyph outline. background-color:currentColor keeps whatever per-face
+   ink color renderTileFace sets inline, so this works for red/green/blue
+   faces without restating any of them. */
+.tile-char {
+  font-family: var(--font-tile); font-weight: 700; line-height: 1;
+  background-color: currentColor;
+  background-image: linear-gradient(165deg,
+    rgba(255,255,255,.32) 0%, rgba(255,255,255,.06) 34%,
+    rgba(0,0,0,.05) 60%, rgba(0,0,0,.18) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+/* Without background-clip:text the transparent fill would leave the glyphs
+   invisible, so hand the color back. */
+@supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+  .tile-char { background-image: none; -webkit-text-fill-color: currentColor; }
+}
 .tile-slot { width: 74%; height: 70%; border: 1px dashed rgba(23,61,47,.4); border-radius: 3px; display: flex; align-items: center; justify-content: center; font: 700 6px ui-monospace, monospace; color: rgba(23,61,47,.55); letter-spacing: .06em; text-align: center; }
 
 @keyframes popIn { from { opacity: 0; transform: translateY(6px) scale(.96); } to { opacity: 1; transform: none; } }
@@ -401,7 +432,7 @@ a { color: var(--gold); }
 .app-mark {
   width: 76px; height: 76px; border-radius: 20px;
   background: linear-gradient(160deg, var(--bone-a), var(--bone-b));
-  box-shadow: 3px 4px 0 var(--bone-edge), 0 8px 20px rgba(0,0,0,.35);
+  box-shadow: 2px 5px 0 var(--bone-edge), 0 8px 20px rgba(0,0,0,.35);
   display: flex; align-items: center; justify-content: center; margin-bottom: 4px;
 }
 .app-mark-tile { font: 700 34px var(--font-tile); color: var(--red); }

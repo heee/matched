@@ -12,18 +12,6 @@ export const RED = "#b5322c";
 export const GREEN = "#1f7a4d";
 export const BLUE = "#2b5f9e";
 
-// Lightens (positive percent) or darkens (negative) a hex color — used to
-// build the gloss/shade stops for pips and bamboo sticks from the same
-// base color instead of hand-picking a highlight/shadow hex per color.
-export function shade(hex, percent) {
-  const num = parseInt(hex.slice(1), 16);
-  const amt = Math.round(2.55 * percent);
-  const r = Math.min(255, Math.max(0, (num >> 16) + amt));
-  const g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + amt));
-  const b = Math.min(255, Math.max(0, (num & 0xff) + amt));
-  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
-}
-
 // Flowers/seasons are explicitly out of scope for matching (spec: "skip
 // them in the generator for now") — they exist here only as an ART SLOT
 // placeholder id so a future layout could reference one without matching.
@@ -63,16 +51,25 @@ export function buildFaceSet() {
 // Pip layout (percent-based, dot faces) — used by the board screen to draw
 // geometric pips instead of glyphs. Kept here (not in a UI module) because
 // it is a pure function of face data.
+//
+// Percentages are of the FACE box (34x46 units), which is taller than it is
+// wide — so equal percent steps are NOT equal distances on the two axes, and
+// a grid specified with a wider row span than column span comes out visibly
+// stretched. These spans are chosen so the pips land on a near-square grid
+// at real distances: 3-column rows sit 21/50/79 (~10 units apart) and the
+// 3x3 rows sit 28/50/72 (~10.1 units apart). 10 units is the tightest
+// spacing anywhere in this table, which is what caps PIP_SIZE in
+// screens/shared-ui.js — widen a span here and the pips can grow with it.
 const DOT_GRIDS = {
   1: [[50, 50]],
-  2: [[50, 26], [50, 74]],
-  3: [[28, 22], [50, 50], [72, 78]],
-  4: [[30, 28], [70, 28], [30, 72], [70, 72]],
-  5: [[28, 24], [72, 24], [50, 50], [28, 76], [72, 76]],
-  6: [[30, 20], [70, 20], [30, 50], [70, 50], [30, 80], [70, 80]],
-  7: [[30, 18], [70, 18], [30, 45], [70, 45], [50, 60], [30, 82], [70, 82]],
-  8: [[28, 16], [50, 16], [72, 16], [28, 50], [72, 50], [28, 84], [50, 84], [72, 84]],
-  9: [[28, 15], [50, 15], [72, 15], [28, 50], [50, 50], [72, 50], [28, 85], [50, 85], [72, 85]],
+  2: [[50, 30], [50, 70]],
+  3: [[24, 26], [50, 50], [76, 74]],
+  4: [[30, 30], [70, 30], [30, 70], [70, 70]],
+  5: [[28, 27], [72, 27], [50, 50], [28, 73], [72, 73]],
+  6: [[30, 24], [70, 24], [30, 50], [70, 50], [30, 76], [70, 76]],
+  7: [[30, 22], [70, 22], [30, 44], [70, 44], [30, 66], [70, 66], [50, 88]],
+  8: [[21, 22], [50, 22], [79, 22], [21, 50], [79, 50], [21, 78], [50, 78], [79, 78]],
+  9: [[21, 28], [50, 28], [79, 28], [21, 50], [50, 50], [79, 50], [21, 72], [50, 72], [79, 72]],
 };
 
 export function dotPips(n) {

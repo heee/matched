@@ -2,7 +2,75 @@
 // app.js per the "app.js is orchestration only" convention.
 
 import { colorForSeat } from "../game/scoring.js";
-import { dotPips, bamSticks, shade, RED } from "../game/tiles.js";
+import { TILE_W, TILE_H } from "../game/layouts.js";
+import { dotPips, bamSticks, RED } from "../game/tiles.js";
+
+// Tile faces render as inline SVG at this fixed viewBox — it matches the
+// on-board tile size (40x52) minus .tile-face's 3px inset on each side, so
+// positions computed in these units land at true pixel size with no
+// distortion. Every renderTileFace() caller (board.js, race-board.js) uses
+// tiles at that same 40x52 size, so one constant covers both.
+const FACE_W = TILE_W - 6;
+const FACE_H = TILE_H - 6;
+
+// Bone-tier dot/bamboo art (generated per docs — see the tile-art brief).
+// Character tiles (craks/winds/dragons) stay as real Chinese web-font
+// typography below; an image model can't be trusted to render correct CJK
+// glyphs, and the font was never the part that looked cheap.
+const ART = {
+  pipRed: "./assets/tiles/bone/pip-red.png",
+  pipGreen: "./assets/tiles/bone/pip-green.png",
+  bambooStick: "./assets/tiles/bone/bamboo-stick.png",
+  bam1Bird: "./assets/tiles/bone/bam1-bird.png",
+};
+
+// A pip image centered at (cx, cy), sized as a square box — the source art
+// is itself square, so this never distorts it. The tightest spacing in
+// DOT_GRIDS is ~10 units (the 3-column rows), so this is sized just under
+// that: adjacent pips nearly touch the way they do on a real tile, without
+// overlapping. Raising it past the spacing makes neighbours collide.
+// Hand-painted glyphs never sit perfectly square to the tile, and the
+// identical placement across all 34 faces is a big part of what reads as
+// printed rather than painted. Seeded by the glyph itself (not the tile
+// instance) so a matching pair stays visually identical — spotting pairs is
+// the game — while different faces each sit slightly their own way. Kept
+// under a degree: past that it stops reading as handwork and starts
+// reading as a cartoon.
+function charJitter(seed) {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const rot = ((((h >>> 0) % 1000) / 1000) - 0.5) * 1.3;
+  const dx = ((((h >>> 11) % 1000) / 1000) - 0.5) * 0.7;
+  return { rot: rot.toFixed(2), dx: dx.toFixed(2) };
+}
+
+const PIP_SIZE = 9.5;
+function pipImg(cx, cy, color) {
+  const src = color === RED ? ART.pipRed : ART.pipGreen;
+  return `<image href="${src}" x="${cx - PIP_SIZE / 2}" y="${cy - PIP_SIZE / 2}" width="${PIP_SIZE}" height="${PIP_SIZE}"/>`;
+}
+
+// A bamboo stick image centered at (cx, cy) — the source art is a tall
+// single cane, much narrower-than-tall in its native proportions, so it's
+// given a box rather than a fixed width/height and left to letterbox
+// (default preserveAspectRatio) inside it rather than being stretched.
+function bamStickImg(cx, cy) {
+  return `<image href="${ART.bambooStick}" x="${cx - 2.5}" y="${cy - 8}" width="5" height="16"/>`;
+}
+
+// The 1-bamboo tile traditionally breaks from the plain-stick pattern with
+// a bird (a sparrow in most sets, a peacock in fancier ones) — fills the
+// whole face, letterboxed to its own aspect ratio.
+function bamBirdImg() {
+  return `<image href="${ART.bam1Bird}" x="0" y="0" width="${FACE_W}" height="${FACE_H}"/>`;
+}
+
+function svgWrap(inner) {
+  return `<svg viewBox="0 0 ${FACE_W} ${FACE_H}" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+}
 
 export function el(tag, attrs = {}, children = []) {
   const node = document.createElement(tag);
@@ -88,40 +156,35 @@ export function renderTileFace(container, face) {
   if (!face) return;
   if (face.kind === "char") {
     const big = !face.bot;
-    const top = el("div", {
+    const j = charJitter(`${face.top}${face.bot || ""}`);
+    // Both glyphs share one transform so the tile reads as a single painted
+    // unit rather than two independently crooked lines.
+    const inked = el("div", {
+      style: "display:flex;flex-direction:column;align-items:center;justify-content:center;" +
+        `transform:rotate(${j.rot}deg) translateX(${j.dx}px)`,
+    });
+    inked.appendChild(el("div", {
       class: "tile-char",
       style: `font-size:${big ? 26 : 16}px;color:${face.color}`,
       text: face.top,
-    });
-    container.appendChild(top);
+    }));
     if (face.bot) {
-      container.appendChild(el("div", { class: "tile-char", style: `font-size:15px;color:${face.color};margin-top:2px`, text: face.bot }));
+      inked.appendChild(el("div", { class: "tile-char", style: `font-size:15px;color:${face.color};margin-top:2px`, text: face.bot }));
     }
+    container.appendChild(inked);
   } else if (face.kind === "dot") {
-    const wrap = el("div", { style: "position:relative;width:100%;height:100%" });
-    dotPips(face.n).forEach(([left, top], i) => {
+    const inner = dotPips(face.n).map(([left, top], i) => {
       const c = i % 2 ? RED : face.color;
-      const rim = shade(c, -30);
-      wrap.appendChild(el("div", {
-        class: "tile-pip",
-        style: `left:${left}%;top:${top}%;width:12px;height:12px;margin:-6px 0 0 -6px;` +
-          `background:radial-gradient(circle at 33% 28%, #fff 0%, ${c} 46%, ${rim} 100%);` +
-          `box-shadow:0 1px 2px rgba(0,0,0,.35), inset 0 -1.5px 2px rgba(0,0,0,.2);`,
-      }));
-    });
-    container.appendChild(wrap);
+      return pipImg((left / 100) * FACE_W, (top / 100) * FACE_H, c);
+    }).join("");
+    container.appendChild(el("div", { style: "width:100%;height:100%", html: svgWrap(inner) }));
   } else if (face.kind === "bam") {
-    const wrap = el("div", { style: "position:relative;width:100%;height:100%" });
-    const dark = shade(face.color, -32);
-    const light = shade(face.color, 38);
-    bamSticks(face.n).forEach(({ left, top }) => {
-      wrap.appendChild(el("div", {
-        class: "tile-stick",
-        style: `left:${left}%;top:${top}%;width:5px;height:16px;margin:-8px 0 0 -2.5px;` +
-          `background:linear-gradient(90deg, ${dark} 0%, ${light} 32%, ${face.color} 55%, ${dark} 100%);`,
-      }));
-    });
-    container.appendChild(wrap);
+    // The 1-bamboo tile is the one traditional exception to plain sticks —
+    // see bamBirdImg().
+    const inner = face.n === 1
+      ? bamBirdImg()
+      : bamSticks(face.n).map(({ left, top }) => bamStickImg((left / 100) * FACE_W, (top / 100) * FACE_H)).join("");
+    container.appendChild(el("div", { style: "width:100%;height:100%", html: svgWrap(inner) }));
   } else if (face.kind === "slot") {
     container.appendChild(el("div", { class: "tile-slot", html: "ART<br>SLOT" }));
   }

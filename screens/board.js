@@ -61,7 +61,7 @@ export function renderBoard(root, ctx, params = {}) {
   // ---- board area ----
   const boardArea = el("div", { style: "flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;min-height:0" });
   const boardViewport = el("div", { style: "position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center" });
-  const boardWrap = el("div", { style: "position:relative" });
+  const boardWrap = el("div", { class: "board-wrap", style: "position:relative" });
   boardViewport.appendChild(boardWrap);
   boardArea.appendChild(boardViewport);
   const toastEl = el("div", { class: "toast" });
@@ -426,6 +426,7 @@ export function renderBoard(root, ctx, params = {}) {
   // Heavy wiggle on both tiles, then a clean slate — no tile stays selected
   // after a miss, per the "start clean" request.
   function shakeMismatch(idA, idB) {
+    haptic(ctx.state.settings.haptic, [12, 40, 12]);
     local.selectedId = null;
     updateTileSelection();
     for (const id of [idA, idB]) {
