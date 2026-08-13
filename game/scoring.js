@@ -23,23 +23,50 @@ export const TIERS = [
   { name: "Lacquer", threshold: 42000, material: "Lacquer" },
 ];
 
+// Table (felt) and tile (material) cosmetics used to unlock together at
+// each tier's threshold. Split apart so they alternate instead — felt
+// unlocks right at the tier's own threshold (tier.threshold, i.e. the
+// moment you *reach* that tier/rank), and the matching tile material
+// unlocks partway to the *next* tier. Net effect: table, then tiles,
+// then the next table, etc., roughly twice as many unlock moments along
+// the same overall ladder instead of two things landing on the same
+// score. The last tier has no "next" to interpolate toward, so its
+// material lands a fixed step past its felt instead.
+const LAST_TIER_MATERIAL_GAP = 6000;
+function materialThresholdForIndex(i) {
+  const cur = TIERS[i].threshold;
+  const next = TIERS[i + 1] ? TIERS[i + 1].threshold : cur + LAST_TIER_MATERIAL_GAP;
+  return Math.round(cur + (next - cur) * 0.5);
+}
+
 // Each tier unlocks a named batch, not a single item — per spec, cosmetic
 // only (tile materials, felts, layouts, tile face styles). Only Rosewood
 // and Lacquer still carry a layout unlock (Nine Gates / Long Table),
 // matching what those two layouts already declare as their own `tier` in
 // game/layouts.js.
-export const TIER_UNLOCKS = {
-  Wood: { felt: "Felt green (default)", layout: null },
-  Stone: { felt: "Slate felt", layout: null },
-  Resin: { felt: "Mint felt", layout: null },
-  Bamboo: { felt: "Bamboo-green felt", layout: null },
-  Bone: { felt: "Deep felt", layout: null },
-  Porcelain: { felt: "Cobalt felt", layout: null },
-  Rosewood: { felt: "Wood-rail table", layout: "Nine Gates" },
-  Jade: { felt: "Jade felt", layout: null },
-  Cloisonné: { felt: "Sapphire felt", layout: null },
-  Lacquer: { felt: "Lacquer black", layout: "Long Table" },
+const FELT_NAMES = {
+  Wood: "Felt green (default)",
+  Stone: "Slate felt",
+  Resin: "Mint felt",
+  Bamboo: "Bamboo-green felt",
+  Bone: "Deep felt",
+  Porcelain: "Cobalt felt",
+  Rosewood: "Wood-rail table",
+  Jade: "Jade felt",
+  Cloisonné: "Sapphire felt",
+  Lacquer: "Lacquer black",
 };
+const LAYOUT_UNLOCKS = { Rosewood: "Nine Gates", Lacquer: "Long Table" };
+
+export const TIER_UNLOCKS = Object.fromEntries(TIERS.map((tier, i) => [
+  tier.name,
+  {
+    felt: FELT_NAMES[tier.name],
+    feltThreshold: tier.threshold,
+    materialThreshold: materialThresholdForIndex(i),
+    layout: LAYOUT_UNLOCKS[tier.name] || null,
+  },
+]));
 
 export function tierForPoints(points) {
   let current = TIERS[0];
@@ -56,6 +83,25 @@ export function nextTier(points) {
 export function pointsToNextTier(points) {
   const next = nextTier(points);
   return next ? Math.max(0, next.threshold - points) : 0;
+}
+
+// Every felt-unlock and material-unlock event across all ten tiers,
+// chronologically — what the tier bar's "Next unlock" card and any other
+// "what's coming up" UI should walk, since felt and material no longer
+// share a threshold within a tier.
+export function cosmeticUnlockEvents() {
+  const events = [];
+  for (const tier of TIERS) {
+    const u = TIER_UNLOCKS[tier.name];
+    events.push({ kind: "felt", tierName: tier.name, label: u.felt, threshold: u.feltThreshold });
+    events.push({ kind: "material", tierName: tier.name, label: tier.material, threshold: u.materialThreshold });
+  }
+  events.sort((a, b) => a.threshold - b.threshold);
+  return events;
+}
+
+export function nextCosmeticUnlock(points) {
+  return cosmeticUnlockEvents().find((e) => e.threshold > points) || null;
 }
 
 // Base points per pair, scaled down by assist usage (hint/shuffle/undo all

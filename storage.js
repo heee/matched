@@ -5,6 +5,7 @@
 export const EMPTY_SHARED_DATA = Object.freeze({
   users: {},
   rooms: {},
+  invites: [],
 });
 
 export function normalizeSharedData(value) {
@@ -13,6 +14,11 @@ export function normalizeSharedData(value) {
     ...data,
     users: data.users && typeof data.users === "object" ? data.users : {},
     rooms: data.rooms && typeof data.rooms === "object" ? data.rooms : {},
+    // Local-only for now — no server endpoint persists these across
+    // devices yet, so an invite only reaches the recipient if they're on
+    // the same browser/localStorage (e.g. a switched-to profile on this
+    // device). Cross-device delivery would need a Worker route.
+    invites: Array.isArray(data.invites) ? data.invites : [],
   };
 }
 

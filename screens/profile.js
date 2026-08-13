@@ -3,7 +3,7 @@
 // design-reference.html #1l.
 
 import { el, avatarDot } from "./shared-ui.js";
-import { tierForPoints, nextTier, pointsToNextTier, TIER_UNLOCKS, TIERS } from "../game/scoring.js";
+import { tierForPoints, nextTier, pointsToNextTier, TIER_UNLOCKS, TIERS, nextCosmeticUnlock, cosmeticUnlockEvents } from "../game/scoring.js";
 
 const ICON_SWITCH_PLAYER = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>`;
 
@@ -36,15 +36,20 @@ const MATERIAL_SWATCHES = {
   Lacquer: "background:linear-gradient(160deg,#3a1418,#0d0607);box-shadow:2px 3px 0 #d9a441",
 };
 
-function tierUnlocked(tierName, points) {
-  return points >= TIERS.find((t) => t.name === tierName).threshold;
+// Felt and tile material used to share one threshold per tier; now each
+// has its own (see TIER_UNLOCKS.feltThreshold/materialThreshold in
+// scoring.js), so "unlocked" has to be checked per cosmetic type, not per
+// tier as a whole.
+function cosmeticUnlocked(key, tierName, points) {
+  const u = TIER_UNLOCKS[tierName];
+  return points >= (key === "felt" ? u.feltThreshold : u.materialThreshold);
 }
 
 // Resolves what's actually equipped: the user's saved choice if it's still
 // unlocked, otherwise falls back to the current tier's default.
 function equippedTierName(ctx, key, currentTierName) {
   const stored = ctx.state.equipped?.[key];
-  if (stored && tierUnlocked(stored, ctx.state.points)) return stored;
+  if (stored && cosmeticUnlocked(key, stored, ctx.state.points)) return stored;
   return currentTierName;
 }
 
@@ -56,7 +61,8 @@ function cosmeticGrid(ctx, { key, swatches, nameFor, subFor }, currentTierName, 
   const grid = el("div", { style: "padding:8px 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px" });
   const equippedName = equippedTierName(ctx, key, currentTierName);
   for (const tier of TIERS) {
-    const unlocked = tierUnlocked(tier.name, ctx.state.points);
+    const threshold = key === "felt" ? TIER_UNLOCKS[tier.name].feltThreshold : TIER_UNLOCKS[tier.name].materialThreshold;
+    const unlocked = ctx.state.points >= threshold;
     const isEquipped = unlocked && equippedName === tier.name;
     const cell = el("div", {
       style: `position:relative;padding:12px;border-radius:13px;background:rgba(255,255,255,.06);display:flex;align-items:center;gap:10px;border:1.5px solid ${isEquipped ? "var(--gold)" : "transparent"};${unlocked ? "cursor:pointer" : ""}`,
@@ -64,7 +70,7 @@ function cosmeticGrid(ctx, { key, swatches, nameFor, subFor }, currentTierName, 
     cell.appendChild(el("div", { style: `width:26px;height:34px;border-radius:5px;${swatches[tier.name]}${unlocked ? "" : ";opacity:.4"}` }));
     const info = el("div", { style: "flex:1;min-width:0" });
     info.appendChild(el("div", { style: `font:600 13px Figtree,sans-serif;color:${unlocked ? "#f6f1e4" : "rgba(246,241,228,.55)"}`, text: nameFor(tier) }));
-    info.appendChild(el("div", { style: "font:10.5px Figtree,sans-serif;color:rgba(246,241,228,.5)", text: unlocked ? (isEquipped ? "Equipped" : subFor(tier)) : `Unlocks at ${tier.threshold.toLocaleString()} pts` }));
+    info.appendChild(el("div", { style: "font:10.5px Figtree,sans-serif;color:rgba(246,241,228,.5)", text: unlocked ? (isEquipped ? "Equipped" : subFor(tier)) : `Unlocks at ${threshold.toLocaleString()} pts` }));
     cell.appendChild(info);
     if (!unlocked) {
       cell.appendChild(el("div", { style: "position:absolute;top:10px;right:10px;font-size:14px;opacity:.7", text: "🔒" }));
@@ -106,7 +112,11 @@ export function renderProfile(root, ctx) {
   const spanStart = TIERS[tierIdx].threshold;
   const spanEnd = next ? next.threshold : spanStart + 1;
   const progressPct = next ? Math.min(100, Math.round(((ctx.state.points - spanStart) / (spanEnd - spanStart)) * 100)) : 100;
-  const nextUnlock = next ? TIER_UNLOCKS[next.name] : null;
+  // Felt and tile material no longer share a threshold within a tier (see
+  // scoring.js), so "what unlocks next" has to walk both tracks together
+  // rather than just peeking at the next tier's bundle.
+  const nextUnlock1 = nextCosmeticUnlock(ctx.state.points);
+  const nextUnlock2 = nextUnlock1 ? cosmeticUnlockEvents().find((e) => e.threshold > nextUnlock1.threshold) || null : null;
 
   const header = el("div", { style: "padding:8px 20px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:14px" });
   const headerLeft = el("div", { style: "display:flex;align-items:center;gap:14px;min-width:0" });
@@ -141,9 +151,11 @@ export function renderProfile(root, ctx) {
     cell.appendChild(el("div", { style: "font:10px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:2px", text: sub }));
     return cell;
   };
-  if (nextUnlock) {
-    unlocksRow.appendChild(unlockCell(next.material, "Next unlock"));
-    unlocksRow.appendChild(unlockCell(nextUnlock.layout || nextUnlock.felt, nextUnlock.layout ? "Layout" : "Felt"));
+  if (nextUnlock1) {
+    unlocksRow.appendChild(unlockCell(nextUnlock1.label, `Next · ${nextUnlock1.kind === "felt" ? "Table" : "Tiles"}`));
+    unlocksRow.appendChild(nextUnlock2
+      ? unlockCell(nextUnlock2.label, `Then · ${nextUnlock2.kind === "felt" ? "Table" : "Tiles"}`)
+      : unlockCell("—", "Then"));
   } else {
     const equippedFelt = equippedTierName(ctx, "felt", tier.name);
     const equippedMaterial = equippedTierName(ctx, "material", tier.name);
