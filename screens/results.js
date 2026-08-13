@@ -5,6 +5,12 @@ import { el, avatarDot, formatDuration, roomInviteUrl } from "./shared-ui.js";
 import { PLAYER_COLORS, highlightsFromLog, pointsToNextTier, nextTier, tierForPoints } from "../game/scoring.js";
 import { buildLocalRoom } from "../game/room.js";
 
+// Stroke-only action icons for the Board Cleared action row, same Lucide
+// convention as the board's control-row icons (currentColor, no fill).
+const ICON_SHARE = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>`;
+const ICON_REMATCH = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>`;
+const ICON_DONE = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-4-4"/></svg>`;
+
 export function renderResults(root, ctx, params = {}) {
   const room = ctx.state.store.rooms[params.roomId];
   if (!room) { ctx.navigate("home"); return; }
@@ -63,13 +69,13 @@ export function renderResults(root, ctx, params = {}) {
   root.appendChild(el("div", { style: "flex:1" }));
 
   const actions = el("div", { style: "display:flex;gap:9px;padding:0 16px 30px" });
-  const shareBtn = el("button", { class: "btn btn-ghost", style: "flex:1;height:50px;border-radius:14px", text: "Share" });
+  const shareBtn = el("button", { class: "btn btn-ghost", style: "flex:1;height:50px;border-radius:14px;gap:7px", html: `${ICON_SHARE}<span>Share</span>` });
   shareBtn.addEventListener("click", async () => {
     const shareData = { title: room.title, text: `I just cleared ${room.title} in Matched — ${formatDuration(elapsedS)}.`, url: roomInviteUrl(room.id) };
     if (navigator.share) { try { await navigator.share(shareData); } catch (e) {} }
     else { navigator.clipboard?.writeText(shareData.url).catch(() => {}); ctx.toast("Link copied"); }
   });
-  const rematchBtn = el("button", { class: "btn btn-ghost", style: "flex:1;height:50px;border-radius:14px", text: "Rematch" });
+  const rematchBtn = el("button", { class: "btn btn-ghost", style: "flex:1;height:50px;border-radius:14px;gap:7px", html: `${ICON_REMATCH}<span>Rematch</span>` });
   rematchBtn.addEventListener("click", () => {
     const fresh = buildLocalRoom({
       title: room.title, mode: room.mode, layoutId: room.layoutId, difficulty: room.difficulty,
@@ -80,7 +86,7 @@ export function renderResults(root, ctx, params = {}) {
     ctx.persist();
     ctx.navigate(fresh.mode === "race" ? "race-board" : "board", { roomId: fresh.id });
   });
-  const doneBtn = el("button", { class: "btn btn-primary", style: "flex:1;height:50px;border-radius:14px", text: "Done" });
+  const doneBtn = el("button", { class: "btn btn-primary", style: "flex:1;height:50px;border-radius:14px;gap:7px", html: `${ICON_DONE}<span>Done</span>` });
   doneBtn.addEventListener("click", () => ctx.navigate("home"));
   actions.appendChild(shareBtn);
   actions.appendChild(rematchBtn);
