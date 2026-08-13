@@ -274,7 +274,7 @@ export function renderBoard(root, ctx, params = {}) {
   function renderSub() {
     const remaining = room.state.tiles.length;
     const cleared = room.tileCount - remaining;
-    const elapsedS = Math.floor((Date.now() - room.startedAt) / 1000);
+    const elapsedS = Math.floor((Date.now() - (room.startedAt || Date.now())) / 1000);
     subLine.textContent = `${cleared} of ${room.tileCount} cleared · ${formatClock(elapsedS)}`;
   }
 
@@ -357,7 +357,7 @@ export function renderBoard(root, ctx, params = {}) {
   }
 
   function finishRoom() {
-    const elapsedMs = Date.now() - room.startedAt;
+    const elapsedMs = Date.now() - (room.startedAt || Date.now());
     const myPairs = room.pairsCleared[you] || 0;
     const assistsUsed = room.assistsUsed[you] || 0;
     const comboBonus = (room.comboBonus && room.comboBonus[you]) || 0;

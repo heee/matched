@@ -413,6 +413,14 @@ const LAYOUT_POSITIONS = {
   "imperial-seal": () => [...rect(0, 8, 0, 3, 0), ...rect(1, 7, 0, 3, 1), ...rect(2, 6, 1, 2, 2), ...rect(3, 5, 1, 2, 3)],
   "phoenix-throne": () => [...rect(0, 8, 0, 3, 0), ...rect(2, 6, 0, 3, 1), ...rect(3, 5, 1, 2, 2)],
   "jade-labyrinth": () => [...rect(0, 8, 0, 3, 0), ...rect(1, 7, 0, 3, 1), ...rect(2, 6, 1, 2, 2), ...rect(3, 4, 1, 2, 3)],
+  "great-wall": () => [
+    ...rect(0, 13, 0, 7, 0),
+    ...rect(1, 12, 1, 6, 1),
+    ...rect(3, 10, 2, 5, 2),
+    ...rect(5, 8, 3, 4, 3),
+    { x: 6, y: 3, z: 4 },
+    { x: 7, y: 3, z: 4 },
+  ],
 };
 
 function mulberry32(seed) {
@@ -512,6 +520,7 @@ function buildRoom(req) {
     visibility: req.visibility,
     createdBy: req.createdBy,
     createdAt: new Date().toISOString(),
+    startedAt: Date.now(),
     freeTilesGlow: req.freeTilesGlow,
     hintsAllowed: req.hintsAllowed,
     players: [req.createdBy],

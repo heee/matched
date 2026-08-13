@@ -5,7 +5,7 @@
 import { el, avatarDot, renderTileFace, formatClock, haptic } from "./shared-ui.js";
 import { freeTiles, findHintPair, clearPair, hasMovesRemaining } from "../game/mahjong.js";
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
-import { PLAYER_COLORS, BOT_ACT_CHANCE } from "../game/scoring.js";
+import { PLAYER_COLORS, BOT_ACT_CHANCE, pointsForSession } from "../game/scoring.js";
 
 const BOT_INTERVAL_MS = 4200;
 
@@ -173,6 +173,12 @@ export function renderRaceBoard(root, ctx, params = {}) {
   function finishRace() {
     stopBots();
     room.completedAt = room.completedAt || new Date().toISOString();
+    const elapsedMs = Date.now() - (room.startedAt || Date.now());
+    const myPairs = room.pairsCleared[you] || 0;
+    const assistsUsed = room.assistsUsed[you] || 0;
+    const earned = pointsForSession({ pairsCleared: myPairs, assistsUsed, elapsedMs, tileCount: room.tileCount });
+    ctx.state.points += earned;
+    ctx.state.lastResult = { roomId: room.id, earned, highlights: [], elapsedMs };
     ctx.state.activeRoomId = null;
     ctx.persist();
     ctx.navigate("results", { roomId: room.id });
