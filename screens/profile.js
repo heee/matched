@@ -8,16 +8,32 @@ import { tierForPoints, nextTier, pointsToNextTier, TIER_UNLOCKS, TIERS } from "
 const ICON_SWITCH_PLAYER = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>`;
 
 const FELT_SWATCHES = {
-  Bone: "background:radial-gradient(120% 120% at 40% 20%,#20694e,#0e3527)",
-  Jade: "background:radial-gradient(120% 120% at 40% 20%,#0f4a38,#072019)",
+  Wood: "background:radial-gradient(120% 120% at 40% 20%,#20694e,#0e3527)",
+  Stone: "background:radial-gradient(120% 120% at 40% 20%,#454b4d,#1c2021)",
+  Resin: "background:radial-gradient(120% 120% at 40% 20%,#2f6b57,#123128)",
+  Bamboo: "background:radial-gradient(120% 120% at 40% 20%,#4d6b28,#233312)",
+  Bone: "background:radial-gradient(120% 120% at 40% 20%,#0f4a38,#072019)",
+  Porcelain: "background:radial-gradient(120% 120% at 40% 20%,#1f3f6e,#0c1b30)",
   Rosewood: "background:radial-gradient(120% 120% at 40% 20%,#5a3822,#2a1a0f)",
-  Dragon: "background:radial-gradient(120% 120% at 40% 20%,#241a17,#0a0706)",
+  Jade: "background:radial-gradient(120% 120% at 40% 20%,#1f6b4e,#0c2b1f)",
+  Cloisonné: "background:radial-gradient(120% 120% at 40% 20%,#173a5c,#081a2b)",
+  Lacquer: "background:radial-gradient(120% 120% at 40% 20%,#241a17,#0a0706)",
 };
+// Textures per the material brief: rough-sawn timber / aggregate stone /
+// molded resin / carved bamboo / aged bone / cobalt porcelain / brass-
+// inlaid rosewood / quiet jade / enamel-and-brass cloisonné / lacquer with
+// mother-of-pearl, gold, and burgundy.
 const MATERIAL_SWATCHES = {
+  Wood: "background:linear-gradient(160deg,#c9a06b,#8a6239);box-shadow:2px 3px 0 #5c4023",
+  Stone: "background:linear-gradient(160deg,#c9c9c4,#94938c);box-shadow:2px 3px 0 #5c5b55",
+  Resin: "background:linear-gradient(160deg,#eef1ea,#cfd6c7);box-shadow:2px 3px 0 #96a08a",
+  Bamboo: "background:linear-gradient(160deg,#dcd08c,#a89751);box-shadow:2px 3px 0 #7c6c31",
   Bone: "background:linear-gradient(160deg,#f7f2e4,#e9e0cb);box-shadow:2px 3px 0 #b3a582",
+  Porcelain: "background:linear-gradient(160deg,#f5f7fb,#dbe4f2);box-shadow:2px 3px 0 #2b5f9e",
+  Rosewood: "background:linear-gradient(160deg,#8b4a3d,#5c2c22);box-shadow:2px 3px 0 #caa14a",
   Jade: "background:linear-gradient(160deg,#cfe6da,#9dc4b1);box-shadow:2px 3px 0 #6d9482",
-  Rosewood: "background:linear-gradient(160deg,#c9857a,#8b4a3d);box-shadow:2px 3px 0 #6b342a",
-  Dragon: "background:linear-gradient(160deg,#4a3d3a,#1c1513);box-shadow:2px 3px 0 #000",
+  Cloisonné: "background:linear-gradient(160deg,#2b5f9e,#1a3c66);box-shadow:2px 3px 0 #d9a441",
+  Lacquer: "background:linear-gradient(160deg,#3a1418,#0d0607);box-shadow:2px 3px 0 #d9a441",
 };
 
 function tierUnlocked(tierName, points) {
@@ -111,7 +127,6 @@ export function renderProfile(root, ctx) {
   });
   header.appendChild(switchBtn);
   root.appendChild(header);
-  root.appendChild(switchCard);
 
   const tierCard = el("div", { style: "margin:0 16px 16px;padding:15px;border-radius:16px;background:linear-gradient(150deg,rgba(95,191,155,.2),rgba(255,255,255,.05));border:1px solid rgba(95,191,155,.3)" });
   const tierHead = el("div", { style: "display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px" });

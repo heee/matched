@@ -1,23 +1,44 @@
 // Matched — scoring, tiers, and progression math.
-// Pure functions, no DOM/storage. Reference tier values are the ones the
-// build spec calls out explicitly: Bone (start), Jade (2,500),
-// Rosewood (8,000), Dragon (20,000) — Dragon's own unlocked material is
-// "Lacquer".
-
+// Pure functions, no DOM/storage.
+//
+// Ten-tier tile-material ladder, easy to difficult (cheap/common material
+// to rare/luxurious), each also naming itself as the tier (tier.name ===
+// tier.material — there's no separate tier-name concept anymore, unlike
+// the old 4-tier Bone/Jade/Rosewood/Dragon scheme where "Dragon" named the
+// tier but "Lacquer" was the material it unlocked).
+//
+// Threshold curve: roughly doubling early on (fast first few unlocks so
+// progression feels alive quickly), stretching out toward the top so the
+// last couple of tiers are a real long-term goal rather than a formality.
 export const TIERS = [
-  { name: "Bone", threshold: 0, material: "Bone" },
-  { name: "Jade", threshold: 2500, material: "Jade" },
-  { name: "Rosewood", threshold: 8000, material: "Rosewood" },
-  { name: "Dragon", threshold: 20000, material: "Lacquer" },
+  { name: "Wood", threshold: 0, material: "Wood" },
+  { name: "Stone", threshold: 600, material: "Stone" },
+  { name: "Resin", threshold: 1500, material: "Resin" },
+  { name: "Bamboo", threshold: 3000, material: "Bamboo" },
+  { name: "Bone", threshold: 5500, material: "Bone" },
+  { name: "Porcelain", threshold: 9000, material: "Porcelain" },
+  { name: "Rosewood", threshold: 14000, material: "Rosewood" },
+  { name: "Jade", threshold: 21000, material: "Jade" },
+  { name: "Cloisonné", threshold: 30000, material: "Cloisonné" },
+  { name: "Lacquer", threshold: 42000, material: "Lacquer" },
 ];
 
 // Each tier unlocks a named batch, not a single item — per spec, cosmetic
-// only (tile materials, felts, layouts, tile face styles).
+// only (tile materials, felts, layouts, tile face styles). Only Rosewood
+// and Lacquer still carry a layout unlock (Nine Gates / Long Table),
+// matching what those two layouts already declare as their own `tier` in
+// game/layouts.js.
 export const TIER_UNLOCKS = {
-  Bone: { felt: "Felt green (default)", layout: null },
-  Jade: { felt: "Deep felt", layout: null },
+  Wood: { felt: "Felt green (default)", layout: null },
+  Stone: { felt: "Slate felt", layout: null },
+  Resin: { felt: "Mint felt", layout: null },
+  Bamboo: { felt: "Bamboo-green felt", layout: null },
+  Bone: { felt: "Deep felt", layout: null },
+  Porcelain: { felt: "Cobalt felt", layout: null },
   Rosewood: { felt: "Wood-rail table", layout: "Nine Gates" },
-  Dragon: { felt: "Lacquer black", layout: "Long Table" },
+  Jade: { felt: "Jade felt", layout: null },
+  Cloisonné: { felt: "Sapphire felt", layout: null },
+  Lacquer: { felt: "Lacquer black", layout: "Long Table" },
 };
 
 export function tierForPoints(points) {

@@ -15,21 +15,21 @@ import {
 } from "../game/scoring.js";
 
 test("tierForPoints picks the highest threshold not exceeding points", () => {
-  assert.equal(tierForPoints(0).name, "Bone");
-  assert.equal(tierForPoints(2499).name, "Bone");
-  assert.equal(tierForPoints(2500).name, "Jade");
-  assert.equal(tierForPoints(7999).name, "Jade");
-  assert.equal(tierForPoints(8000).name, "Rosewood");
-  assert.equal(tierForPoints(19999).name, "Rosewood");
-  assert.equal(tierForPoints(20000).name, "Dragon");
-  assert.equal(tierForPoints(99999).name, "Dragon");
+  assert.equal(tierForPoints(0).name, "Wood");
+  assert.equal(tierForPoints(599).name, "Wood");
+  assert.equal(tierForPoints(600).name, "Stone");
+  assert.equal(tierForPoints(13999).name, "Porcelain");
+  assert.equal(tierForPoints(14000).name, "Rosewood");
+  assert.equal(tierForPoints(41999).name, "Cloisonné");
+  assert.equal(tierForPoints(42000).name, "Lacquer");
+  assert.equal(tierForPoints(99999).name, "Lacquer");
 });
 
 test("nextTier / pointsToNextTier agree with the reference thresholds", () => {
-  assert.equal(nextTier(9140).name, "Dragon");
-  assert.equal(pointsToNextTier(9140), 10860);
-  assert.equal(nextTier(20000), null);
-  assert.equal(pointsToNextTier(20000), 0);
+  assert.equal(nextTier(9140).name, "Rosewood");
+  assert.equal(pointsToNextTier(9140), 4860);
+  assert.equal(nextTier(42000), null);
+  assert.equal(pointsToNextTier(42000), 0);
 });
 
 test("TIERS is sorted ascending by threshold", () => {

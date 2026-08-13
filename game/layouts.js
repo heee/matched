@@ -74,7 +74,7 @@ export const LAYOUTS = {
     tileCount: 64,
     difficulty: "hard",
     layers: 2,
-    tier: "Dragon",
+    tier: "Lacquer",
     positions: () => [...rect(0, 9, 0, 3, 0), ...rect(2, 7, 0, 2, 1)],
   },
   // Classic 144-tile "turtle" — a tablet layout. The whole-board-always-
