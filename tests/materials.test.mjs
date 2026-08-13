@@ -47,3 +47,38 @@ test("equippedMaterialName honors an unlocked pick but refuses a locked one", ()
 test("equippedMaterialName ignores a material that no longer exists", () => {
   assert.equal(equippedMaterialName(0, { material: "Adamantium" }), "Wood");
 });
+
+// Face art has to stay legible on every material. A material's face used to
+// be picked purely for looks, which left Wood's painted art at 1.51:1 —
+// effectively invisible, on the tier every new player starts with.
+const FACE_INKS = ["#b5322c", "#1f7a4d", "#2b5f9e", "#23201c"];
+const MIN_CONTRAST = 3;
+
+function relLuminance(hex) {
+  const parts = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const [r, g, b] = parts.map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrast(hexA, hexB) {
+  const a = relLuminance(hexA), b = relLuminance(hexB);
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+}
+
+function faceMidpoint(m) {
+  const avg = [1, 3, 5].map((i) => Math.round((parseInt(m.a.slice(i, i + 2), 16) + parseInt(m.b.slice(i, i + 2), 16)) / 2));
+  return `#${avg.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+}
+
+test("every material's face carries its ink at readable contrast", () => {
+  for (const [name, m] of Object.entries(MATERIALS)) {
+    const face = faceMidpoint(m);
+    // Dark materials override the per-face colors with one pale ink, so
+    // that's the only ink that has to clear the bar on them.
+    const inks = m.ink ? [m.ink] : FACE_INKS;
+    for (const ink of inks) {
+      const ratio = contrast(ink, face);
+      assert.ok(ratio >= MIN_CONTRAST, `${name}: ink ${ink} on ${face} is ${ratio.toFixed(2)}:1, below ${MIN_CONTRAST}:1`);
+    }
+  }
+});

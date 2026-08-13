@@ -14,10 +14,17 @@ import { inkOverrideFor } from "../game/materials.js";
 const FACE_W = TILE_W - 6;
 const FACE_H = TILE_H - 6;
 
-// Bone-tier dot/bamboo art (generated per docs — see the tile-art brief).
-// Character tiles (craks/winds/dragons) stay as real Chinese web-font
-// typography below; an image model can't be trusted to render correct CJK
-// glyphs, and the font was never the part that looked cheap.
+// SVG ids must be document-unique for url(#id) to resolve to the right
+// element — many tiles are on the board at once, so a fixed id would have
+// every tile's filter resolve to whichever one the browser saw first.
+let svgUid = 0;
+const nextSvgId = (prefix) => `${prefix}${(svgUid++).toString(36)}`;
+
+// Dot/bamboo art. Painted in bone-tile colors and recolored per material
+// where needed (see svgWrap's ink filter), so one set serves all ten
+// materials. Character tiles (craks/winds/dragons) stay as real Chinese
+// web-font typography below; an image model can't be trusted to render
+// correct CJK glyphs, and the font was never the part that looked cheap.
 const ART = {
   pipRed: "./assets/tiles/bone/pip-red.png",
   pipGreen: "./assets/tiles/bone/pip-green.png",
@@ -25,11 +32,6 @@ const ART = {
   bam1Bird: "./assets/tiles/bone/bam1-bird.png",
 };
 
-// A pip image centered at (cx, cy), sized as a square box — the source art
-// is itself square, so this never distorts it. The tightest spacing in
-// DOT_GRIDS is ~10 units (the 3-column rows), so this is sized just under
-// that: adjacent pips nearly touch the way they do on a real tile, without
-// overlapping. Raising it past the spacing makes neighbours collide.
 // Hand-painted glyphs never sit perfectly square to the tile, and the
 // identical placement across all 34 faces is a big part of what reads as
 // printed rather than painted. Seeded by the glyph itself (not the tile
@@ -48,6 +50,11 @@ function charJitter(seed) {
   return { rot: rot.toFixed(2), dx: dx.toFixed(2) };
 }
 
+// A pip image centered at (cx, cy), sized as a square box — the source art
+// is itself square, so this never distorts it. The tightest spacing in
+// DOT_GRIDS is ~10 units (the 3-column rows), so this is sized just under
+// that: adjacent pips nearly touch the way they do on a real tile, without
+// overlapping. Raising it past the spacing makes neighbours collide.
 const PIP_SIZE = 9.5;
 function pipImg(cx, cy, color) {
   const src = color === RED ? ART.pipRed : ART.pipGreen;
@@ -69,8 +76,21 @@ function bamBirdImg() {
   return `<image href="${ART.bam1Bird}" x="0" y="0" width="${FACE_W}" height="${FACE_H}"/>`;
 }
 
-function svgWrap(inner) {
-  return `<svg viewBox="0 0 ${FACE_W} ${FACE_H}" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+// Recolors artwork to a single flat ink by flooding the filter region and
+// keeping it only where the source has alpha. Used for the dark materials,
+// whose faces are a single inlaid metal rather than the painted red/green
+// of a bone tile — so the same art serves every material and each dark tier
+// doesn't need its own generated set.
+function inkFilterDef(id, ink) {
+  return `<filter id="${id}"><feFlood flood-color="${ink}" result="c"/>` +
+    `<feComposite in="c" in2="SourceGraphic" operator="in"/></filter>`;
+}
+
+function svgWrap(inner, ink) {
+  const open = `<svg viewBox="0 0 ${FACE_W} ${FACE_H}" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">`;
+  if (!ink) return `${open}${inner}</svg>`;
+  const id = nextSvgId("ink");
+  return `${open}<defs>${inkFilterDef(id, ink)}</defs><g filter="url(#${id})">${inner}</g></svg>`;
 }
 
 export function el(tag, attrs = {}, children = []) {
@@ -157,7 +177,9 @@ export function formatDuration(totalSeconds) {
 export function renderTileFace(container, face, material) {
   container.innerHTML = "";
   if (!face) return;
-  const ink = inkOverrideFor(material) || face.color;
+  // Null on the light materials, which keep the art's own painted colors.
+  const inkOverride = inkOverrideFor(material);
+  const ink = inkOverride || face.color;
   if (face.kind === "char") {
     const big = !face.bot;
     const j = charJitter(`${face.top}${face.bot || ""}`);
@@ -181,14 +203,14 @@ export function renderTileFace(container, face, material) {
       const c = i % 2 ? RED : face.color;
       return pipImg((left / 100) * FACE_W, (top / 100) * FACE_H, c);
     }).join("");
-    container.appendChild(el("div", { style: "width:100%;height:100%", html: svgWrap(inner) }));
+    container.appendChild(el("div", { style: "width:100%;height:100%", html: svgWrap(inner, inkOverride) }));
   } else if (face.kind === "bam") {
     // The 1-bamboo tile is the one traditional exception to plain sticks —
     // see bamBirdImg().
     const inner = face.n === 1
       ? bamBirdImg()
       : bamSticks(face.n).map(({ left, top }) => bamStickImg((left / 100) * FACE_W, (top / 100) * FACE_H)).join("");
-    container.appendChild(el("div", { style: "width:100%;height:100%", html: svgWrap(inner) }));
+    container.appendChild(el("div", { style: "width:100%;height:100%", html: svgWrap(inner, inkOverride) }));
   } else if (face.kind === "slot") {
     container.appendChild(el("div", { class: "tile-slot", html: "ART<br>SLOT" }));
   }

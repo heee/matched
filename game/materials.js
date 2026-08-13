@@ -11,11 +11,17 @@
 
 import { TIER_UNLOCKS, tierForPoints } from "./scoring.js";
 
+// Wood, Stone and Bamboo carry their color in the thickness edge and keep a
+// light face. Their original mid-tone faces sat too close in luminance to
+// the painted red/green art to read (Wood was the worst at 1.51:1, and it's
+// the tier-0 default every new player starts on); a real wooden tile is a
+// pale face in a dark timber frame anyway. Pale inlay was the alternative,
+// but it fails on Stone and Bamboo, which are too light to carry it.
 export const MATERIALS = {
-  Wood:       { a: "#c9a06b", b: "#8a6239", edge: "#5c4023", upper: "#d8b184" },
-  Stone:      { a: "#c9c9c4", b: "#94938c", edge: "#5c5b55", upper: "#d8d8d3" },
+  Wood:       { a: "#ecdcc3", b: "#cdb28a", edge: "#7a5533", upper: "#f6ebd9" },
+  Stone:      { a: "#dfdfdc", b: "#c0bfbb", edge: "#7d7c76", upper: "#efefec" },
   Resin:      { a: "#eef1ea", b: "#cfd6c7", edge: "#96a08a", upper: "#f6f8f3" },
-  Bamboo:     { a: "#dcd08c", b: "#a89751", edge: "#7c6c31", upper: "#e8dfa4" },
+  Bamboo:     { a: "#e9e2b8", b: "#c9bf93", edge: "#8d7c3c", upper: "#f4efd2" },
   Bone:       { a: "#f7f2e4", b: "#e9e0cb", edge: "#b3a582", upper: "#fffdf6" },
   Porcelain:  { a: "#f5f7fb", b: "#dbe4f2", edge: "#2b5f9e", upper: "#ffffff" },
   Rosewood:   { a: "#8b4a3d", b: "#5c2c22", edge: "#caa14a", upper: "#a15b4c", dark: true, ink: "#e8c887" },
