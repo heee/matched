@@ -110,6 +110,47 @@ export function getLayout(id) {
   return LAYOUTS[id] || null;
 }
 
+// A coarse occupancy grid for a layout's shape — for thumbnails that need
+// to actually look like the layout, base footprint AND upper layers.
+// Earlier thumbnail code took the first N positions() (or worse, wrapped
+// x/y with modulo) rather than the true bounding box, so every layout's
+// thumbnail ended up looking like the same few blocks regardless of shape.
+// Several layouts (Dragon's Nest/Eight Winds/Garden Gate) also share the
+// exact same base rectangle — what actually tells them apart is the upper
+// layers, so z=0-only isn't enough; each returned point carries the
+// highest z seen at that cell so a caller can render stacked cells
+// distinctly (see play-catalog.js / home.js). Returns { xPct, yPct, z }
+// points (0-100), grid sized off the base layer's true bounding box.
+export function layoutSilhouette(layout, cols = 8, rows = 5) {
+  const all = layout.positions ? layout.positions() : [];
+  const base = all.filter((p) => p.z === 0);
+  if (base.length === 0) return [];
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const p of base) {
+    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+    minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+  }
+  const spanX = Math.max(1, maxX - minX);
+  const spanY = Math.max(1, maxY - minY);
+  const cellZ = new Map();
+  for (const p of all) {
+    const cx = Math.round(((p.x - minX) / spanX) * (cols - 1));
+    const cy = Math.round(((p.y - minY) / spanY) * (rows - 1));
+    const key = `${cx},${cy}`;
+    cellZ.set(key, Math.max(cellZ.get(key) ?? -1, p.z));
+  }
+  const points = [];
+  for (const [key, z] of cellZ) {
+    const [cx, cy] = key.split(",").map(Number);
+    points.push({
+      xPct: cols <= 1 ? 50 : (cx / (cols - 1)) * 100,
+      yPct: rows <= 1 ? 50 : (cy / (rows - 1)) * 100,
+      z,
+    });
+  }
+  return points;
+}
+
 export function defaultLayoutForDifficulty(difficulty) {
   const matches = layoutsByDifficulty(difficulty);
   return matches[0] || LAYOUTS["dragons-nest"];

@@ -227,6 +227,17 @@ a { color: var(--gold); }
   0%, 100% { box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.26), 0 0 0 0 rgba(217,164,65,0), inset 0 0 0 999px rgba(217,164,65,0); }
   20% { box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.3), 0 0 0 4px rgba(217,164,65,.95), inset 0 0 0 999px rgba(217,164,65,.28); }
 }
+/* Shuffle: each tile flies from its old board position, through a random
+   scattered waypoint (set per-tile via --sx1/--sy1/--srot1 in board.js),
+   into wherever it landed after the reshuffle (that's just 0,0 here since
+   left/top are already the new position — this only animates the
+   transform on top of it). */
+.tile.shuffle-fly { animation: tileShuffleFly .68s cubic-bezier(.2,.7,.25,1) both; }
+@keyframes tileShuffleFly {
+  0% { transform: translate(var(--sx0), var(--sy0)) rotate(var(--srot0)) scale(.85); opacity: .8; }
+  48% { transform: translate(var(--sx1), var(--sy1)) rotate(var(--srot1)) scale(1.1); opacity: 1; }
+  100% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+}
 .tile.shake { animation: tileShake .5s cubic-bezier(.36,.07,.19,.97); }
 @keyframes tileShake {
   10%, 90% { transform: translateX(-1px) rotate(-1deg); }
@@ -234,9 +245,21 @@ a { color: var(--gold); }
   30%, 50%, 70% { transform: translateX(-7px) rotate(-2.5deg); }
   40%, 60% { transform: translateX(7px) rotate(2.5deg); }
 }
+/* Fly up, spin (a 3D horizontal-axis flip, not a flat spin), then fly into
+   the tray — --fly-dx/--fly-dy (set per-clone in board.js) is the vector
+   to the tray's center. perspective() lives inside each transform value
+   (rather than on an ancestor) so the flip reads as 3D without touching
+   any shared parent's stacking/perspective context. */
 .tile.flying {
-  pointer-events: none; cursor: default; animation: none;
-  transition: transform .46s cubic-bezier(.3,.6,.35,1), opacity .46s ease;
+  pointer-events: none; cursor: default;
+  animation: tileFlyToTray .85s cubic-bezier(.3,.5,.3,1) both;
+}
+@keyframes tileFlyToTray {
+  0% { transform: perspective(500px) translate(0, 0) rotateY(0deg) scale(1); opacity: 1; }
+  16% { transform: perspective(500px) translate(0, -28px) rotateY(360deg) scale(1.08); opacity: 1; }
+  50% { transform: perspective(500px) translate(calc(var(--fly-dx) * .12), -30px) rotateY(1080deg) scale(1.05); opacity: 1; }
+  80% { transform: perspective(500px) translate(calc(var(--fly-dx) * .7), calc(var(--fly-dy) * .55 - 14px)) rotateY(1800deg) scale(.7); opacity: 1; }
+  100% { transform: perspective(500px) translate(var(--fly-dx), var(--fly-dy)) rotateY(2160deg) scale(.25); opacity: 0; }
 }
 .combo-badge {
   position: fixed; transform: translate(-50%, -50%); z-index: 600; pointer-events: none;

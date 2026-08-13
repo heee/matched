@@ -2,7 +2,7 @@
 // docs/design-reference.html #1j.
 
 import { el } from "./shared-ui.js";
-import { LAYOUTS } from "../game/layouts.js";
+import { LAYOUTS, layoutSilhouette } from "../game/layouts.js";
 import { tierForPoints, TIERS } from "../game/scoring.js";
 
 const FILTERS = ["All", "Easy", "Classic", "Locked"];
@@ -17,12 +17,15 @@ function isUnlocked(layout, points) {
 }
 
 function blockPattern(layout) {
-  // Deterministic small silhouette pattern from the layout's own z0 tiles,
-  // scaled to percentages — same idea as the reference's mkBlocks().
-  return layout.positions().filter((p) => p.z === 0).slice(0, 9).map((p) => [
-    22 + (p.x % 8) * 7,
-    24 + (p.y % 5) * 15,
-  ]);
+  // True-shape silhouette from the layout's actual bounding box (see
+  // layoutSilhouette) — the old version took the first 9 z0 tiles and
+  // wrapped x/y with modulo, which made almost every layout's thumbnail
+  // collapse into the same generic block of squares regardless of its
+  // real footprint. z is kept (not just x/y) because several layouts
+  // share the exact same base rectangle — it's the upper layers that
+  // actually tell them apart, so those need their own look, not just a
+  // flat set of identical squares.
+  return layoutSilhouette(layout, 9, 5).map((p) => ({ left: 12 + (p.xPct / 100) * 76, top: 15 + (p.yPct / 100) * 70, z: p.z }));
 }
 
 function layoutCard(ctx, layout) {
@@ -31,8 +34,9 @@ function layoutCard(ctx, layout) {
     style: `border-radius:15px;overflow:hidden;background:rgba(255,255,255,.06);border:1px solid ${unlocked ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.07)"};${unlocked ? "" : "opacity:.72"};cursor:pointer`,
   });
   const thumb = el("div", { style: "height:88px;position:relative;background:radial-gradient(120% 120% at 50% 30%,#1d6349,#0e3527)" });
-  blockPattern(layout).forEach(([left, top]) => {
-    thumb.appendChild(el("div", { style: `position:absolute;left:${left}%;top:${top}%;width:9px;height:12px;margin:-6px 0 0 -4.5px;border-radius:2px;background:#f2ecdc;box-shadow:1px 1px 0 rgba(0,0,0,.3)` }));
+  blockPattern(layout).forEach(({ left, top, z }) => {
+    const upper = z > 0;
+    thumb.appendChild(el("div", { style: `position:absolute;left:${left}%;top:${top}%;width:9px;height:12px;margin:-6px 0 0 -4.5px;border-radius:2px;background:${upper ? "#d9a441" : "#f2ecdc"};box-shadow:1px 1px 0 ${upper ? "rgba(0,0,0,.45)" : "rgba(0,0,0,.3)"};z-index:${z}` }));
   });
   if (!unlocked) {
     thumb.appendChild(el("div", { style: "position:absolute;inset:0;background:rgba(8,26,20,.72);display:flex;align-items:center;justify-content:center;font-size:19px", text: "🔒" }));

@@ -375,22 +375,18 @@ export function renderBoard(root, ctx, params = {}) {
       const rect = tileEl.getBoundingClientRect();
       const clone = tileEl.cloneNode(true);
       clone.className = "tile flying";
+      const dx = trayRect.left + trayRect.width / 2 - (rect.left + rect.width / 2);
+      const dy = trayRect.top + trayRect.height / 2 - (rect.top + rect.height / 2);
       Object.assign(clone.style, {
         position: "fixed", left: `${rect.left}px`, top: `${rect.top}px`,
         width: `${rect.width}px`, height: `${rect.height}px`, margin: "0", zIndex: "500",
       });
+      clone.style.setProperty("--fly-dx", `${dx}px`);
+      clone.style.setProperty("--fly-dy", `${dy}px`);
       document.body.appendChild(clone);
-      return { clone, rect };
+      return clone;
     });
-    requestAnimationFrame(() => {
-      for (const { clone, rect } of clones) {
-        const dx = trayRect.left + trayRect.width / 2 - (rect.left + rect.width / 2);
-        const dy = trayRect.top + trayRect.height / 2 - (rect.top + rect.height / 2);
-        clone.style.transform = `translate(${dx}px, ${dy}px) scale(.3)`;
-        clone.style.opacity = "0";
-      }
-    });
-    setTimeout(() => { for (const { clone } of clones) clone.remove(); }, 480);
+    setTimeout(() => { for (const clone of clones) clone.remove(); }, 900);
   }
 
   // A quick pop-and-fade badge plus a small burst of sparks off the
@@ -491,11 +487,33 @@ export function renderBoard(root, ctx, params = {}) {
   }
 
   function useShuffle() {
+    const oldPos = new Map();
+    for (const [id, tileEl] of local.tileEls) {
+      oldPos.set(id, { left: parseFloat(tileEl.style.left), top: parseFloat(tileEl.style.top) });
+    }
     room.assistsUsed[you] = (room.assistsUsed[you] || 0) + 1;
     room.state.tiles = shuffleRemaining(room.state.tiles);
     local.selectedId = null;
     ctx.persist();
     fullRender();
+
+    // Wild fly-in: every tile starts back at wherever it used to sit,
+    // swings out through a random scattered point, then settles into its
+    // real new spot — tiles with no previous position (board just grew,
+    // shouldn't happen here but be safe) just pop in from center.
+    for (const [id, tileEl] of local.tileEls) {
+      const prev = oldPos.get(id);
+      const newLeft = parseFloat(tileEl.style.left);
+      const newTop = parseFloat(tileEl.style.top);
+      tileEl.style.setProperty("--sx0", prev ? `${prev.left - newLeft}px` : "0px");
+      tileEl.style.setProperty("--sy0", prev ? `${prev.top - newTop}px` : "0px");
+      tileEl.style.setProperty("--srot0", `${(Math.random() - 0.5) * 30}deg`);
+      tileEl.style.setProperty("--sx1", `${(Math.random() - 0.5) * 260}px`);
+      tileEl.style.setProperty("--sy1", `${(Math.random() - 0.5) * 260}px`);
+      tileEl.style.setProperty("--srot1", `${(Math.random() - 0.5) * 140}deg`);
+      tileEl.classList.add("shuffle-fly");
+      tileEl.addEventListener("animationend", () => tileEl.classList.remove("shuffle-fly"), { once: true });
+    }
   }
 
   function useUndo() {

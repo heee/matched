@@ -1,10 +1,10 @@
 // Matched — Home screen. Swipeable hero (live now / today's board),
 // continue playing, open rooms. See docs/design-reference.html #1d.
 
-import { el, avatarDot, formatClock, roomInviteUrl } from "./shared-ui.js";
+import { el, avatarDot, formatClock, roomInviteUrl, modeIcon } from "./shared-ui.js";
 import { boardCompletion } from "../game/mahjong.js";
 import { dailyLayoutFor, dailySeedFor, todayDateStr, msUntilNextReset } from "../game/daily.js";
-import { LAYOUTS } from "../game/layouts.js";
+import { LAYOUTS, layoutSilhouette } from "../game/layouts.js";
 import { PLAYER_COLORS } from "../game/scoring.js";
 
 // Randomized invite lines for the Live now card's share button — same
@@ -66,11 +66,15 @@ function miniSilhouette(layoutId) {
   const layout = LAYOUTS[layoutId];
   const wrap = el("div", { style: "width:74px;height:60px;position:relative;flex:none" });
   if (!layout) return wrap;
-  const positions = layout.positions().filter((p) => p.z === 0).slice(0, 5);
-  const scaleX = 62 / 8, scaleY = 30 / 5;
-  positions.forEach((p) => {
+  // True-shape silhouette (see layoutSilhouette) — the old version took
+  // the first 5 z0 tiles verbatim, which looked near-identical across
+  // every layout regardless of its real footprint. Upper-layer cells (z>0)
+  // get a distinct color since several layouts share the same base
+  // rectangle and only differ in what's stacked on top.
+  layoutSilhouette(layout, 5, 3).forEach((p) => {
+    const upper = p.z > 0;
     wrap.appendChild(el("div", {
-      style: `position:absolute;left:${p.x * scaleX}px;top:${p.y * scaleY + (p.x % 2 ? 8 : 0)}px;width:16px;height:21px;border-radius:3px;background:#f2ecdc;box-shadow:2px 2px 0 #a89a78`,
+      style: `position:absolute;left:${4 + (p.xPct / 100) * 50}px;top:${2 + (p.yPct / 100) * 32}px;width:16px;height:21px;border-radius:3px;background:${upper ? "#e8c887" : "#f2ecdc"};box-shadow:2px 2px 0 ${upper ? "#a3792f" : "#a89a78"};z-index:${p.z}`,
     }));
   });
   return wrap;
@@ -163,7 +167,7 @@ function continueRow(ctx, room) {
   const pct = boardCompletion(room.tileCount, remaining);
   const row = el("div", { style: "display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07);cursor:pointer" });
   row.addEventListener("click", () => ctx.navigate(room.mode === "race" ? "race-board" : "board", { roomId: room.id }));
-  row.appendChild(el("div", { style: "flex:none;width:42px;height:42px;border-radius:11px;background:repeating-linear-gradient(90deg,rgba(0,0,0,.35) 0 8px,#e4dcc8 8px 11px)" }));
+  row.appendChild(modeIcon(room.mode));
   const info = el("div", { style: "flex:1;min-width:0" });
   info.appendChild(el("div", { style: "font:600 14.5px Figtree,sans-serif;color:#f6f1e4", text: room.title }));
   info.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:2px", text: `${room.mode === "race" ? "Race" : "Shared"} · ${pct}% cleared` }));

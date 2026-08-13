@@ -43,6 +43,31 @@ export function haptic(enabled, pattern = 12) {
   if (enabled && typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(pattern);
 }
 
+// A compact room-mode glyph (shared/race/solo) for list rows — same visual
+// language as room-setup's larger mode-picker icons, scaled down into a
+// small rounded box. Used where a room's mode needs a quick visual tag
+// (e.g. Home's Continue Playing rows, which used to show a literal
+// placeholder striped gradient there instead of anything meaningful).
+export function modeIcon(mode, size = 42) {
+  const box = el("div", { style: `flex:none;width:${size}px;height:${size}px;border-radius:11px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center` });
+  if (mode === "race") {
+    const wrap = el("div", { style: "display:flex;flex-direction:column;justify-content:center;gap:4px" });
+    wrap.appendChild(el("div", { style: "width:20px;height:5px;border-radius:3px;background:#5fbf9b" }));
+    wrap.appendChild(el("div", { style: "width:13px;height:5px;border-radius:3px;background:#e08a6a" }));
+    box.appendChild(wrap);
+  } else if (mode === "solo") {
+    const wrap = el("div", { style: "display:flex;align-items:center;gap:3px" });
+    wrap.appendChild(el("div", { style: "width:11px;height:15px;border-radius:3px;background:#f2ecdc" }));
+    wrap.appendChild(el("div", { style: "width:11px;height:15px;border-radius:3px;border:1.5px dashed rgba(242,236,220,.4);box-sizing:border-box" }));
+    box.appendChild(wrap);
+  } else {
+    const wrap = el("div", { style: "display:flex;gap:3px" });
+    for (let i = 0; i < 3; i++) wrap.appendChild(el("div", { style: "width:9px;height:15px;border-radius:2px;background:#f2ecdc" }));
+    box.appendChild(wrap);
+  }
+  return box;
+}
+
 export function formatClock(totalSeconds) {
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;

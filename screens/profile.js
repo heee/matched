@@ -5,6 +5,8 @@
 import { el, avatarDot } from "./shared-ui.js";
 import { tierForPoints, nextTier, pointsToNextTier, TIER_UNLOCKS, TIERS } from "../game/scoring.js";
 
+const ICON_SWITCH_PLAYER = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>`;
+
 const FELT_SWATCHES = {
   Bone: "background:radial-gradient(120% 120% at 40% 20%,#20694e,#0e3527)",
   Jade: "background:radial-gradient(120% 120% at 40% 20%,#0f4a38,#072019)",
@@ -90,25 +92,25 @@ export function renderProfile(root, ctx) {
   const progressPct = next ? Math.min(100, Math.round(((ctx.state.points - spanStart) / (spanEnd - spanStart)) * 100)) : 100;
   const nextUnlock = next ? TIER_UNLOCKS[next.name] : null;
 
-  const header = el("div", { style: "padding:8px 20px 16px;display:flex;align-items:center;gap:14px" });
-  header.appendChild(avatarDot(user, 0, 62));
+  const header = el("div", { style: "padding:8px 20px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:14px" });
+  const headerLeft = el("div", { style: "display:flex;align-items:center;gap:14px;min-width:0" });
+  headerLeft.appendChild(avatarDot(user, 0, 62));
   const nameWrap = el("div");
   nameWrap.appendChild(el("div", { class: "title-serif", style: "font-size:26px", text: user }));
   nameWrap.appendChild(el("div", { style: "font:12.5px Figtree,sans-serif;color:rgba(246,241,228,.55);margin-top:5px", text: `${tier.name} tier · ${ctx.state.points.toLocaleString()} points` }));
-  header.appendChild(nameWrap);
-  root.appendChild(header);
+  headerLeft.appendChild(nameWrap);
+  header.appendChild(headerLeft);
 
-  // Prominent, hard-to-miss entry point for switching players — this used
-  // to be a small text link buried under Settings at the bottom, which made
-  // it easy to get stuck on the wrong profile with no obvious way back.
-  const switchCard = el("div", { style: "margin:0 16px 14px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:12px;cursor:pointer" });
-  switchCard.appendChild(avatarDot(user, 0, 38));
-  const switchInfo = el("div", { style: "flex:1;min-width:0" });
-  switchInfo.appendChild(el("div", { style: "font:600 14px Figtree,sans-serif;color:#f6f1e4", text: "Not you?" }));
-  switchInfo.appendChild(el("div", { style: "font:12px Figtree,sans-serif;color:rgba(246,241,228,.55);margin-top:2px", text: "Switch player" }));
-  switchCard.appendChild(switchInfo);
-  switchCard.appendChild(el("span", { style: "font:300 20px Figtree,sans-serif;color:rgba(246,241,228,.4)", text: "›" }));
-  switchCard.addEventListener("click", () => ctx.navigate("name-entry"));
+  // Compact switch-player entry, tucked top-right so it doesn't compete
+  // with the profile content below for attention (a full-width card here
+  // felt obstructive) — still a one-tap escape if you're on the wrong
+  // profile, just not the first thing the screen shows you.
+  const switchBtn = el("button", {
+    class: "icon-btn", style: "flex:none", html: ICON_SWITCH_PLAYER, "aria-label": "Switch player",
+    onClick: () => ctx.navigate("name-entry"),
+  });
+  header.appendChild(switchBtn);
+  root.appendChild(header);
   root.appendChild(switchCard);
 
   const tierCard = el("div", { style: "margin:0 16px 16px;padding:15px;border-radius:16px;background:linear-gradient(150deg,rgba(95,191,155,.2),rgba(255,255,255,.05));border:1px solid rgba(95,191,155,.3)" });
