@@ -13,6 +13,8 @@
 //   POST /join-room       { roomId, user }                -> adds user to the room's player list
 //   POST /list-rooms      -> see GET /data?scope=... (kept as GET for simple client caching)
 //   POST /delete-room     { roomId }                      -> removes the room from D1, wipes its RoomDO state
+//   POST /delete-user     { user }                        -> removes the user from D1 (local-only bots are never
+//                                                             registered here, so this only ever affects real profiles)
 //   POST /complete-room   { roomId, payload }              -> manual/fallback snapshot commit; the RoomDO normally
 //                                                             commits snapshots directly (see commitSnapshot below)
 //   GET/Upgrade /room/:id/connect                          -> WebSocket, routed to that room's RoomDO
@@ -118,6 +120,19 @@ export default {
         const id = env.ROOM.idFromName(roomId);
         const stub = env.ROOM.get(id);
         await stub.fetch("https://internal/delete", { method: "POST" });
+        return json({ ok: true }, 200, cors);
+      } catch (e) {
+        return json({ error: e.message }, 502, cors);
+      }
+    }
+
+    if (url.pathname === "/delete-user" && request.method === "POST") {
+      if (!checkAppKey(request, env)) return json({ error: "unauthorized" }, 401, cors);
+      const body = await safeJson(request);
+      const name = typeof body?.user === "string" ? body.user.trim().slice(0, 40) : "";
+      if (!name) return json({ error: "invalid payload" }, 400, cors);
+      try {
+        await deleteUser(env.DB, name);
         return json({ ok: true }, 200, cors);
       } catch (e) {
         return json({ error: e.message }, 502, cors);
@@ -338,17 +353,25 @@ export class RoomDO {
 // (see AGENTS.md), so it does not import across the repo boundary.
 // ===========================================================================
 
+// Colors/glyphs must match game/tiles.js exactly (INK/RED/GREEN/BLUE, and
+// the kind/top/bot/color/n shape renderTileFace() expects) — a room built
+// here with bare { id } faces renders as blank tiles client-side until
+// something (e.g. Shuffle) regenerates them locally with the real shape.
+const INK = "#23201c";
+const RED = "#b5322c";
+const GREEN = "#1f7a4d";
+const BLUE = "#2b5f9e";
 const CRAK_NUMS = ["一", "二", "三", "四", "五", "六", "七", "八", "九"];
 const WINDS = ["東", "南", "西", "北"];
-const DRAGONS = ["中", "發", "白"];
+const DRAGONS = [{ glyph: "中", color: RED }, { glyph: "發", color: GREEN }, { glyph: "白", color: BLUE }];
 
 function buildFaceSet() {
   const faces = [];
-  CRAK_NUMS.forEach((n, i) => faces.push({ id: `crak${i + 1}` }));
-  WINDS.forEach((w, i) => faces.push({ id: `wind${i}` }));
-  DRAGONS.forEach((d, i) => faces.push({ id: `dragon${i}` }));
-  for (let n = 1; n <= 9; n++) faces.push({ id: `dot${n}` });
-  for (let n = 1; n <= 9; n++) faces.push({ id: `bam${n}` });
+  CRAK_NUMS.forEach((n, i) => faces.push({ id: `crak${i + 1}`, kind: "char", top: n, bot: "萬", color: i % 2 ? BLUE : RED }));
+  WINDS.forEach((w, i) => faces.push({ id: `wind${i}`, kind: "char", top: w, bot: "", color: INK }));
+  DRAGONS.forEach((d, i) => faces.push({ id: `dragon${i}`, kind: "char", top: d.glyph, bot: "", color: d.color }));
+  for (let n = 1; n <= 9; n++) faces.push({ id: `dot${n}`, kind: "dot", n, color: n % 2 ? RED : GREEN });
+  for (let n = 1; n <= 9; n++) faces.push({ id: `bam${n}`, kind: "bam", n, color: GREEN });
   return faces;
 }
 
@@ -592,6 +615,10 @@ async function deleteRoom(db, roomId) {
   await db.prepare("DELETE FROM rooms WHERE id = ?").bind(roomId).run();
 }
 
+async function deleteUser(db, name) {
+  await db.prepare("DELETE FROM users WHERE name = ?").bind(name).run();
+}
+
 async function getOrCreateDaily(db) {
   const today = new Date().toISOString().slice(0, 10);
   const existing = await db.prepare("SELECT date, layout_id, seed FROM daily_boards WHERE date = ?").bind(today).first();
@@ -603,4 +630,4 @@ async function getOrCreateDaily(db) {
   return { date: today, layoutId, seed, tiles: generateBoard(layoutId, seed) };
 }
 
-export { loadData, registerUser, upsertRoom, getRoom, joinRoom, deleteRoom, buildRoom, validateCreateRoom, generateBoard, getOrCreateDaily };
+export { loadData, registerUser, upsertRoom, getRoom, joinRoom, deleteRoom, deleteUser, buildRoom, validateCreateRoom, generateBoard, getOrCreateDaily };

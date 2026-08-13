@@ -67,6 +67,7 @@ export function createWorkerApi({ baseUrl, appKey, timeoutMs = DEFAULT_TIMEOUT_M
     joinRoom: (roomId, user) => request("/join-room", { method: "POST", body: { roomId, user } }),
     listRooms: (scope, user) => request(`/list-rooms?scope=${encodeURIComponent(scope)}${user ? `&user=${encodeURIComponent(user)}` : ""}`),
     deleteRoom: (roomId) => request("/delete-room", { method: "POST", body: { roomId } }),
+    deleteUser: (user) => request("/delete-user", { method: "POST", body: { user } }),
     completeRoom: (payload) => request("/complete-room", { method: "POST", body: payload }),
     fetchDaily: () => request("/daily"),
     wsUrl(roomId, user) {

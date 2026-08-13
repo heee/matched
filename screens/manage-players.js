@@ -14,7 +14,7 @@ export function renderManagePlayers(root, ctx) {
   header.appendChild(el("div", { style: "width:34px" })); // balances the back button so the title stays centered
   root.appendChild(header);
 
-  root.appendChild(el("div", { style: "padding:0 20px 14px;font:13px/1.5 Figtree,sans-serif;color:rgba(246,241,228,.6)", text: "Profiles saved on this device. Deleting one removes it from the switch-player list — it doesn't touch anyone's game history." }));
+  root.appendChild(el("div", { style: "padding:0 20px 14px;font:13px/1.5 Figtree,sans-serif;color:rgba(246,241,228,.6)", text: "Deleting a profile removes it everywhere it's shared, not just this device. Room and ranking history stays intact." }));
 
   const list = el("div", { class: "row-list" });
   root.appendChild(list);
@@ -39,12 +39,13 @@ export function renderManagePlayers(root, ctx) {
       delBtn.addEventListener("click", async () => {
         const ok = await confirmDialog({
           title: `Delete ${name}?`,
-          message: `This removes ${name}'s profile from this device. This can't be undone.`,
+          message: `This removes ${name}'s profile everywhere it's shared. This can't be undone.`,
           confirmLabel: "Delete",
         });
         if (!ok) return;
         delete ctx.state.store.users[name];
         ctx.persist();
+        if (ctx.api.configured()) ctx.api.deleteUser(name).catch(() => {});
         rerender();
       });
       row.appendChild(delBtn);

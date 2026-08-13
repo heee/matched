@@ -2,7 +2,7 @@
 // live progress bars ordered by position; standings surface in a bottom
 // strip instead of a toast; no tray. See docs/design-reference.html #1h.
 
-import { el, avatarDot, renderTileFace, formatClock } from "./shared-ui.js";
+import { el, avatarDot, renderTileFace, formatClock, haptic } from "./shared-ui.js";
 import { freeTiles, findHintPair, clearPair, hasMovesRemaining } from "../game/mahjong.js";
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
 import { PLAYER_COLORS, BOT_ACT_CHANCE } from "../game/scoring.js";
@@ -32,8 +32,8 @@ export function renderRaceBoard(root, ctx, params = {}) {
   const racersCard = el("div", { style: "margin:12px 16px 0;padding:12px;border-radius:16px;background:rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:10px" });
   root.appendChild(racersCard);
 
-  const boardArea = el("div", { style: "flex:1;display:flex;align-items:center;justify-content:center;position:relative" });
-  const boardViewport = el("div", { style: "position:relative;width:100%;height:220px;display:flex;align-items:center;justify-content:center" });
+  const boardArea = el("div", { style: "flex:1;display:flex;align-items:center;justify-content:center;position:relative;min-height:0" });
+  const boardViewport = el("div", { style: "position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center" });
   const boardWrap = el("div", { style: "position:relative" });
   boardViewport.appendChild(boardWrap);
   boardArea.appendChild(boardViewport);
@@ -80,6 +80,15 @@ export function renderRaceBoard(root, ctx, params = {}) {
     return { width: (maxX + 1) * STEP_X + TILE_W + maxZ * LAYER_OFFSET, height: (maxY + 1) * STEP_Y + TILE_H + maxZ * LAYER_OFFSET, padTop: maxZ * LAYER_OFFSET };
   }
 
+  const BOARD_FILL = 0.85;
+  const BOARD_MAX_SCALE = 1.6;
+  function applyBoardScale() {
+    const box = tilePixelBox(room.racers[you].tiles);
+    if (box.width === 0 || box.height === 0) return;
+    const scale = Math.min((boardArea.clientWidth * BOARD_FILL) / box.width, (boardArea.clientHeight * BOARD_FILL) / box.height, BOARD_MAX_SCALE);
+    boardWrap.style.transform = `scale(${scale})`;
+  }
+
   // Full rebuild — only for actual tile changes (clear, initial load). See
   // board.js's renderBoardTiles for why selection alone must not hit this:
   // recreating every node replays each tile's popIn entrance at once
@@ -91,8 +100,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
     const box = tilePixelBox(tiles);
     boardWrap.style.width = `${box.width}px`;
     boardWrap.style.height = `${box.height}px`;
-    const scale = Math.min(1, (boardArea.clientWidth - 24) / box.width, 210 / box.height);
-    boardWrap.style.transform = `scale(${scale})`;
+    applyBoardScale();
     boardWrap.innerHTML = "";
     local.tileEls = new Map();
     for (const t of tiles) {
@@ -141,6 +149,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
     const firstId = local.selectedId;
     const result = clearPair(mine.tiles, firstId, id);
     if (result) {
+      haptic(ctx.state.settings.haptic);
       mine.tiles = result.tiles;
       room.pairsCleared[you] = (room.pairsCleared[you] || 0) + 1;
       local.selectedId = null;
@@ -181,7 +190,11 @@ export function renderRaceBoard(root, ctx, params = {}) {
   }, BOT_INTERVAL_MS);
 
   function stopBots() { clearInterval(botTimer); botTimer = null; }
-  window.__matchedCleanup = stopBots;
+  window.addEventListener("resize", applyBoardScale);
+  window.__matchedCleanup = () => {
+    stopBots();
+    window.removeEventListener("resize", applyBoardScale);
+  };
 
   renderRacers();
   renderMyBoard();

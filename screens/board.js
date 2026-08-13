@@ -2,7 +2,7 @@
 // tap-match-to-clear, tray attribution, hint/shuffle/undo, simulated
 // opponents, toasts, reactions. See docs/design-reference.html #1f.
 
-import { el, avatarDot, renderTileFace, trayFaceGlyph, formatClock } from "./shared-ui.js";
+import { el, avatarDot, renderTileFace, trayFaceGlyph, formatClock, haptic } from "./shared-ui.js";
 import {
   isFree, freeTiles, findHintPair, clearPair, restorePair, shuffleRemaining,
   hasMovesRemaining, boardCompletion,
@@ -13,6 +13,14 @@ import { PLAYER_COLORS, pointsForSession, highlightsFromLog, BOT_ACT_CHANCE } fr
 const BOT_INTERVAL_MS = 5200;
 const REACTIONS = ["🔥", "😮"];
 
+// Stroke-only control-row icons (Lucide paths) — replaces the old
+// text-labeled Shuffle/Undo buttons, plus a new Hint icon for the
+// briefly-shine-then-fade hint (previously a persistent gold ring
+// triggered from the header, now consolidated here).
+const ICON_SHUFFLE = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.8-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.4c1.3 0 2.5.6 3.3 1.7l.8 1.1"/><path d="M22 18h-1.4c-1.3 0-2.5-.6-3.3-1.7l-.8-1.1"/><path d="m18 14 4 4-4 4"/></svg>`;
+const ICON_UNDO = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>`;
+const ICON_HINT = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.8 1.9a2 2 0 0 1 1.288 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.288L21 12l-5.8-1.9a2 2 0 0 1-1.288-1.287Z"/></svg>`;
+
 export function renderBoard(root, ctx, params = {}) {
   const room = ctx.state.store.rooms[params.roomId];
   if (!room) { ctx.navigate("home"); return; }
@@ -22,7 +30,6 @@ export function renderBoard(root, ctx, params = {}) {
 
   const local = {
     selectedId: null,
-    hintPair: [],
     tileEls: new Map(),
     history: [], // { removed:[a,b], user }
     toast: null,
@@ -41,8 +48,6 @@ export function renderBoard(root, ctx, params = {}) {
   const subLine = el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.55)" });
   titleWrap.appendChild(subLine);
   header.appendChild(titleWrap);
-  const hintBtn = el("button", { class: "icon-btn amber", text: "✦" });
-  header.appendChild(hintBtn);
   root.appendChild(header);
 
   // ---- player score cards ----
@@ -50,8 +55,8 @@ export function renderBoard(root, ctx, params = {}) {
   root.appendChild(scoreRow);
 
   // ---- board area ----
-  const boardArea = el("div", { style: "flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden" });
-  const boardViewport = el("div", { style: "position:relative;width:100%;height:230px;display:flex;align-items:center;justify-content:center" });
+  const boardArea = el("div", { style: "flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;min-height:0" });
+  const boardViewport = el("div", { style: "position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center" });
   const boardWrap = el("div", { style: "position:relative" });
   boardViewport.appendChild(boardWrap);
   boardArea.appendChild(boardViewport);
@@ -75,10 +80,12 @@ export function renderBoard(root, ctx, params = {}) {
 
   // ---- controls row ----
   const controls = el("div", { class: "controls-row" });
-  const shuffleBtn = el("button", { class: "btn btn-ghost", style: "height:42px;padding:0 16px", text: "Shuffle" });
-  const undoBtn = el("button", { class: "btn btn-ghost", style: "height:42px;padding:0 16px", text: "Undo" });
+  const shuffleBtn = el("button", { class: "icon-btn", style: "width:42px;height:42px", html: ICON_SHUFFLE, "aria-label": "Shuffle" });
+  const undoBtn = el("button", { class: "icon-btn", style: "width:42px;height:42px", html: ICON_UNDO, "aria-label": "Undo" });
+  const hintBtn = el("button", { class: "icon-btn amber", style: "width:42px;height:42px", html: ICON_HINT, "aria-label": "Hint" });
   controls.appendChild(shuffleBtn);
   controls.appendChild(undoBtn);
+  controls.appendChild(hintBtn);
   controls.appendChild(el("div", { style: "flex:1" }));
   REACTIONS.forEach((emoji) => {
     const btn = el("button", { class: "reaction-btn", text: emoji });
@@ -126,16 +133,30 @@ export function renderBoard(root, ctx, params = {}) {
   // popIn entrance animation simultaneously (looks like the board
   // "vibrating") and also means the .selected lift/glow can't transition,
   // since the new element starts already in its target state.
+  // Scales boardWrap to fill ~85% of boardArea's actual box (both axes,
+  // whichever is tighter) rather than a fixed pixel budget — re-run on
+  // resize so the board keeps tracking the viewport instead of being
+  // frozen at whatever size it first rendered at. Uncapped below 1 (small
+  // boards get scaled up too) but capped above so tiles never blow up past
+  // legible size on a huge window.
+  const BOARD_FILL = 0.85;
+  const BOARD_MAX_SCALE = 1.6;
+  function applyBoardScale() {
+    const box = tilePixelBox(room.state.tiles);
+    if (box.width === 0 || box.height === 0) return;
+    const availW = boardArea.clientWidth * BOARD_FILL;
+    const availH = boardArea.clientHeight * BOARD_FILL;
+    const scale = Math.min(availW / box.width, availH / box.height, BOARD_MAX_SCALE);
+    boardWrap.style.transform = `scale(${scale})`;
+  }
+
   function renderBoardTiles() {
     const tiles = room.state.tiles;
     const free = new Set(freeTiles(tiles).map((t) => t.id));
     const box = tilePixelBox(tiles);
     boardWrap.style.width = `${box.width}px`;
     boardWrap.style.height = `${box.height}px`;
-    const availW = boardArea.clientWidth - 24;
-    const availH = 220;
-    const scale = Math.min(1, availW / box.width, availH / box.height);
-    boardWrap.style.transform = `scale(${scale})`;
+    applyBoardScale();
     boardWrap.innerHTML = "";
     local.tileEls = new Map();
 
@@ -165,7 +186,6 @@ export function renderBoard(root, ctx, params = {}) {
   function updateTileSelection() {
     for (const [id, tileEl] of local.tileEls) {
       tileEl.classList.toggle("selected", local.selectedId === id);
-      tileEl.classList.toggle("hinted", local.hintPair.includes(id));
     }
   }
 
@@ -247,7 +267,6 @@ export function renderBoard(root, ctx, params = {}) {
     room.state.matchLog = [...(room.state.matchLog || []), { seat: playerList().indexOf(user), user, at: Date.now() }];
     local.history.push({ removed: result.removed, user });
     local.selectedId = null;
-    local.hintPair = [];
 
     if (user !== you) {
       const streak = room.streaks[user];
@@ -333,13 +352,13 @@ export function renderBoard(root, ctx, params = {}) {
     if (local.selectedId === id) { local.selectedId = null; updateTileSelection(); return; }
     if (!local.selectedId) {
       local.selectedId = id;
-      local.hintPair = [];
       updateTileSelection();
       return;
     }
     const firstId = local.selectedId;
     const result = clearPair(room.state.tiles, firstId, id);
     if (result) {
+      haptic(ctx.state.settings.haptic);
       flyToTray(firstId, id);
       performClear(firstId, id, you);
     } else {
@@ -347,19 +366,28 @@ export function renderBoard(root, ctx, params = {}) {
     }
   }
 
+  // Briefly shines a bright outline on a random available pair, then fades
+  // — transient, unlike the old persistent hint ring, so it never fights
+  // with tap-to-select state.
   function useHint() {
     if (!room.hintsAllowed) { ctx.toast("Hints are off for this room."); return; }
     room.assistsUsed[you] = (room.assistsUsed[you] || 0) + 1;
     const pair = findHintPair(room.state.tiles);
-    if (pair) { local.hintPair = pair; local.selectedId = null; updateTileSelection(); }
-    else ctx.toast("No matching pair is currently free.");
+    if (!pair) { ctx.toast("No matching pair is currently free."); return; }
+    for (const id of pair) {
+      const tileEl = local.tileEls.get(id);
+      if (!tileEl) continue;
+      tileEl.classList.remove("shine");
+      void tileEl.offsetWidth; // restart the animation if a previous shine is still fading
+      tileEl.classList.add("shine");
+      tileEl.addEventListener("animationend", () => tileEl.classList.remove("shine"), { once: true });
+    }
   }
 
   function useShuffle() {
     room.assistsUsed[you] = (room.assistsUsed[you] || 0) + 1;
     room.state.tiles = shuffleRemaining(room.state.tiles);
     local.selectedId = null;
-    local.hintPair = [];
     ctx.persist();
     fullRender();
   }
@@ -409,10 +437,12 @@ export function renderBoard(root, ctx, params = {}) {
   }
 
   clockTimer = setInterval(renderSub, 1000);
+  window.addEventListener("resize", applyBoardScale);
 
   window.__matchedCleanup = () => {
     stopBots();
     clearInterval(clockTimer);
+    window.removeEventListener("resize", applyBoardScale);
   };
 
   fullRender();

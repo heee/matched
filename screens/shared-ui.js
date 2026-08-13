@@ -36,6 +36,13 @@ export function avatarDot(name, seatIndex, size = 34) {
   });
 }
 
+// Vibration API has no effect on iOS Safari/PWA (Apple has never
+// implemented it) — this silently no-ops there, but still fires correctly
+// on Android. `enabled` should be the user's Haptics setting.
+export function haptic(enabled, pattern = 12) {
+  if (enabled && typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(pattern);
+}
+
 export function formatClock(totalSeconds) {
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;

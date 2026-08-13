@@ -3,12 +3,12 @@
 // hit the network. Screen/game modules not needed at startup are loaded
 // on-demand via import() from app.js and land in the runtime cache after
 // their first request, rather than being dumped into this precache list.
-const CACHE_NAME = "matched-shell-v11";
+const CACHE_NAME = "matched-shell-v12";
 const SHELL_FILES = [
   "./",
   "./index.html",
-  "./style.css?v=11",
-  "./app.js?v=11",
+  "./style.css?v=12",
+  "./app.js?v=12",
   "./config.js",
   "./api.js",
   "./storage.js",

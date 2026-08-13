@@ -204,14 +204,18 @@ a { color: var(--gold); }
 .tile.blocked { opacity: .74; filter: saturate(.55) brightness(.9); cursor: default; }
 .tile.free.glow { box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.26), 0 0 0 2px rgba(217,164,65,.28); }
 /* .free.glow (3 classes) outranks the plain 2-class rules below by CSS
-   specificity, so .selected/.hinted need the 3-class form too or a
-   selected-but-glowing tile silently loses its highlight to the glow ring. */
+   specificity, so .selected needs the 3-class form too or a
+   selected-but-glowing tile silently loses its highlight to the glow ring.
+   The inset shadow is a fill tint (not just the outer ring) so the pick
+   reads clearly at a glance, not just as a thin outline. */
 .tile.selected, .tile.free.glow.selected {
   transform: translateY(-3px);
-  box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.3), 0 0 0 3px var(--gold);
+  box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.3), 0 0 0 3px var(--gold), inset 0 0 0 999px rgba(217,164,65,.2);
 }
-.tile.hinted, .tile.free.glow.hinted {
-  box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.3), 0 0 0 3px rgba(217,164,65,.6);
+.tile.shine { animation: tileShine 1.3s ease; }
+@keyframes tileShine {
+  0%, 100% { box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.26), 0 0 0 0 rgba(217,164,65,0), inset 0 0 0 999px rgba(217,164,65,0); }
+  20% { box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.3), 0 0 0 4px rgba(217,164,65,.95), inset 0 0 0 999px rgba(217,164,65,.28); }
 }
 .tile.shake { animation: tileShake .5s cubic-bezier(.36,.07,.19,.97); }
 @keyframes tileShake {
