@@ -200,8 +200,18 @@ a { color: var(--gold); }
   cursor: pointer;
   animation: popIn .22s ease;
 }
-.tile.upper { background: linear-gradient(160deg, #fffdf6, var(--bone-b)); }
-.tile.blocked { opacity: .74; filter: saturate(.55) brightness(.9); cursor: default; }
+.tile.upper {
+  background: linear-gradient(160deg, #fffdf6, var(--bone-b));
+  /* A bigger, softer shadow than the base layer's so stacked tiles read as
+     physically lifted above whatever they're sitting on. */
+  box-shadow: 4px 6px 0 var(--bone-edge), 0 10px 16px rgba(0,0,0,.4);
+}
+/* Full opacity at every layer — dimming a tile to convey "blocked" read as
+   the whole board looking washed-out/translucent. A mild filter (no
+   opacity change) still marks it non-tappable; the real depth cue is the
+   per-layer shadow set inline per tile (see board.js), which grows with z
+   so higher layers visibly lift off the ones under them. */
+.tile.blocked { filter: saturate(.72) brightness(.93); cursor: default; }
 .tile.free.glow { box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.26), 0 0 0 2px rgba(217,164,65,.28); }
 /* .free.glow (3 classes) outranks the plain 2-class rules below by CSS
    specificity, so .selected needs the 3-class form too or a
@@ -228,6 +238,30 @@ a { color: var(--gold); }
   pointer-events: none; cursor: default; animation: none;
   transition: transform .46s cubic-bezier(.3,.6,.35,1), opacity .46s ease;
 }
+.combo-badge {
+  position: fixed; transform: translate(-50%, -50%); z-index: 600; pointer-events: none;
+  padding: 6px 14px; border-radius: 999px; white-space: nowrap;
+  background: linear-gradient(150deg, rgba(217,164,65,.95), rgba(224,138,106,.95));
+  color: #2a1c08; font: 800 14px Figtree, sans-serif; letter-spacing: .01em;
+  box-shadow: 0 6px 18px rgba(0,0,0,.4);
+  animation: comboPop 1s cubic-bezier(.2,.8,.3,1) both;
+}
+@keyframes comboPop {
+  0% { transform: translate(-50%, -50%) scale(.4); opacity: 0; }
+  25% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+  40% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -60%) scale(1); opacity: 0; }
+}
+.combo-spark {
+  position: fixed; z-index: 590; pointer-events: none;
+  width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%;
+  background: #f4d896; box-shadow: 0 0 6px 1px rgba(244,216,150,.8);
+  animation: comboSpark .7s ease-out both;
+}
+@keyframes comboSpark {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(.2); opacity: 0; }
+}
 .tile-face { position: absolute; inset: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; pointer-events: none; }
 .tile-char { font-family: var(--font-tile); font-weight: 700; line-height: 1; }
 .tile-pip { position: absolute; border-radius: 50%; }
@@ -249,14 +283,26 @@ a { color: var(--gold); }
   background: rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.1);
   display: flex; flex-direction: column; gap: 9px;
 }
-.tray-strip { display: flex; gap: 6px; align-items: center; height: 34px; overflow-x: auto; }
+/* The old exact-fit height left the tiles' ring/drop-shadow with zero
+   room and it got clipped flush against the container edge — the taller
+   box plus vertical padding here is what actually fixes that (overflow-y
+   can't be set to "visible" independently of overflow-x:auto; it always
+   computes to auto too). */
+.tray-strip { display: flex; gap: 7px; align-items: center; height: 40px; padding: 3px 2px; overflow-x: auto; scrollbar-width: none; }
+.tray-strip::-webkit-scrollbar { display: none; }
 .tray-tile {
-  flex: none; width: 26px; height: 34px; border-radius: 5px;
+  flex: none; width: 26px; height: 34px; border-radius: 8px;
   background: linear-gradient(160deg, #f9f4e6, #e7dec8);
   display: flex; align-items: center; justify-content: center;
   font: 700 13px var(--font-tile); color: var(--ink);
   animation: popIn .3s ease both;
 }
+.tray-row { display: flex; align-items: center; gap: 4px; }
+.tray-nav {
+  flex: none; width: 22px; height: 34px; display: flex; align-items: center; justify-content: center;
+  background: none; border: none; color: rgba(246,241,228,.5); font: 300 18px Figtree, sans-serif; cursor: pointer;
+}
+.tray-nav:disabled { visibility: hidden; }
 
 .toast {
   position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);

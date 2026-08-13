@@ -8,10 +8,12 @@ import {
   hasMovesRemaining, boardCompletion,
 } from "../game/mahjong.js";
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
-import { PLAYER_COLORS, pointsForSession, highlightsFromLog, BOT_ACT_CHANCE } from "../game/scoring.js";
+import { PLAYER_COLORS, pointsForSession, highlightsFromLog, BOT_ACT_CHANCE, COMBO_WINDOW_MS, COMBO_BONUS_POINTS } from "../game/scoring.js";
 
 const BOT_INTERVAL_MS = 5200;
-const REACTIONS = ["🔥", "😮"];
+const REACTIONS = ["🔥", "😮", "👏", "😂", "😍", "🎉", "💪", "😱", "👍"];
+const REACTIONS_PER_PAGE = 3;
+const REACTION_BTN_W = 40;
 
 // Stroke-only control-row icons (Lucide paths) — replaces the old
 // text-labeled Shuffle/Undo buttons, plus a new Hint icon for the
@@ -36,6 +38,8 @@ export function renderBoard(root, ctx, params = {}) {
     reaction: null,
     botsActive: false,
     stuckWarned: false,
+    lastClearAt: 0, // your last successful clear, for combo timing
+    comboCount: 0,
   };
 
   root.classList.add("bg-felt");
@@ -74,9 +78,23 @@ export function renderBoard(root, ctx, params = {}) {
   const trayCount = el("span", { style: "font:11px Figtree,sans-serif;color:rgba(246,241,228,.45)" });
   trayHead.appendChild(trayCount);
   tray.appendChild(trayHead);
+  const trayRow = el("div", { class: "tray-row" });
+  const trayPrev = el("button", { class: "tray-nav", text: "‹", "aria-label": "Scroll cleared tiles left" });
+  const trayNext = el("button", { class: "tray-nav", text: "›", "aria-label": "Scroll cleared tiles right" });
   const trayStrip = el("div", { class: "tray-strip" });
-  tray.appendChild(trayStrip);
+  trayRow.appendChild(trayPrev);
+  trayRow.appendChild(trayStrip);
+  trayRow.appendChild(trayNext);
+  tray.appendChild(trayRow);
   root.appendChild(tray);
+  const TRAY_SCROLL_STEP = 33 * 3; // roughly 3 tiles (26px + 7px gap)
+  function updateTrayNav() {
+    trayPrev.disabled = trayStrip.scrollLeft <= 0;
+    trayNext.disabled = trayStrip.scrollLeft + trayStrip.clientWidth >= trayStrip.scrollWidth - 1;
+  }
+  trayPrev.addEventListener("click", () => trayStrip.scrollBy({ left: -TRAY_SCROLL_STEP, behavior: "smooth" }));
+  trayNext.addEventListener("click", () => trayStrip.scrollBy({ left: TRAY_SCROLL_STEP, behavior: "smooth" }));
+  trayStrip.addEventListener("scroll", updateTrayNav);
 
   // ---- controls row ----
   const controls = el("div", { class: "controls-row" });
@@ -87,14 +105,51 @@ export function renderBoard(root, ctx, params = {}) {
   controls.appendChild(undoBtn);
   controls.appendChild(hintBtn);
   controls.appendChild(el("div", { style: "flex:1" }));
-  REACTIONS.forEach((emoji) => {
-    const btn = el("button", { class: "reaction-btn", text: emoji });
-    btn.addEventListener("click", () => {
-      sendReaction(emoji);
-      floatReaction(emoji);
+
+  // Reactions don't make sense with nobody else on the board to see them.
+  if (room.mode !== "solo") {
+    const pageWidth = REACTIONS_PER_PAGE * REACTION_BTN_W;
+    const pageCount = Math.ceil(REACTIONS.length / REACTIONS_PER_PAGE);
+    let reactionPage = 0;
+    const reactionViewport = el("div", { style: `width:${pageWidth}px;height:36px;overflow:hidden;position:relative;touch-action:pan-y` });
+    const reactionStrip = el("div", { style: "display:flex;position:absolute;left:0;top:0" });
+    let dragging = false, dragStartX = null, dragDX = 0;
+
+    function positionStrip(animate) {
+      reactionStrip.style.transition = animate ? "transform .22s ease" : "none";
+      reactionStrip.style.transform = `translateX(${-reactionPage * pageWidth + dragDX}px)`;
+    }
+    REACTIONS.forEach((emoji) => {
+      const btn = el("button", { class: "reaction-btn", style: `width:${REACTION_BTN_W}px;flex:none`, text: emoji });
+      btn.addEventListener("click", () => {
+        if (dragging) return; // suppress the tap-through after a real swipe
+        sendReaction(emoji);
+        floatReaction(emoji);
+      });
+      reactionStrip.appendChild(btn);
     });
-    controls.appendChild(btn);
-  });
+    reactionViewport.appendChild(reactionStrip);
+    reactionViewport.addEventListener("pointerdown", (e) => {
+      dragStartX = e.clientX; dragDX = 0; dragging = false;
+      reactionViewport.setPointerCapture(e.pointerId);
+    });
+    reactionViewport.addEventListener("pointermove", (e) => {
+      if (dragStartX == null) return;
+      dragDX = e.clientX - dragStartX;
+      if (Math.abs(dragDX) > 8) dragging = true;
+      if (dragging) positionStrip(false);
+    });
+    reactionViewport.addEventListener("pointerup", () => {
+      if (dragging && Math.abs(dragDX) > 28) {
+        reactionPage = Math.max(0, Math.min(pageCount - 1, reactionPage + (dragDX < 0 ? 1 : -1)));
+      }
+      dragDX = 0;
+      dragStartX = null;
+      positionStrip(true);
+      setTimeout(() => { dragging = false; }, 0); // let this tick's click handler see it was a drag
+    });
+    controls.appendChild(reactionViewport);
+  }
   root.appendChild(controls);
 
   // ===================== rendering =====================
@@ -207,6 +262,7 @@ export function renderBoard(root, ctx, params = {}) {
     const myPairs = room.pairsCleared[you] || 0;
     const pct = boardCompletion(room.tileCount, room.state.tiles.length);
     trayCount.textContent = `You ${myPairs} ${myPairs === 1 ? "pair" : "pairs"} · board ${pct}%`;
+    updateTrayNav();
   }
 
   function renderSub() {
@@ -287,7 +343,8 @@ export function renderBoard(root, ctx, params = {}) {
     const elapsedMs = Date.now() - room.startedAt;
     const myPairs = room.pairsCleared[you] || 0;
     const assistsUsed = room.assistsUsed[you] || 0;
-    const earned = pointsForSession({ pairsCleared: myPairs, assistsUsed, elapsedMs, tileCount: room.tileCount });
+    const comboBonus = (room.comboBonus && room.comboBonus[you]) || 0;
+    const earned = pointsForSession({ pairsCleared: myPairs, assistsUsed, elapsedMs, tileCount: room.tileCount }) + comboBonus;
     ctx.state.points += earned;
     ctx.state.activeRoomId = null;
     const highlights = highlightsFromLog(room.state.matchLog || [], Object.fromEntries(playerList().map((p, i) => [i, { name: p }])));
@@ -330,6 +387,29 @@ export function renderBoard(root, ctx, params = {}) {
     setTimeout(() => { for (const { clone } of clones) clone.remove(); }, 480);
   }
 
+  // A quick pop-and-fade badge plus a small burst of sparks off the
+  // matched pair — purely decorative, fired alongside (not blocking) the
+  // real clear. midX/midY are viewport coordinates, board-relative.
+  function celebrateCombo(comboCount, bonus, midX, midY) {
+    const badge = el("div", { class: "combo-badge", text: `Combo x${comboCount} +${bonus}` });
+    Object.assign(badge.style, { left: `${midX}px`, top: `${midY}px` });
+    document.body.appendChild(badge);
+    setTimeout(() => badge.remove(), 1000);
+
+    const sparkCount = 8;
+    for (let i = 0; i < sparkCount; i++) {
+      const angle = (i / sparkCount) * Math.PI * 2 + Math.random() * 0.4;
+      const dist = 34 + Math.random() * 22;
+      const spark = el("div", { class: "combo-spark" });
+      Object.assign(spark.style, {
+        left: `${midX}px`, top: `${midY}px`,
+        "--dx": `${Math.cos(angle) * dist}px`, "--dy": `${Math.sin(angle) * dist}px`,
+      });
+      document.body.appendChild(spark);
+      setTimeout(() => spark.remove(), 700);
+    }
+  }
+
   // Heavy wiggle on both tiles, then a clean slate — no tile stays selected
   // after a miss, per the "start clean" request.
   function shakeMismatch(idA, idB) {
@@ -359,6 +439,26 @@ export function renderBoard(root, ctx, params = {}) {
     const result = clearPair(room.state.tiles, firstId, id);
     if (result) {
       haptic(ctx.state.settings.haptic);
+
+      // Combo: your own clears landing within COMBO_WINDOW_MS of each
+      // other. The first clear in a chain never qualifies (nothing before
+      // it to be "quick" relative to) — comboCount tracks the run length.
+      const now = Date.now();
+      const isCombo = local.lastClearAt && now - local.lastClearAt <= COMBO_WINDOW_MS;
+      local.comboCount = isCombo ? local.comboCount + 1 : 1;
+      local.lastClearAt = now;
+      if (isCombo) {
+        room.comboBonus = room.comboBonus || {};
+        room.comboBonus[you] = (room.comboBonus[you] || 0) + COMBO_BONUS_POINTS;
+        const elA = local.tileEls.get(firstId);
+        const elB = local.tileEls.get(id);
+        if (elA && elB) {
+          const rA = elA.getBoundingClientRect();
+          const rB = elB.getBoundingClientRect();
+          celebrateCombo(local.comboCount, COMBO_BONUS_POINTS, (rA.left + rA.right + rB.left + rB.right) / 4, (rA.top + rA.bottom + rB.top + rB.bottom) / 4);
+        }
+      }
+
       flyToTray(firstId, id);
       performClear(firstId, id, you);
     } else {

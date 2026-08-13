@@ -57,15 +57,15 @@ function formatMetric(value, metric) {
 export function renderRanking(root, ctx) {
   let period = "Week";
   let metric = "pairs";
-  const players = ["You_placeholder"]; // replaced below
 
-  root.appendChild(el("div", { class: "title-serif", style: "padding:6px 20px 12px", text: "Ranking" }));
+  const header = el("div", { style: "padding:6px 16px 14px;display:flex;align-items:baseline;justify-content:space-between" });
+  header.appendChild(el("div", { class: "title-serif", style: "padding-left:4px", text: "Ranking" }));
+  const periodDropdown = el("div", { style: "position:relative" });
+  header.appendChild(periodDropdown);
+  root.appendChild(header);
 
-  const periodRow = el("div", { style: "padding:0 16px 14px;display:flex;gap:7px" });
-  root.appendChild(periodRow);
-
-  const metricCard = el("div", { style: "margin:0 16px 14px;padding:13px 15px;border-radius:14px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between" });
-  root.appendChild(metricCard);
+  const metricRow = el("div", { style: "padding:0 16px 14px;display:flex;gap:7px" });
+  root.appendChild(metricRow);
 
   const list = el("div", { class: "row-list" });
   root.appendChild(list);
@@ -97,33 +97,53 @@ export function renderRanking(root, ctx) {
     });
   }
 
-  function renderMetricCard() {
-    metricCard.innerHTML = "";
-    const label = el("div");
-    label.appendChild(el("div", { style: "font:700 10px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:rgba(246,241,228,.45)", text: "Ranking by" }));
-    label.appendChild(el("div", { style: "font:600 15px Figtree,sans-serif;color:#f6f1e4;margin-top:2px", text: METRICS.find((m) => m.id === metric).label }));
-    metricCard.appendChild(label);
-    const changeBtn = el("button", { style: "padding:7px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:none;font:600 12.5px Figtree,sans-serif;color:#e8c887;cursor:pointer", text: "Change" });
-    changeBtn.addEventListener("click", () => {
-      const idx = METRICS.findIndex((m) => m.id === metric);
-      metric = METRICS[(idx + 1) % METRICS.length].id;
-      renderMetricCard();
-      renderList();
+  function renderMetricRow() {
+    metricRow.innerHTML = "";
+    METRICS.forEach((m) => {
+      const chip = el("button", { class: `pill${m.id === metric ? " active" : ""}`, text: m.label });
+      chip.addEventListener("click", () => {
+        metric = m.id;
+        renderMetricRow();
+        renderList();
+      });
+      metricRow.appendChild(chip);
     });
-    metricCard.appendChild(changeBtn);
   }
 
-  PERIODS.forEach((p) => {
-    const chip = el("button", { class: `pill${p === period ? " active" : ""}`, text: p });
-    chip.addEventListener("click", () => {
-      period = p;
-      [...periodRow.children].forEach((c) => c.classList.toggle("active", c.textContent === p));
-      renderList();
-    });
-    periodRow.appendChild(chip);
-  });
+  // A small custom dropdown (not a native <select>, per the request to
+  // avoid the OS-default look) — click the trigger to open a popover menu,
+  // click a period or anywhere outside to close it.
+  let periodOpen = false;
+  function renderPeriodDropdown() {
+    periodDropdown.innerHTML = "";
+    const trigger = el("button", { style: "display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);font:600 12.5px Figtree,sans-serif;color:#f6f1e4;cursor:pointer" });
+    trigger.appendChild(el("span", { text: period }));
+    trigger.appendChild(el("span", { style: `font-size:10px;color:rgba(246,241,228,.5);display:inline-block;transition:transform .15s;transform:rotate(${periodOpen ? 180 : 0}deg)`, text: "▾" }));
+    trigger.addEventListener("click", (e) => { e.stopPropagation(); periodOpen = !periodOpen; renderPeriodDropdown(); });
+    periodDropdown.appendChild(trigger);
+    if (periodOpen) {
+      const menu = el("div", { style: "position:absolute;top:calc(100% + 6px);right:0;min-width:132px;padding:6px;border-radius:12px;background:#183226;border:1px solid rgba(255,255,255,.12);box-shadow:0 10px 24px rgba(0,0,0,.4);z-index:40;display:flex;flex-direction:column;gap:2px" });
+      PERIODS.forEach((p) => {
+        const isActive = p === period;
+        const item = el("button", { style: `text-align:left;padding:8px 10px;border-radius:8px;border:none;cursor:pointer;background:${isActive ? "rgba(217,164,65,.18)" : "none"};color:${isActive ? "#e8c887" : "#f6f1e4"};font:${isActive ? 700 : 600} 13px Figtree,sans-serif`, text: p });
+        item.addEventListener("click", (e) => {
+          e.stopPropagation();
+          period = p;
+          periodOpen = false;
+          renderPeriodDropdown();
+          renderList();
+        });
+        menu.appendChild(item);
+      });
+      periodDropdown.appendChild(menu);
+    }
+  }
+  const closeDropdownOnOutsideClick = () => { if (periodOpen) { periodOpen = false; renderPeriodDropdown(); } };
+  document.addEventListener("click", closeDropdownOnOutsideClick);
+  window.__matchedCleanup = () => document.removeEventListener("click", closeDropdownOnOutsideClick);
 
-  renderMetricCard();
+  renderPeriodDropdown();
+  renderMetricRow();
   renderList();
   root.appendChild(el("div", { style: "flex:1" }));
 }

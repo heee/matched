@@ -65,6 +65,13 @@ export function pointsForSession({ pairsCleared, assistsUsed = 0, elapsedMs = 0,
   return Math.round(withAssists);
 }
 
+// A "combo" is two of your own clears landing within this window of each
+// other — flat bonus per qualifying hit (not the first clear in a chain,
+// since there's nothing before it to be quick relative to), added on top
+// of pointsForSession's result rather than folded into that formula.
+export const COMBO_WINDOW_MS = 4000;
+export const COMBO_BONUS_POINTS = 8;
+
 export function boardCompletionShare(playerPairs, totalPairsCleared) {
   if (totalPairsCleared <= 0) return 0;
   return Math.round((playerPairs / totalPairsCleared) * 100);
