@@ -12,6 +12,18 @@ export const RED = "#b5322c";
 export const GREEN = "#1f7a4d";
 export const BLUE = "#2b5f9e";
 
+// Lightens (positive percent) or darkens (negative) a hex color — used to
+// build the gloss/shade stops for pips and bamboo sticks from the same
+// base color instead of hand-picking a highlight/shadow hex per color.
+export function shade(hex, percent) {
+  const num = parseInt(hex.slice(1), 16);
+  const amt = Math.round(2.55 * percent);
+  const r = Math.min(255, Math.max(0, (num >> 16) + amt));
+  const g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + amt));
+  const b = Math.min(255, Math.max(0, (num & 0xff) + amt));
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+}
+
 // Flowers/seasons are explicitly out of scope for matching (spec: "skip
 // them in the generator for now") — they exist here only as an ART SLOT
 // placeholder id so a future layout could reference one without matching.

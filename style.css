@@ -202,18 +202,35 @@ a { color: var(--gold); }
 /* ---------------- tiles ---------------- */
 .tile {
   position: absolute; box-sizing: border-box;
-  border-radius: 6px;
+  border-radius: 7px;
   background: linear-gradient(160deg, var(--bone-a), var(--bone-b));
-  box-shadow: 3px 4px 0 var(--bone-edge), 0 6px 12px rgba(0,0,0,.26);
+  box-shadow: 3px 4px 0 var(--bone-edge), 0 2px 3px rgba(0,0,0,.16), 0 6px 12px rgba(0,0,0,.26);
   transition: transform .12s ease, box-shadow .12s ease;
   cursor: pointer;
   animation: popIn .22s ease;
+}
+/* A soft diagonal sheen plus a faint warm undertint at the opposite corner
+   — reads as a lacquered, slightly domed face catching light, instead of a
+   flat color swatch. A pseudo-element (not another box-shadow layer) so it
+   doesn't have to be repeated across every state rule below that already
+   overrides box-shadow (.selected, .glow, .shine, ...). */
+.tile::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background:
+    linear-gradient(155deg, rgba(255,255,255,.6) 0%, rgba(255,255,255,0) 34%),
+    linear-gradient(345deg, rgba(120,104,66,.22) 0%, rgba(120,104,66,0) 30%);
+  pointer-events: none;
 }
 .tile.upper {
   background: linear-gradient(160deg, #fffdf6, var(--bone-b));
   /* A bigger, softer shadow than the base layer's so stacked tiles read as
      physically lifted above whatever they're sitting on. */
-  box-shadow: 4px 6px 0 var(--bone-edge), 0 10px 16px rgba(0,0,0,.4);
+  box-shadow: 4px 6px 0 var(--bone-edge), 0 3px 4px rgba(0,0,0,.2), 0 10px 16px rgba(0,0,0,.4);
+}
+.tile.upper::before {
+  background:
+    linear-gradient(155deg, rgba(255,255,255,.75) 0%, rgba(255,255,255,0) 36%),
+    linear-gradient(345deg, rgba(120,104,66,.18) 0%, rgba(120,104,66,0) 28%);
 }
 /* Full opacity at every layer — dimming a tile to convey "blocked" read as
    the whole board looking washed-out/translucent. A mild filter (no
@@ -294,10 +311,12 @@ a { color: var(--gold); }
   0% { transform: translate(0, 0) scale(1); opacity: 1; }
   100% { transform: translate(var(--dx), var(--dy)) scale(.2); opacity: 0; }
 }
-.tile-face { position: absolute; inset: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; pointer-events: none; }
-.tile-char { font-family: var(--font-tile); font-weight: 700; line-height: 1; }
+.tile-face { position: absolute; inset: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; pointer-events: none; z-index: 1; }
+/* Faint light-below/dark-above shadow reads as engraved-and-inked rather
+   than a flat-printed glyph. */
+.tile-char { font-family: var(--font-tile); font-weight: 700; line-height: 1; text-shadow: 0 1.5px 0 rgba(255,255,255,.55), 0 -1px 1px rgba(0,0,0,.15); }
 .tile-pip { position: absolute; border-radius: 50%; }
-.tile-stick { position: absolute; border-radius: 2px; }
+.tile-stick { position: absolute; border-radius: 2.5px; box-shadow: 0 1px 1.5px rgba(0,0,0,.3); }
 .tile-slot { width: 74%; height: 70%; border: 1px dashed rgba(23,61,47,.4); border-radius: 3px; display: flex; align-items: center; justify-content: center; font: 700 6px ui-monospace, monospace; color: rgba(23,61,47,.55); letter-spacing: .06em; text-align: center; }
 
 @keyframes popIn { from { opacity: 0; transform: translateY(6px) scale(.96); } to { opacity: 1; transform: none; } }

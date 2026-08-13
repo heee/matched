@@ -2,7 +2,7 @@
 // app.js per the "app.js is orchestration only" convention.
 
 import { colorForSeat } from "../game/scoring.js";
-import { dotPips, bamSticks } from "../game/tiles.js";
+import { dotPips, bamSticks, shade, RED } from "../game/tiles.js";
 
 export function el(tag, attrs = {}, children = []) {
   const node = document.createElement(tag);
@@ -100,18 +100,25 @@ export function renderTileFace(container, face) {
   } else if (face.kind === "dot") {
     const wrap = el("div", { style: "position:relative;width:100%;height:100%" });
     dotPips(face.n).forEach(([left, top], i) => {
+      const c = i % 2 ? RED : face.color;
+      const rim = shade(c, -30);
       wrap.appendChild(el("div", {
         class: "tile-pip",
-        style: `left:${left}%;top:${top}%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border:2.5px solid ${i % 2 ? "#b5322c" : face.color}`,
+        style: `left:${left}%;top:${top}%;width:12px;height:12px;margin:-6px 0 0 -6px;` +
+          `background:radial-gradient(circle at 33% 28%, #fff 0%, ${c} 46%, ${rim} 100%);` +
+          `box-shadow:0 1px 2px rgba(0,0,0,.35), inset 0 -1.5px 2px rgba(0,0,0,.2);`,
       }));
     });
     container.appendChild(wrap);
   } else if (face.kind === "bam") {
     const wrap = el("div", { style: "position:relative;width:100%;height:100%" });
+    const dark = shade(face.color, -32);
+    const light = shade(face.color, 38);
     bamSticks(face.n).forEach(({ left, top }) => {
       wrap.appendChild(el("div", {
         class: "tile-stick",
-        style: `left:${left}%;top:${top}%;width:4px;height:15px;margin:-7px 0 0 -2px;background:${face.color}`,
+        style: `left:${left}%;top:${top}%;width:5px;height:16px;margin:-8px 0 0 -2.5px;` +
+          `background:linear-gradient(90deg, ${dark} 0%, ${light} 32%, ${face.color} 55%, ${dark} 100%);`,
       }));
     });
     container.appendChild(wrap);
