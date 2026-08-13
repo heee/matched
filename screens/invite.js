@@ -1,15 +1,31 @@
-// Matched — Invite sheet. Copyable link, recent people as one-tap invite
-// chips, "Share invite" hands off to the OS share sheet. See
+// Matched — Invite sheet. Copyable link, a seat grid showing bots already
+// picked in room-setup plus open seats you can invite a registered user
+// into, "Share invite" hands off to the OS share sheet. See
 // docs/design-reference.html #1n.
 
 import { el, avatarDot, roomInviteUrl } from "./shared-ui.js";
 
-const RECENT_PEOPLE = ["Dana", "Mika", "Jules", "Robin"];
+const TOTAL_SEATS = 4; // you + up to 3 others, matching room-setup's bot-seat count
+
+function sendInvite(ctx, room, toUser) {
+  ctx.state.store.invites = ctx.state.store.invites || [];
+  ctx.state.store.invites.push({
+    id: `${room.id}-${toUser}-${Date.now().toString(36)}`,
+    roomId: room.id,
+    roomTitle: room.title,
+    toUser,
+    fromUser: ctx.state.currentUser,
+    createdAt: new Date().toISOString(),
+    notified: false,
+  });
+  ctx.persist();
+}
 
 export function renderInvite(root, ctx, params = {}) {
   const room = ctx.state.store.rooms[params.roomId];
   if (!room) { ctx.navigate("home"); return; }
   const link = roomInviteUrl(room.id);
+  let pickerSeat = null; // which open seat index currently shows the invite picker
 
   root.appendChild(el("div", { class: "bg-flat", style: "flex:1;display:flex;flex-direction:column" }, [
     (() => {
@@ -35,14 +51,81 @@ export function renderInvite(root, ctx, params = {}) {
       copyRow.appendChild(copyBtn);
       sheet.appendChild(copyRow);
 
-      const invitees = el("div", { style: "display:flex;gap:9px;margin-top:12px" });
-      RECENT_PEOPLE.forEach((name, i) => {
-        const chip = el("div", { style: "flex:1;padding:11px 6px;border-radius:13px;background:rgba(255,255,255,.06);display:flex;flex-direction:column;align-items:center;gap:6px" });
-        chip.appendChild(avatarDot(name, i + 1, 32));
-        chip.appendChild(el("div", { style: "font:600 11px Figtree,sans-serif;color:rgba(246,241,228,.7)", text: name }));
-        invitees.appendChild(chip);
-      });
-      sheet.appendChild(invitees);
+      // Solo rooms have nobody to bring in — skip the seat grid entirely.
+      if (room.mode !== "solo") {
+        const seatSection = el("div", { style: "margin-top:16px" });
+        const seatRow = el("div", { style: "display:flex;gap:9px" });
+        const pickerPanel = el("div", { style: "display:none;margin-top:10px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);flex-direction:column;gap:6px;max-height:180px;overflow-y:auto" });
+        seatSection.appendChild(seatRow);
+        seatSection.appendChild(pickerPanel);
+        sheet.appendChild(seatSection);
+
+        function invitedNamesForRoom() {
+          return (ctx.state.store.invites || []).filter((inv) => inv.roomId === room.id).map((inv) => inv.toUser);
+        }
+
+        function renderPicker() {
+          pickerPanel.style.display = pickerSeat == null ? "none" : "flex";
+          pickerPanel.innerHTML = "";
+          if (pickerSeat == null) return;
+          const taken = new Set([...room.players, ...invitedNamesForRoom()]);
+          const candidates = Object.keys(ctx.state.store.users || {}).filter((name) => !taken.has(name));
+          if (candidates.length === 0) {
+            pickerPanel.appendChild(el("div", { style: "font:12.5px Figtree,sans-serif;color:rgba(246,241,228,.5);padding:6px 2px", text: "No other registered players to invite yet." }));
+          }
+          candidates.forEach((name) => {
+            const row = el("button", { style: "display:flex;align-items:center;gap:10px;padding:8px;border-radius:9px;background:none;border:none;cursor:pointer;text-align:left" });
+            row.appendChild(avatarDot(name, 1, 28));
+            row.appendChild(el("span", { style: "font:600 13px Figtree,sans-serif;color:#f6f1e4", text: name }));
+            row.addEventListener("click", () => {
+              sendInvite(ctx, room, name);
+              pickerSeat = null;
+              renderSeats();
+            });
+            pickerPanel.appendChild(row);
+          });
+          const cancel = el("button", { style: "background:none;border:none;color:rgba(246,241,228,.5);font:600 12px Figtree,sans-serif;cursor:pointer;text-align:left;padding:6px 2px", text: "Cancel" });
+          cancel.addEventListener("click", () => { pickerSeat = null; renderPicker(); });
+          pickerPanel.appendChild(cancel);
+        }
+
+        function renderSeats() {
+          seatRow.innerHTML = "";
+          const you = el("div", { style: "flex:1;padding:11px 6px;border-radius:13px;background:rgba(255,255,255,.06);display:flex;flex-direction:column;align-items:center;gap:6px" });
+          you.appendChild(avatarDot(ctx.state.currentUser, 0, 32));
+          you.appendChild(el("div", { style: "font:600 11px Figtree,sans-serif;color:rgba(246,241,228,.7)", text: "You" }));
+          seatRow.appendChild(you);
+
+          const botNames = room.botNames || [];
+          const invited = invitedNamesForRoom();
+          const otherSeats = TOTAL_SEATS - 1;
+          for (let i = 0; i < otherSeats; i++) {
+            if (i < botNames.length) {
+              const name = botNames[i];
+              const chip = el("div", { style: "flex:1;padding:11px 6px;border-radius:13px;background:rgba(255,255,255,.06);display:flex;flex-direction:column;align-items:center;gap:6px" });
+              chip.appendChild(avatarDot(name, i + 1, 32));
+              chip.appendChild(el("div", { style: "font:600 11px Figtree,sans-serif;color:rgba(246,241,228,.7)", text: name }));
+              chip.appendChild(el("div", { style: "font:9.5px Figtree,sans-serif;color:rgba(246,241,228,.4);text-transform:capitalize", text: `Bot · ${(room.botDifficulty && room.botDifficulty[name]) || "medium"}` }));
+              seatRow.appendChild(chip);
+            } else if (i - botNames.length < invited.length) {
+              const name = invited[i - botNames.length];
+              const chip = el("div", { style: "flex:1;padding:11px 6px;border-radius:13px;background:rgba(217,164,65,.1);border:1px dashed rgba(217,164,65,.4);display:flex;flex-direction:column;align-items:center;gap:6px" });
+              chip.appendChild(avatarDot(name, i + 1, 32));
+              chip.appendChild(el("div", { style: "font:600 11px Figtree,sans-serif;color:#e8c887", text: name }));
+              chip.appendChild(el("div", { style: "font:9.5px Figtree,sans-serif;color:rgba(232,200,135,.7)", text: "Invited" }));
+              seatRow.appendChild(chip);
+            } else {
+              const chip = el("div", { style: "flex:1;padding:11px 6px;border-radius:13px;background:rgba(255,255,255,.04);border:1.5px dashed rgba(246,241,228,.3);display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer" });
+              chip.appendChild(el("div", { style: "width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:300 18px Figtree,sans-serif;color:rgba(246,241,228,.45)", text: "+" }));
+              chip.appendChild(el("div", { style: "font:600 11px Figtree,sans-serif;color:rgba(246,241,228,.45)", text: "Invite" }));
+              chip.addEventListener("click", () => { pickerSeat = pickerSeat === i ? null : i; renderPicker(); });
+              seatRow.appendChild(chip);
+            }
+          }
+          renderPicker();
+        }
+        renderSeats();
+      }
 
       const shareBtn = el("button", { class: "btn btn-primary btn-lg", style: "width:100%;margin-top:16px", text: "Share invite" });
       shareBtn.addEventListener("click", async () => {

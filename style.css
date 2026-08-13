@@ -115,6 +115,15 @@ a { color: var(--gold); }
   flex: none;
 }
 .icon-btn.amber { background: rgba(217,164,65,.22); border: 1px solid rgba(217,164,65,.45); color: #e8c887; }
+.bell-wiggle { animation: bellWiggle 1.8s ease-in-out infinite; }
+@keyframes bellWiggle {
+  0%, 60%, 100% { transform: rotate(0deg); }
+  10% { transform: rotate(-14deg); }
+  20% { transform: rotate(11deg); }
+  30% { transform: rotate(-9deg); }
+  40% { transform: rotate(6deg); }
+  50% { transform: rotate(-3deg); }
+}
 
 .avatar-dot {
   border-radius: 50%; display: flex; align-items: center; justify-content: center;

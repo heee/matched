@@ -152,6 +152,40 @@ export function confirmDialog({ title, message, confirmLabel = "Delete", danger 
   });
 }
 
+const ICON_BELL = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>`;
+
+// A wiggling bell button for "you have a pending invite" — caller decides
+// when to show/hide it and what happens on click.
+export function bellButton(onClick) {
+  const btn = el("button", { class: "icon-btn amber bell-wiggle", html: ICON_BELL, "aria-label": "Invitations", onClick });
+  return btn;
+}
+
+// The modal that fires when someone invites you to their room — title,
+// who invited you, the room name, and a live link in, or dismiss.
+export function inviteNoticeDialog({ fromUser, roomTitle, link }) {
+  return new Promise((resolve) => {
+    const overlay = el("div", { style: "position:fixed;inset:0;background:rgba(5,15,11,.6);display:flex;align-items:center;justify-content:center;z-index:100;padding:24px" });
+    const card = el("div", { style: "max-width:340px;width:100%;background:#183226;border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,.12);text-align:center" });
+    card.appendChild(el("div", { style: "font-size:30px;margin-bottom:6px", text: "🔔" }));
+    card.appendChild(el("div", { style: "font:700 17px Figtree,sans-serif;color:#f6f1e4", text: "You're invited!" }));
+    card.appendChild(el("div", { style: "font:13.5px/1.5 Figtree,sans-serif;color:rgba(246,241,228,.65);margin-top:8px", text: `${fromUser} invited you to ${roomTitle}.` }));
+    const row = el("div", { style: "display:flex;gap:10px;margin-top:18px" });
+    const dismissBtn = el("button", { class: "btn btn-ghost", style: "flex:1", text: "Not now" });
+    const joinBtn = el("button", { class: "btn btn-primary", style: "flex:1", text: "Join" });
+    const close = (result) => { overlay.remove(); resolve(result); };
+    dismissBtn.addEventListener("click", () => close("dismiss"));
+    joinBtn.addEventListener("click", () => close("join"));
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) close("dismiss"); });
+    row.appendChild(dismissBtn);
+    row.appendChild(joinBtn);
+    card.appendChild(row);
+    card.appendChild(el("div", { style: "font:11px Figtree,sans-serif;color:rgba(246,241,228,.4);margin-top:12px;word-break:break-all", text: link }));
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+  });
+}
+
 export const TAB_DEFS = [
   { id: "home", label: "Home", icon: "⌂" },
   { id: "play-catalog", label: "Play", icon: "▦" },

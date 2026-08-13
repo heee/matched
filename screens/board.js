@@ -302,10 +302,21 @@ export function renderBoard(root, ctx, params = {}) {
     showToast._t = setTimeout(() => toastEl.classList.remove("show"), 2600);
   }
 
+  // Concurrent reactions used to all spawn at the exact same spot and just
+  // overlay each other, so rapid taps looked like one stuck emoji instead
+  // of each tap registering. Each new one now stacks above however many
+  // are still animating, so a burst of taps visibly piles up and fades
+  // out top to bottom instead of blending into a single glyph.
+  let activeReactionCount = 0;
   function floatReaction(emoji) {
-    const node = el("div", { class: "reaction-float", text: emoji });
+    const stackOffset = activeReactionCount * 32;
+    activeReactionCount++;
+    const node = el("div", { class: "reaction-float", text: emoji, style: `bottom:${96 + stackOffset}px` });
     boardArea.appendChild(node);
-    setTimeout(() => node.remove(), 1700);
+    setTimeout(() => {
+      node.remove();
+      activeReactionCount = Math.max(0, activeReactionCount - 1);
+    }, 1700);
   }
 
   function sendReaction(emoji) {

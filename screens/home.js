@@ -1,7 +1,7 @@
 // Matched — Home screen. Swipeable hero (live now / today's board),
 // continue playing, open rooms. See docs/design-reference.html #1d.
 
-import { el, avatarDot, formatClock, roomInviteUrl, modeIcon } from "./shared-ui.js";
+import { el, avatarDot, formatClock, roomInviteUrl, modeIcon, bellButton, inviteNoticeDialog } from "./shared-ui.js";
 import { boardCompletion } from "../game/mahjong.js";
 import { dailyLayoutFor, dailySeedFor, todayDateStr, msUntilNextReset } from "../game/daily.js";
 import { LAYOUTS, layoutSilhouette } from "../game/layouts.js";
@@ -199,6 +199,35 @@ function openRow(ctx, room) {
   return row;
 }
 
+// Invites are local-only for now (see storage.js) — this only reaches the
+// recipient if they're a profile on this same device/browser.
+function myPendingInvites(ctx) {
+  return (ctx.state.store.invites || []).filter((inv) => inv.toUser === ctx.state.currentUser);
+}
+
+function removeInvite(ctx, id) {
+  ctx.state.store.invites = (ctx.state.store.invites || []).filter((inv) => inv.id !== id);
+}
+
+async function showInviteNotice(ctx, invite) {
+  const result = await inviteNoticeDialog({ fromUser: invite.fromUser, roomTitle: invite.roomTitle, link: roomInviteUrl(invite.roomId) });
+  removeInvite(ctx, invite.id);
+  if (result === "join") {
+    const room = ctx.state.store.rooms[invite.roomId];
+    if (room) {
+      if (!room.players.includes(ctx.state.currentUser)) {
+        room.players.push(ctx.state.currentUser);
+        room.pairsCleared[ctx.state.currentUser] = room.pairsCleared[ctx.state.currentUser] || 0;
+        room.streaks[ctx.state.currentUser] = room.streaks[ctx.state.currentUser] || 0;
+      }
+      ctx.persist();
+      ctx.navigate(room.mode === "race" ? "race-board" : "board", { roomId: room.id });
+      return;
+    }
+  }
+  ctx.persist();
+}
+
 export function renderHome(root, ctx) {
   const rooms = Object.values(ctx.state.store.rooms || {});
   const activeRoom = ctx.state.activeRoomId ? ctx.state.store.rooms[ctx.state.activeRoomId] : null;
@@ -210,10 +239,27 @@ export function renderHome(root, ctx) {
   headLeft.appendChild(el("div", { class: "wordmark", text: "Matched" }));
   headLeft.appendChild(el("div", { style: "font:12px Figtree,sans-serif;color:rgba(246,241,228,.55);margin-top:4px", text: `${openRooms.length} open room${openRooms.length === 1 ? "" : "s"} right now` }));
   header.appendChild(headLeft);
+
+  const pending = myPendingInvites(ctx);
+  if (pending.length > 0) {
+    const bell = bellButton(() => showInviteNotice(ctx, pending[0]));
+    bell.style.marginRight = "8px";
+    header.appendChild(bell);
+  }
+
   header.appendChild(avatarDot(ctx.state.currentUser, 0, 40));
-  header.children[1].style.cursor = "pointer";
-  header.children[1].addEventListener("click", () => ctx.navigate("profile"));
+  header.children[header.children.length - 1].style.cursor = "pointer";
+  header.children[header.children.length - 1].addEventListener("click", () => ctx.navigate("profile"));
   root.appendChild(header);
+
+  // Auto-pop the modal once for a brand-new invite (not yet shown), rather
+  // than making the user notice and tap the bell themselves the first time.
+  const fresh = pending.find((inv) => !inv.notified);
+  if (fresh) {
+    fresh.notified = true;
+    ctx.persist();
+    showInviteNotice(ctx, fresh);
+  }
 
   // ---- swipeable hero ----
   let heroIndex = 0;
