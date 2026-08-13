@@ -98,6 +98,19 @@ export function renderProfile(root, ctx) {
   header.appendChild(nameWrap);
   root.appendChild(header);
 
+  // Prominent, hard-to-miss entry point for switching players — this used
+  // to be a small text link buried under Settings at the bottom, which made
+  // it easy to get stuck on the wrong profile with no obvious way back.
+  const switchCard = el("div", { style: "margin:0 16px 14px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:12px;cursor:pointer" });
+  switchCard.appendChild(avatarDot(user, 0, 38));
+  const switchInfo = el("div", { style: "flex:1;min-width:0" });
+  switchInfo.appendChild(el("div", { style: "font:600 14px Figtree,sans-serif;color:#f6f1e4", text: "Not you?" }));
+  switchInfo.appendChild(el("div", { style: "font:12px Figtree,sans-serif;color:rgba(246,241,228,.55);margin-top:2px", text: "Switch player" }));
+  switchCard.appendChild(switchInfo);
+  switchCard.appendChild(el("span", { style: "font:300 20px Figtree,sans-serif;color:rgba(246,241,228,.4)", text: "›" }));
+  switchCard.addEventListener("click", () => ctx.navigate("name-entry"));
+  root.appendChild(switchCard);
+
   const tierCard = el("div", { style: "margin:0 16px 16px;padding:15px;border-radius:16px;background:linear-gradient(150deg,rgba(95,191,155,.2),rgba(255,255,255,.05));border:1px solid rgba(95,191,155,.3)" });
   const tierHead = el("div", { style: "display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px" });
   tierHead.appendChild(el("span", { style: "font:700 13px Figtree,sans-serif;color:#f6f1e4", text: tier.name }));
@@ -175,9 +188,6 @@ export function renderProfile(root, ctx) {
   settingsCard.appendChild(toggleRow("Sound", "sound"));
   settingsCard.appendChild(toggleRow("Haptics", "haptic"));
   root.appendChild(settingsCard);
-
-  const switchRow = el("button", { class: "row-link", type: "button", text: "Switch player", onClick: () => ctx.navigate("name-entry") });
-  root.appendChild(switchRow);
 
   root.appendChild(el("div", { style: "flex:1" }));
 }

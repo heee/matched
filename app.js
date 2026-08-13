@@ -197,8 +197,25 @@ async function afterLogin() {
   navigate("home");
 }
 
+// Mirrors the Worker's registerUser() hue rotation (worker/index.js
+// PLAYER_HUES) so a locally-created profile gets the same stable color a
+// server round-trip would have assigned it.
+const PLAYER_HUES = [42, 155, 20, 213, 280, 190, 340, 95];
+
 function selectUser(name) {
   state.currentUser = name;
+  // Write the profile locally right away — previously this only happened
+  // via workerApi.registerUser()'s server round-trip, so switching to (or
+  // creating) a player while offline, or before that fetch resolved, left
+  // state.store.users empty and the profile picker showed no saved cards.
+  if (!state.store.users[name]) {
+    const count = Object.keys(state.store.users).length;
+    state.store.users[name] = {
+      hue: PLAYER_HUES[count % PLAYER_HUES.length],
+      createdAt: new Date().toISOString(),
+      settings: { ...DEFAULT_SETTINGS },
+    };
+  }
   persist();
   if (workerApi.configured()) workerApi.registerUser(name).catch(() => {});
   afterLogin();

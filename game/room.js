@@ -10,12 +10,14 @@ function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "room";
 }
 
-export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed, seed, isDaily }) {
+export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed, seed, isDaily, bots }) {
   const id = `${slugify(title)}-${Date.now().toString(36)}`;
   const resolvedSeed = seed ?? hashSeed(id);
   const layout = layoutId || defaultLayoutForDifficulty(difficulty).id;
   const board = generateBoard(layout, { rng: mulberry32(resolvedSeed) });
-  const players = mode === "solo" ? [createdBy] : [createdBy, "Dana", "Mika", "Jules"];
+  // Bots are opt-in per room (picked in room-setup's seat grid) — a solo
+  // room never has them regardless of what was picked before switching mode.
+  const players = mode === "solo" ? [createdBy] : [createdBy, ...(bots || [])];
   const pairsCleared = {};
   const streaks = {};
   for (const p of players) { pairsCleared[p] = 0; streaks[p] = 0; }

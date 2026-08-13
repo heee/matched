@@ -1,9 +1,15 @@
 // Matched — + Room setup. One scrollable screen, never a wizard. See
 // docs/design-reference.html #1i.
 
-import { el } from "./shared-ui.js";
+import { el, avatarDot } from "./shared-ui.js";
 import { LAYOUTS, defaultLayoutForDifficulty, DIFFICULTY_TILE_COUNTS } from "../game/layouts.js";
 import { buildLocalRoom } from "../game/room.js";
+import { colorForSeat } from "../game/scoring.js";
+
+// Optional bot seats for Shared/Race rooms — off by default. A seat left
+// dotted/empty isn't filled by a bot; it just stays open for a real player
+// to join later, same as any other open seat.
+const BOT_POOL = ["Dana", "Mika", "Jules"];
 
 const MODES = [
   {
@@ -44,6 +50,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
     freeTilesGlow: true,
     hintsAllowed: true,
     openLink: true,
+    bots: [],
   };
 
   const header = el("div", { style: "padding:6px 20px 16px;display:flex;align-items:baseline;justify-content:space-between" });
@@ -67,12 +74,45 @@ export function renderRoomSetup(root, ctx, params = {}) {
       card.appendChild(m.icon());
       card.appendChild(el("div", { style: "font:700 13.5px Figtree,sans-serif;color:#f6f1e4", text: m.name }));
       card.appendChild(el("div", { style: "font:11px/1.4 Figtree,sans-serif;color:rgba(246,241,228,.6);margin-top:3px", text: m.desc }));
-      card.addEventListener("click", () => { local.mode = m.id; renderModes(); });
+      card.addEventListener("click", () => { local.mode = m.id; renderModes(); renderPlayers(); });
       modeRow.appendChild(card);
     });
   }
   renderModes();
   body.appendChild(modeRow);
+
+  // ---- players (bot seats, Shared/Race only) ----
+  const playersSection = el("div");
+  playersSection.appendChild(el("div", { class: "section-label", style: "padding:0 0 9px", text: "Players" }));
+  const seatRow = el("div", { style: "display:flex;gap:10px" });
+  playersSection.appendChild(seatRow);
+  playersSection.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:8px", text: "Bots you don't add stay open for other players to join." }));
+  function renderPlayers() {
+    playersSection.style.display = local.mode === "solo" ? "none" : "";
+    if (local.mode === "solo") return;
+    seatRow.innerHTML = "";
+    const you = el("div", { style: "display:flex;flex-direction:column;align-items:center;gap:5px" });
+    you.appendChild(avatarDot(ctx.state.currentUser, 0, 48));
+    you.appendChild(el("span", { style: "font:600 11px Figtree,sans-serif;color:rgba(246,241,228,.6)", text: "You" }));
+    seatRow.appendChild(you);
+    BOT_POOL.forEach((name, i) => {
+      const seatIndex = i + 1;
+      const active = local.bots.includes(name);
+      const seat = el("div", { style: "display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer" });
+      const circle = active
+        ? avatarDot(name, seatIndex, 48)
+        : el("div", { style: "width:48px;height:48px;border-radius:50%;border:1.5px dashed rgba(246,241,228,.35);display:flex;align-items:center;justify-content:center;font:300 20px Figtree,sans-serif;color:rgba(246,241,228,.4)", text: "+" });
+      seat.appendChild(circle);
+      seat.appendChild(el("span", { style: `font:600 11px Figtree,sans-serif;color:${active ? "rgba(246,241,228,.85)" : "rgba(246,241,228,.4)"}`, text: active ? name : "Open" }));
+      seat.addEventListener("click", () => {
+        local.bots = active ? local.bots.filter((n) => n !== name) : [...local.bots, name];
+        renderPlayers();
+      });
+      seatRow.appendChild(seat);
+    });
+  }
+  renderPlayers();
+  body.appendChild(playersSection);
 
   // ---- layout ----
   body.appendChild(el("div", { class: "section-label", style: "padding:0 0 9px", text: "Layout" }));
@@ -147,6 +187,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
         createdBy: ctx.state.currentUser,
         freeTilesGlow: local.freeTilesGlow,
         hintsAllowed: local.hintsAllowed,
+        bots: local.bots,
       });
       ctx.state.store.rooms[room.id] = room;
       ctx.state.activeRoomId = room.id;
