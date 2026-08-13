@@ -6,6 +6,7 @@ import { el, avatarDot, renderTileFace, formatClock, haptic } from "./shared-ui.
 import { freeTiles, findHintPair, clearPair, hasMovesRemaining } from "../game/mahjong.js";
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
 import { PLAYER_COLORS, BOT_ACT_CHANCE, pointsForSession } from "../game/scoring.js";
+import { equippedMaterialName, materialCssVars } from "../game/materials.js";
 import { ensureRacer } from "../game/room.js";
 
 const BOT_INTERVAL_MS = 4200;
@@ -39,7 +40,8 @@ export function renderRaceBoard(root, ctx, params = {}) {
 
   const boardArea = el("div", { style: "flex:1;display:flex;align-items:center;justify-content:center;position:relative;min-height:0" });
   const boardViewport = el("div", { style: "position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center" });
-  const boardWrap = el("div", { class: "board-wrap", style: "position:relative" });
+  const material = equippedMaterialName(ctx.state.points, ctx.state.equipped);
+  const boardWrap = el("div", { class: "board-wrap", style: `position:relative;${materialCssVars(material)}` });
   boardViewport.appendChild(boardWrap);
   boardArea.appendChild(boardViewport);
   root.appendChild(boardArea);
@@ -125,7 +127,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
       if (!isF) cls.push("blocked");
       const tileEl = el("div", { class: cls.join(" "), style: `left:${px}px;top:${py}px;width:${TILE_W}px;height:${TILE_H}px;z-index:${t.z * 100 + t.y}` });
       const face = el("div", { class: "tile-face" });
-      renderTileFace(face, t.face);
+      renderTileFace(face, t.face, material);
       tileEl.appendChild(face);
       tileEl.addEventListener("click", () => tap(t.id));
       boardWrap.appendChild(tileEl);

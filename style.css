@@ -18,6 +18,13 @@
   --bone-a: #f7f2e4;
   --bone-b: #e9e0cb;
   --bone-edge: #b3a582;
+  /* Board tiles read these; a board wrapper overrides them per equipped
+     material (see game/materials.js materialCssVars). Defaults are Bone so
+     a tile rendered outside a board still looks right. */
+  --tile-a: #f7f2e4;
+  --tile-b: #e9e0cb;
+  --tile-edge: #b3a582;
+  --tile-upper: #fffdf6;
   --p0: #d9a441;
   --p1: #5fbf9b;
   --p2: #e08a6a;
@@ -208,14 +215,14 @@ a { color: var(--gold); }
 .tile {
   position: absolute; box-sizing: border-box;
   border-radius: 4px;
-  background: linear-gradient(160deg, var(--bone-a), var(--bone-b));
+  background: linear-gradient(160deg, var(--tile-a), var(--tile-b));
   /* Thickness only: a thin edge dropping almost straight down (1px right,
      3px down), no blur. Same-layer tiles sit flush (STEP_X == TILE_W), so
      any per-tile blur paints onto the neighbor — physically wrong, tiles
      resting on one layer don't cast on each other. The cast shadow onto
      the felt is a single drop-shadow on .board-wrap instead, which shadows
      the union silhouette of all tiles as one slab. */
-  box-shadow: 1px 3px 0 var(--bone-edge);
+  box-shadow: 1px 3px 0 var(--tile-edge);
   transition: transform .12s ease, box-shadow .12s ease;
   cursor: pointer;
   animation: popIn .22s ease;
@@ -233,11 +240,11 @@ a { color: var(--gold); }
   pointer-events: none;
 }
 .tile.upper {
-  background: linear-gradient(160deg, #fffdf6, var(--bone-b));
+  background: linear-gradient(160deg, var(--tile-upper), var(--tile-b));
   /* Upper tiles genuinely sit above another layer, so they alone keep a
      cast blur — tight, so it reads as falling on the layer directly
      beneath rather than smearing across same-level neighbors. */
-  box-shadow: 1px 3px 0 var(--bone-edge), 0 5px 6px rgba(0,0,0,.35);
+  box-shadow: 1px 3px 0 var(--tile-edge), 0 5px 6px rgba(0,0,0,.35);
 }
 .tile.upper::before {
   background:
@@ -250,8 +257,8 @@ a { color: var(--gold); }
    confused more than they informed). Blocked-ness is conveyed by the
    free-tiles-glow setting and the shake on a rejected tap. */
 .tile.blocked { cursor: default; }
-.tile.free.glow { box-shadow: 1px 3px 0 var(--bone-edge), 0 0 0 2px rgba(217,164,65,.28); }
-.tile.upper.free.glow { box-shadow: 1px 3px 0 var(--bone-edge), 0 5px 6px rgba(0,0,0,.35), 0 0 0 2px rgba(217,164,65,.28); }
+.tile.free.glow { box-shadow: 1px 3px 0 var(--tile-edge), 0 0 0 2px rgba(217,164,65,.28); }
+.tile.upper.free.glow { box-shadow: 1px 3px 0 var(--tile-edge), 0 5px 6px rgba(0,0,0,.35), 0 0 0 2px rgba(217,164,65,.28); }
 /* .free.glow (3 classes) outranks the plain 2-class rules below by CSS
    specificity, so .selected needs the 3-class form too or a
    selected-but-glowing tile silently loses its highlight to the glow ring.
@@ -261,12 +268,12 @@ a { color: var(--gold); }
    on the base layer. */
 .tile.selected, .tile.free.glow.selected, .tile.upper.free.glow.selected {
   transform: translateY(-3px);
-  box-shadow: 1px 3px 0 var(--bone-edge), 0 7px 9px rgba(0,0,0,.32), 0 0 0 3px var(--gold), inset 0 0 0 999px rgba(217,164,65,.2);
+  box-shadow: 1px 3px 0 var(--tile-edge), 0 7px 9px rgba(0,0,0,.32), 0 0 0 3px var(--gold), inset 0 0 0 999px rgba(217,164,65,.2);
 }
 .tile.shine { animation: tileShine 1.3s ease; }
 @keyframes tileShine {
-  0%, 100% { box-shadow: 1px 3px 0 var(--bone-edge), 0 0 0 0 rgba(217,164,65,0), inset 0 0 0 999px rgba(217,164,65,0); }
-  20% { box-shadow: 1px 3px 0 var(--bone-edge), 0 0 0 4px rgba(217,164,65,.95), inset 0 0 0 999px rgba(217,164,65,.28); }
+  0%, 100% { box-shadow: 1px 3px 0 var(--tile-edge), 0 0 0 0 rgba(217,164,65,0), inset 0 0 0 999px rgba(217,164,65,0); }
+  20% { box-shadow: 1px 3px 0 var(--tile-edge), 0 0 0 4px rgba(217,164,65,.95), inset 0 0 0 999px rgba(217,164,65,.28); }
 }
 /* Shuffle: each tile flies from its old board position, through a random
    scattered waypoint (set per-tile via --sx1/--sy1/--srot1 in board.js),

@@ -4,6 +4,7 @@
 import { colorForSeat } from "../game/scoring.js";
 import { TILE_W, TILE_H } from "../game/layouts.js";
 import { dotPips, bamSticks, RED } from "../game/tiles.js";
+import { inkOverrideFor } from "../game/materials.js";
 
 // Tile faces render as inline SVG at this fixed viewBox — it matches the
 // on-board tile size (40x52) minus .tile-face's 3px inset on each side, so
@@ -151,9 +152,12 @@ export function formatDuration(totalSeconds) {
 // Renders a tile's face content (glyph, pips, or an ART SLOT placeholder)
 // into an existing container node — used by both the board screen and any
 // layout thumbnail that wants a real tile face, not just a silhouette.
-export function renderTileFace(container, face) {
+// `material` is the equipped tile material name; it only affects ink, since
+// dark materials swallow the standard red/green/blue face colors.
+export function renderTileFace(container, face, material) {
   container.innerHTML = "";
   if (!face) return;
+  const ink = inkOverrideFor(material) || face.color;
   if (face.kind === "char") {
     const big = !face.bot;
     const j = charJitter(`${face.top}${face.bot || ""}`);
@@ -165,11 +169,11 @@ export function renderTileFace(container, face) {
     });
     inked.appendChild(el("div", {
       class: "tile-char",
-      style: `font-size:${big ? 26 : 16}px;color:${face.color}`,
+      style: `font-size:${big ? 26 : 16}px;color:${ink}`,
       text: face.top,
     }));
     if (face.bot) {
-      inked.appendChild(el("div", { class: "tile-char", style: `font-size:15px;color:${face.color};margin-top:2px`, text: face.bot }));
+      inked.appendChild(el("div", { class: "tile-char", style: `font-size:15px;color:${ink};margin-top:2px`, text: face.bot }));
     }
     container.appendChild(inked);
   } else if (face.kind === "dot") {

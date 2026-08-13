@@ -9,6 +9,7 @@ import {
 } from "../game/mahjong.js";
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
 import { PLAYER_COLORS, pointsForSession, highlightsFromLog, BOT_ACT_CHANCE, COMBO_WINDOW_MS, COMBO_BONUS_POINTS } from "../game/scoring.js";
+import { equippedMaterialName, materialCssVars } from "../game/materials.js";
 
 const BOT_INTERVAL_MS = 5200;
 const REACTIONS = ["🔥", "😮", "👏", "😂", "😍", "🎉", "💪", "😱", "👍"];
@@ -61,7 +62,11 @@ export function renderBoard(root, ctx, params = {}) {
   // ---- board area ----
   const boardArea = el("div", { style: "flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;min-height:0" });
   const boardViewport = el("div", { style: "position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center" });
-  const boardWrap = el("div", { class: "board-wrap", style: "position:relative" });
+  // The equipped material is applied once here as CSS custom properties;
+  // every tile under this wrapper inherits them, so switching material
+  // doesn't touch per-tile styling.
+  const material = equippedMaterialName(ctx.state.points, ctx.state.equipped);
+  const boardWrap = el("div", { class: "board-wrap", style: `position:relative;${materialCssVars(material)}` });
   boardViewport.appendChild(boardWrap);
   boardArea.appendChild(boardViewport);
   const toastEl = el("div", { class: "toast" });
@@ -233,7 +238,7 @@ export function renderBoard(root, ctx, params = {}) {
         style: `left:${px}px;top:${py}px;width:${TILE_W}px;height:${TILE_H}px;z-index:${t.z * 100 + t.y}`,
       });
       const face = el("div", { class: "tile-face" });
-      renderTileFace(face, t.face);
+      renderTileFace(face, t.face, material);
       tileEl.appendChild(face);
       tileEl.addEventListener("click", () => tap(t.id));
       boardWrap.appendChild(tileEl);

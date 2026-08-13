@@ -4,6 +4,7 @@
 
 import { el, avatarDot } from "./shared-ui.js";
 import { tierForPoints, nextTier, pointsToNextTier, TIER_UNLOCKS, TIERS, nextCosmeticUnlock, cosmeticUnlockEvents } from "../game/scoring.js";
+import { MATERIALS, equippedMaterialName } from "../game/materials.js";
 
 const ICON_SWITCH_PLAYER = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>`;
 
@@ -22,19 +23,15 @@ const FELT_SWATCHES = {
 // Textures per the material brief: rough-sawn timber / aggregate stone /
 // molded resin / carved bamboo / aged bone / cobalt porcelain / brass-
 // inlaid rosewood / quiet jade / enamel-and-brass cloisonné / lacquer with
-// mother-of-pearl, gold, and burgundy.
-const MATERIAL_SWATCHES = {
-  Wood: "background:linear-gradient(160deg,#c9a06b,#8a6239);box-shadow:2px 3px 0 #5c4023",
-  Stone: "background:linear-gradient(160deg,#c9c9c4,#94938c);box-shadow:2px 3px 0 #5c5b55",
-  Resin: "background:linear-gradient(160deg,#eef1ea,#cfd6c7);box-shadow:2px 3px 0 #96a08a",
-  Bamboo: "background:linear-gradient(160deg,#dcd08c,#a89751);box-shadow:2px 3px 0 #7c6c31",
-  Bone: "background:linear-gradient(160deg,#f7f2e4,#e9e0cb);box-shadow:2px 3px 0 #b3a582",
-  Porcelain: "background:linear-gradient(160deg,#f5f7fb,#dbe4f2);box-shadow:2px 3px 0 #2b5f9e",
-  Rosewood: "background:linear-gradient(160deg,#8b4a3d,#5c2c22);box-shadow:2px 3px 0 #caa14a",
-  Jade: "background:linear-gradient(160deg,#cfe6da,#9dc4b1);box-shadow:2px 3px 0 #6d9482",
-  Cloisonné: "background:linear-gradient(160deg,#2b5f9e,#1a3c66);box-shadow:2px 3px 0 #d9a441",
-  Lacquer: "background:linear-gradient(160deg,#3a1418,#0d0607);box-shadow:2px 3px 0 #d9a441",
-};
+// mother-of-pearl, gold, and burgundy. Built from the same palette the
+// board renders (game/materials.js) so a swatch here always matches the
+// tiles the player actually gets on equipping it.
+const MATERIAL_SWATCHES = Object.fromEntries(
+  Object.entries(MATERIALS).map(([name, m]) => [
+    name,
+    `background:linear-gradient(160deg,${m.a},${m.b});box-shadow:2px 3px 0 ${m.edge}`,
+  ])
+);
 
 // Felt and tile material used to share one threshold per tier; now each
 // has its own (see TIER_UNLOCKS.feltThreshold/materialThreshold in
@@ -158,7 +155,7 @@ export function renderProfile(root, ctx) {
       : unlockCell("—", "Then"));
   } else {
     const equippedFelt = equippedTierName(ctx, "felt", tier.name);
-    const equippedMaterial = equippedTierName(ctx, "material", tier.name);
+    const equippedMaterial = equippedMaterialName(ctx.state.points, ctx.state.equipped);
     unlocksRow.appendChild(unlockCell(TIER_UNLOCKS[equippedFelt].felt, "Equipped felt"));
     unlocksRow.appendChild(unlockCell(TIERS.find((t) => t.name === equippedMaterial).material, "Equipped material"));
   }
