@@ -1,11 +1,66 @@
 // Matched — Home screen. Swipeable hero (live now / today's board),
 // continue playing, open rooms. See docs/design-reference.html #1d.
 
-import { el, avatarDot, formatClock } from "./shared-ui.js";
+import { el, avatarDot, formatClock, roomInviteUrl } from "./shared-ui.js";
 import { boardCompletion } from "../game/mahjong.js";
 import { dailyLayoutFor, dailySeedFor, todayDateStr, msUntilNextReset } from "../game/daily.js";
 import { LAYOUTS } from "../game/layouts.js";
 import { PLAYER_COLORS } from "../game/scoring.js";
+
+// Randomized invite lines for the Live now card's share button — same
+// templated-message-plus-link pattern as Boys Pushup Bonanza's share
+// functions, in Matched's own terser voice, filled in with live room state.
+const INVITE_MESSAGES = [
+  (ctx) => `${ctx.cleared} of ${ctx.total} cleared on ${ctx.title} — come take the rest.`,
+  (ctx) => `${ctx.pct}% down on ${ctx.title}. Seats are still open.`,
+  (ctx) => `Mid-board on ${ctx.title}, ${ctx.left} tiles left. Jump in?`,
+  (ctx) => `${ctx.title} is ${ctx.pct}% cleared and I'm not slowing down 🀄`,
+  (ctx) => `Clearing ${ctx.title} right now — grab a pair before I do.`,
+  (ctx) => `${ctx.cleared} pairs down on ${ctx.title}. Your seat's still open.`,
+  (ctx) => `Board's open: ${ctx.title}, ${ctx.left} tiles left. Come match some tiles.`,
+  (ctx) => `On ${ctx.title} — ${ctx.pct}% cleared. Tap in before it's gone.`,
+];
+let lastInviteTemplate = null;
+function pickInviteTemplate() {
+  let template, guard = 0;
+  do { template = INVITE_MESSAGES[Math.floor(Math.random() * INVITE_MESSAGES.length)]; }
+  while (template === lastInviteTemplate && INVITE_MESSAGES.length > 1 && ++guard < 10);
+  lastInviteTemplate = template;
+  return template;
+}
+
+// Lucide's "send" icon — stroke-only paper plane, matches the icon-btn
+// glyphs elsewhere on this screen but as an SVG since no emoji reads as a
+// plain outline paper airplane.
+const PAPER_PLANE_SVG = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>`;
+
+async function shareLiveRoom(ctx, room) {
+  const remaining = room.state.tiles.length;
+  const cleared = room.tileCount - remaining;
+  const pct = boardCompletion(room.tileCount, remaining);
+  const message = pickInviteTemplate()({ title: room.title, cleared, total: room.tileCount, left: remaining, pct });
+  const url = roomInviteUrl(room.id);
+  const text = `${message} ${url}`;
+
+  // Jump straight to the SMS/Messages compose window on phones — iOS and
+  // Android disagree on the query separator for a bodyless sms: link.
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if (isMobile) {
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    window.location.href = `sms:${isIOS ? "&" : "?"}body=${encodeURIComponent(text)}`;
+    return;
+  }
+  if (navigator.share) {
+    try { await navigator.share({ title: room.title, text: message, url }); } catch (e) { /* user cancelled */ }
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    ctx.toast("Copied to clipboard — paste it in your message!");
+  } catch (e) {
+    ctx.toast("Couldn't share automatically — copy the link manually.");
+  }
+}
 
 function miniSilhouette(layoutId) {
   const layout = LAYOUTS[layoutId];
@@ -60,7 +115,11 @@ function liveNowCard(ctx, room) {
     class: "btn btn-primary", style: "flex:1", text: "Jump back in",
     onClick: () => ctx.navigate(room.mode === "race" ? "race-board" : "board", { roomId: room.id }),
   }));
-  actions.appendChild(el("button", { class: "icon-btn", style: "width:44px;height:44px;font-size:17px", text: "💬" }));
+  actions.appendChild(el("button", {
+    class: "icon-btn", style: "width:44px;height:44px", html: PAPER_PLANE_SVG,
+    "aria-label": "Share an invite by text",
+    onClick: () => shareLiveRoom(ctx, room),
+  }));
   card.appendChild(actions);
   return card;
 }
