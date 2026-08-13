@@ -172,14 +172,20 @@ export function renderBoard(root, ctx, params = {}) {
     });
   }
 
+  // True bounding box from each tile's actual pixel extent, not a
+  // worst-case formula — upper layers are inset from the base layer in
+  // basically every layout, so assuming they reach the box's edge (the old
+  // width/height formula) left real content sitting left/top-anchored
+  // inside an over-sized box with all the slack on the right/bottom.
   function tilePixelBox(tiles) {
-    let maxX = 0, maxY = 0, maxZ = 0;
-    for (const t of tiles) { maxX = Math.max(maxX, t.x); maxY = Math.max(maxY, t.y); maxZ = Math.max(maxZ, t.z); }
-    return {
-      width: (maxX + 1) * STEP_X + TILE_W + maxZ * LAYER_OFFSET,
-      height: (maxY + 1) * STEP_Y + TILE_H + maxZ * LAYER_OFFSET,
-      padTop: maxZ * LAYER_OFFSET,
-    };
+    let minPx = 0, maxPx = 0, minPy = 0, maxPy = 0;
+    for (const t of tiles) {
+      const px = t.x * STEP_X + t.z * LAYER_OFFSET;
+      const py = t.y * STEP_Y - t.z * LAYER_OFFSET;
+      minPx = Math.min(minPx, px); maxPx = Math.max(maxPx, px + TILE_W);
+      minPy = Math.min(minPy, py); maxPy = Math.max(maxPy, py + TILE_H);
+    }
+    return { width: maxPx - minPx, height: maxPy - minPy, padLeft: -minPx, padTop: -minPy };
   }
 
   // Rebuilds every tile element — only for actual board changes (clear,
@@ -195,7 +201,7 @@ export function renderBoard(root, ctx, params = {}) {
   // boards get scaled up too) but capped above so tiles never blow up past
   // legible size on a huge window.
   const BOARD_FILL = 0.85;
-  const BOARD_MAX_SCALE = 1.6;
+  const BOARD_MAX_SCALE = 1.9;
   function applyBoardScale() {
     const box = tilePixelBox(room.state.tiles);
     if (box.width === 0 || box.height === 0) return;
@@ -217,7 +223,7 @@ export function renderBoard(root, ctx, params = {}) {
 
     for (const t of tiles) {
       const isF = free.has(t.id);
-      const px = t.x * STEP_X + t.z * LAYER_OFFSET;
+      const px = t.x * STEP_X + t.z * LAYER_OFFSET + box.padLeft;
       const py = t.y * STEP_Y - t.z * LAYER_OFFSET + box.padTop;
       const cls = ["tile"];
       if (t.z > 0) cls.push("upper");
