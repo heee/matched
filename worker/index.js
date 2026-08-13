@@ -389,13 +389,30 @@ function rect(x0, x1, y0, y1, z) {
   return out;
 }
 
+// Mirrors game/layouts.js exactly — a room built server-side (POST
+// /create-room) with a layoutId this Worker doesn't recognize silently
+// falls back to dragons-nest (see validateCreateRoom), so every layout
+// the client can pick has to have an entry here too.
 const LAYOUT_POSITIONS = {
   "two-bridges": () => [...rect(0, 5, 0, 3, 0), ...rect(1, 4, 0, 2, 1)],
   "dragons-nest": () => [...rect(0, 7, 0, 4, 0), ...rect(2, 5, 1, 3, 1)],
   "eight-winds": () => [...rect(0, 7, 0, 4, 0), ...rect(1, 6, 1, 3, 1).filter((_, i) => i % 3 !== 2)],
+  "twin-pillars": () => [...rect(0, 7, 0, 2, 0), ...rect(2, 5, 0, 1, 1)],
   "garden-gate": () => [...rect(0, 7, 0, 4, 0), ...rect(1, 6, 0, 3, 1), ...rect(3, 4, 1, 2, 2)],
+  "river-bend": () => [...rect(0, 8, 0, 3, 0), ...rect(3, 6, 1, 2, 1)],
+  "twin-peaks": () => [...rect(0, 7, 0, 4, 0), ...rect(1, 6, 1, 3, 1), { x: 3, y: 2, z: 2 }, { x: 4, y: 2, z: 2 }],
+  "hollow-square": () => [...rect(0, 7, 0, 4, 0), ...rect(1, 6, 2, 2, 1)],
   "nine-gates": () => [...rect(0, 7, 0, 4, 0), ...rect(1, 6, 0, 3, 1), ...rect(2, 5, 1, 2, 2)],
+  "diamond-court": () => [...rect(0, 7, 0, 3, 0), ...rect(1, 6, 0, 3, 1), ...rect(3, 4, 1, 2, 2)],
+  "cross-gate": () => [...rect(0, 6, 0, 3, 0), ...rect(2, 4, 0, 3, 1)],
+  "terraced-steps": () => [...rect(0, 7, 0, 3, 0), ...rect(1, 6, 0, 3, 1), ...rect(2, 5, 0, 3, 2), ...rect(3, 4, 0, 3, 3)],
   "long-table": () => [...rect(0, 9, 0, 3, 0), ...rect(2, 7, 0, 2, 1)],
+  "four-corners": () => [...rect(0, 7, 0, 4, 0), ...rect(0, 1, 0, 1, 1), ...rect(6, 7, 3, 4, 1)],
+  "serpents-coil": () => [...rect(0, 3, 0, 2, 0), ...rect(4, 7, 2, 4, 0), ...rect(1, 6, 1, 3, 1)],
+  "twin-dragons": () => [...rect(0, 9, 0, 3, 0), ...rect(1, 3, 0, 3, 1), ...rect(6, 8, 0, 3, 1), { x: 4, y: 1, z: 2 }, { x: 5, y: 1, z: 2 }, { x: 4, y: 2, z: 2 }, { x: 5, y: 2, z: 2 }],
+  "imperial-seal": () => [...rect(0, 8, 0, 3, 0), ...rect(1, 7, 0, 3, 1), ...rect(2, 6, 1, 2, 2), ...rect(3, 5, 1, 2, 3)],
+  "phoenix-throne": () => [...rect(0, 8, 0, 3, 0), ...rect(2, 6, 0, 3, 1), ...rect(3, 5, 1, 2, 2)],
+  "jade-labyrinth": () => [...rect(0, 8, 0, 3, 0), ...rect(1, 7, 0, 3, 1), ...rect(2, 6, 1, 2, 2), ...rect(3, 4, 1, 2, 3)],
 };
 
 function mulberry32(seed) {

@@ -20,7 +20,7 @@ if (!source.includes("export class RoomDO")) {
 }
 
 const mod = await import(pathToFileURL(workerPath));
-const requiredExports = ["loadData", "registerUser", "upsertRoom", "getRoom", "joinRoom", "deleteRoom", "buildRoom", "validateCreateRoom", "generateBoard", "getOrCreateDaily"];
+const requiredExports = ["loadData", "registerUser", "upsertRoom", "getRoom", "joinRoom", "deleteRoom", "deleteUser", "buildRoom", "validateCreateRoom", "generateBoard", "getOrCreateDaily"];
 const missing = requiredExports.filter((name) => typeof mod[name] !== "function");
 if (missing.length) {
   console.error(`worker/index.js is missing expected exports: ${missing.join(", ")}`);
@@ -29,12 +29,22 @@ if (missing.length) {
 
 // Smoke-test board generation for every curated layout so a syntax-valid
 // but logically broken generator still fails this check before deploy.
-for (const layoutId of ["two-bridges", "dragons-nest", "eight-winds", "garden-gate", "nine-gates", "long-table"]) {
+// Pulled from LAYOUT_POSITIONS' own keys (via the source text — it isn't
+// exported) rather than a hardcoded list, so a newly added layout is
+// covered automatically instead of silently skipped like the last batch
+// was until this was fixed.
+const layoutIdMatches = [...source.matchAll(/^\s*"([a-z0-9-]+)":\s*\(\)\s*=>/gm)].map((m) => m[1]);
+if (layoutIdMatches.length === 0) {
+  console.error("Could not find any LAYOUT_POSITIONS entries to test — regex may be stale.");
+  process.exit(1);
+}
+for (const layoutId of layoutIdMatches) {
   const tiles = mod.generateBoard(layoutId, 12345);
   if (!Array.isArray(tiles) || tiles.length === 0 || tiles.length % 2 !== 0) {
     console.error(`generateBoard(${layoutId}) returned an invalid board`);
     process.exit(1);
   }
 }
+console.log(`Checked ${layoutIdMatches.length} layouts: ${layoutIdMatches.join(", ")}`);
 
 console.log("worker/index.js looks valid: exports present, board generation works for every layout.");

@@ -45,7 +45,7 @@ const DIFFICULTIES = ["easy", "medium", "hard"];
 export function renderRoomSetup(root, ctx, params = {}) {
   const local = {
     mode: "shared",
-    layoutId: params.layoutId || defaultLayoutForDifficulty("medium").id,
+    layoutId: params.layoutId || defaultLayoutForDifficulty("medium", ctx.state.points).id,
     difficulty: params.layoutId ? LAYOUTS[params.layoutId].difficulty === "hard" ? "hard" : LAYOUTS[params.layoutId].difficulty : "medium",
     freeTilesGlow: true,
     hintsAllowed: true,
@@ -177,7 +177,9 @@ export function renderRoomSetup(root, ctx, params = {}) {
       btn.appendChild(el("span", { style: `font:10px Figtree,sans-serif;color:${active ? "rgba(51,35,10,.65)" : "rgba(246,241,228,.45)"}`, text: `${DIFFICULTY_TILE_COUNTS[d]} tiles` }));
       btn.addEventListener("click", () => {
         local.difficulty = d;
-        local.layoutId = defaultLayoutForDifficulty(d).id;
+        const picked = defaultLayoutForDifficulty(d, ctx.state.points);
+        local.layoutId = picked.id;
+        if (picked.difficulty !== d) ctx.toast(`No ${d} layouts unlocked yet — using ${picked.name} for now.`);
         renderDiff();
         renderLayoutRow();
       });

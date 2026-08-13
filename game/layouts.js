@@ -3,6 +3,8 @@
 // Tile geometry constants match docs/Matched_Build_Spec_v1.0.md exactly:
 // 40x52pt face, 40pt column step, 40pt row step, 5pt up-left offset per layer.
 
+import { tierForPoints, TIERS } from "./scoring.js";
+
 export const TILE_W = 40;
 export const TILE_H = 52;
 export const STEP_X = 40;
@@ -47,8 +49,17 @@ export const LAYOUTS = {
     tileCount: 48,
     difficulty: "medium",
     layers: 2,
-    tier: null,
+    tier: "Stone",
     positions: () => [...rect(0, 7, 0, 4, 0), ...rect(1, 6, 1, 3, 1).filter((_, i) => i % 3 !== 2)],
+  },
+  "twin-pillars": {
+    id: "twin-pillars",
+    name: "Twin Pillars",
+    tileCount: 32,
+    difficulty: "easy",
+    layers: 2,
+    tier: "Stone",
+    positions: () => [...rect(0, 7, 0, 2, 0), ...rect(2, 5, 0, 1, 1)],
   },
   "garden-gate": {
     id: "garden-gate",
@@ -56,8 +67,35 @@ export const LAYOUTS = {
     tileCount: 60,
     difficulty: "hard",
     layers: 3,
-    tier: null,
+    tier: "Resin",
     positions: () => [...rect(0, 7, 0, 4, 0), ...rect(1, 6, 0, 3, 1), ...rect(3, 4, 1, 2, 2)],
+  },
+  "river-bend": {
+    id: "river-bend",
+    name: "River Bend",
+    tileCount: 44,
+    difficulty: "medium",
+    layers: 2,
+    tier: "Resin",
+    positions: () => [...rect(0, 8, 0, 3, 0), ...rect(3, 6, 1, 2, 1)],
+  },
+  "twin-peaks": {
+    id: "twin-peaks",
+    name: "Twin Peaks",
+    tileCount: 60,
+    difficulty: "hard",
+    layers: 3,
+    tier: "Bamboo",
+    positions: () => [...rect(0, 7, 0, 4, 0), ...rect(1, 6, 1, 3, 1), { x: 3, y: 2, z: 2 }, { x: 4, y: 2, z: 2 }],
+  },
+  "hollow-square": {
+    id: "hollow-square",
+    name: "Hollow Square",
+    tileCount: 46,
+    difficulty: "medium",
+    layers: 2,
+    tier: "Bamboo",
+    positions: () => [...rect(0, 7, 0, 4, 0), ...rect(1, 6, 2, 2, 1)],
   },
   "nine-gates": {
     id: "nine-gates",
@@ -65,8 +103,35 @@ export const LAYOUTS = {
     tileCount: 72,
     difficulty: "hard",
     layers: 3,
-    tier: "Rosewood",
+    tier: "Bone",
     positions: () => [...rect(0, 7, 0, 4, 0), ...rect(1, 6, 0, 3, 1), ...rect(2, 5, 1, 2, 2)],
+  },
+  "diamond-court": {
+    id: "diamond-court",
+    name: "Diamond Court",
+    tileCount: 60,
+    difficulty: "hard",
+    layers: 3,
+    tier: "Bone",
+    positions: () => [...rect(0, 7, 0, 3, 0), ...rect(1, 6, 0, 3, 1), ...rect(3, 4, 1, 2, 2)],
+  },
+  "cross-gate": {
+    id: "cross-gate",
+    name: "Cross Gate",
+    tileCount: 40,
+    difficulty: "medium",
+    layers: 2,
+    tier: "Porcelain",
+    positions: () => [...rect(0, 6, 0, 3, 0), ...rect(2, 4, 0, 3, 1)],
+  },
+  "terraced-steps": {
+    id: "terraced-steps",
+    name: "Terraced Steps",
+    tileCount: 80,
+    difficulty: "hard",
+    layers: 4,
+    tier: "Porcelain",
+    positions: () => [...rect(0, 7, 0, 3, 0), ...rect(1, 6, 0, 3, 1), ...rect(2, 5, 0, 3, 2), ...rect(3, 4, 0, 3, 3)],
   },
   "long-table": {
     id: "long-table",
@@ -74,8 +139,62 @@ export const LAYOUTS = {
     tileCount: 64,
     difficulty: "hard",
     layers: 2,
-    tier: "Lacquer",
+    tier: "Rosewood",
     positions: () => [...rect(0, 9, 0, 3, 0), ...rect(2, 7, 0, 2, 1)],
+  },
+  "four-corners": {
+    id: "four-corners",
+    name: "Four Corners",
+    tileCount: 52,
+    difficulty: "hard",
+    layers: 2,
+    tier: "Rosewood",
+    positions: () => [...rect(0, 7, 0, 4, 0), ...rect(0, 1, 0, 1, 1), ...rect(6, 7, 3, 4, 1)],
+  },
+  "serpents-coil": {
+    id: "serpents-coil",
+    name: "Serpent's Coil",
+    tileCount: 42,
+    difficulty: "medium",
+    layers: 2,
+    tier: "Jade",
+    positions: () => [...rect(0, 3, 0, 2, 0), ...rect(4, 7, 2, 4, 0), ...rect(1, 6, 1, 3, 1)],
+  },
+  "twin-dragons": {
+    id: "twin-dragons",
+    name: "Twin Dragons",
+    tileCount: 68,
+    difficulty: "hard",
+    layers: 3,
+    tier: "Jade",
+    positions: () => [...rect(0, 9, 0, 3, 0), ...rect(1, 3, 0, 3, 1), ...rect(6, 8, 0, 3, 1), { x: 4, y: 1, z: 2 }, { x: 5, y: 1, z: 2 }, { x: 4, y: 2, z: 2 }, { x: 5, y: 2, z: 2 }],
+  },
+  "imperial-seal": {
+    id: "imperial-seal",
+    name: "Imperial Seal",
+    tileCount: 80,
+    difficulty: "hard",
+    layers: 4,
+    tier: "Cloisonné",
+    positions: () => [...rect(0, 8, 0, 3, 0), ...rect(1, 7, 0, 3, 1), ...rect(2, 6, 1, 2, 2), ...rect(3, 5, 1, 2, 3)],
+  },
+  "phoenix-throne": {
+    id: "phoenix-throne",
+    name: "Phoenix Throne",
+    tileCount: 62,
+    difficulty: "hard",
+    layers: 3,
+    tier: "Cloisonné",
+    positions: () => [...rect(0, 8, 0, 3, 0), ...rect(2, 6, 0, 3, 1), ...rect(3, 5, 1, 2, 2)],
+  },
+  "jade-labyrinth": {
+    id: "jade-labyrinth",
+    name: "Jade Labyrinth",
+    tileCount: 78,
+    difficulty: "hard",
+    layers: 4,
+    tier: "Lacquer",
+    positions: () => [...rect(0, 8, 0, 3, 0), ...rect(1, 7, 0, 3, 1), ...rect(2, 6, 1, 2, 2), ...rect(3, 4, 1, 2, 3)],
   },
   // Classic 144-tile "turtle" — a tablet layout. The whole-board-always-
   // fits rule caps a phone layer at roughly 8x5, so this is unreachable on
@@ -151,7 +270,24 @@ export function layoutSilhouette(layout, cols = 8, rows = 5) {
   return points;
 }
 
-export function defaultLayoutForDifficulty(difficulty) {
+function layoutTierIndex(name) {
+  return TIERS.findIndex((t) => t.name === name);
+}
+
+export function isLayoutUnlocked(layout, points) {
+  if (!layout.tier) return true;
+  return layoutTierIndex(tierForPoints(points).name) >= layoutTierIndex(layout.tier);
+}
+
+// Most layouts are now score-gated (see each entry's `tier`), so picking a
+// default for a difficulty band has to skip locked ones — otherwise
+// tapping "Hard" in room-setup would silently hand a brand-new player a
+// layout they haven't unlocked. Falls back to the one always-unlocked
+// easy layout if literally nothing at this difficulty is unlocked yet
+// (there is currently no unlocked "hard" layout below the Bone tier).
+export function defaultLayoutForDifficulty(difficulty, points = Infinity) {
   const matches = layoutsByDifficulty(difficulty);
-  return matches[0] || LAYOUTS["dragons-nest"];
+  const unlocked = matches.filter((l) => isLayoutUnlocked(l, points));
+  if (unlocked.length) return unlocked[0];
+  return LAYOUTS["two-bridges"];
 }
