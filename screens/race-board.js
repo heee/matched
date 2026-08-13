@@ -6,14 +6,19 @@ import { el, avatarDot, renderTileFace, formatClock, haptic } from "./shared-ui.
 import { freeTiles, findHintPair, clearPair, hasMovesRemaining } from "../game/mahjong.js";
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
 import { PLAYER_COLORS, BOT_ACT_CHANCE, pointsForSession } from "../game/scoring.js";
+import { ensureRacer } from "../game/room.js";
 
 const BOT_INTERVAL_MS = 4200;
 
 export function renderRaceBoard(root, ctx, params = {}) {
   const room = ctx.state.store.rooms[params.roomId];
-  if (!room || !room.racers) { ctx.navigate("home"); return; }
-  ctx.state.activeRoomId = room.id;
+  if (!room) { ctx.navigate("home"); return; }
   const you = ctx.state.currentUser;
+  // Self-heals rooms synced from a server build that (until recently)
+  // never wrote a `racers` field at all — without this, opening one of
+  // those silently bounced back to home with no error.
+  if (!room.racers || !room.racers[you]) { ensureRacer(room, you); ctx.persist(); }
+  ctx.state.activeRoomId = room.id;
   const totalPairs = room.tileCount / 2;
 
   const local = { selectedId: null, lastStandingLeader: null, tileEls: new Map() };

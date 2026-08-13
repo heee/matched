@@ -64,4 +64,17 @@ export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, 
   return room;
 }
 
+// Adds a racer board for a player joining an existing race-mode room after
+// creation (open-room join, invite link). No-op outside race mode or if the
+// player already has one — race-board.js bounces to home whenever the
+// current player has no `racers` entry for them.
+export function ensureRacer(room, player) {
+  if (room.mode !== "race" || !player) return;
+  if (!room.racers) room.racers = {};
+  if (room.racers[player]) return;
+  const seedOffset = Object.keys(room.racers).length * 104729;
+  const racerBoard = generateBoard(room.layoutId, { rng: mulberry32(room.state.seed + seedOffset) });
+  room.racers[player] = { tiles: racerBoard.tiles };
+}
+
 export { DIFFICULTY_TILE_COUNTS };

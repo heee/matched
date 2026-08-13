@@ -510,7 +510,7 @@ function buildRoom(req) {
   const id = `${slugify(req.title) || "room"}-${Date.now().toString(36)}`;
   const seed = hashSeed(id);
   const tiles = generateBoard(req.layoutId, seed);
-  return {
+  const room = {
     id,
     title: req.title,
     mode: req.mode,
@@ -530,6 +530,14 @@ function buildRoom(req) {
     state: { tiles, tray: [], matchLog: [], state: "open", seed },
     completedAt: null,
   };
+  // Race mode: same layout, but each player clears their own independent
+  // copy of the board. Mirrors game/room.js's buildLocalRoom() — a room
+  // synced down from here without this field makes race-board.js bounce
+  // straight back to home (see its `!room.racers` guard).
+  if (req.mode === "race") {
+    room.racers = { [req.createdBy]: { tiles: generateBoard(req.layoutId, seed + 104729) } };
+  }
+  return room;
 }
 
 // ===========================================================================
@@ -634,6 +642,10 @@ async function joinRoom(db, roomId, user) {
   if (!room.players.includes(user)) room.players.push(user);
   room.pairsCleared[user] = room.pairsCleared[user] || 0;
   room.streaks[user] = room.streaks[user] || 0;
+  if (room.mode === "race") {
+    if (!room.racers) room.racers = {};
+    if (!room.racers[user]) room.racers[user] = { tiles: generateBoard(room.layoutId, room.state.seed + Object.keys(room.racers).length * 104729) };
+  }
   await upsertRoom(db, room);
 }
 
