@@ -96,6 +96,30 @@ export function trayFaceGlyph(face) {
   return "❀";
 }
 
+// A small blocking confirm dialog for destructive actions — no existing
+// modal pattern in this app, so this is the one reusable version. Resolves
+// true/false; never rejects.
+export function confirmDialog({ title, message, confirmLabel = "Delete", danger = true } = {}) {
+  return new Promise((resolve) => {
+    const overlay = el("div", { style: "position:fixed;inset:0;background:rgba(5,15,11,.6);display:flex;align-items:center;justify-content:center;z-index:100;padding:24px" });
+    const card = el("div", { style: "max-width:340px;width:100%;background:#183226;border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,.12)" });
+    card.appendChild(el("div", { style: "font:700 16px Figtree,sans-serif;color:#f6f1e4", text: title }));
+    card.appendChild(el("div", { style: "font:13.5px/1.5 Figtree,sans-serif;color:rgba(246,241,228,.65);margin-top:8px", text: message }));
+    const row = el("div", { style: "display:flex;gap:10px;margin-top:18px" });
+    const cancelBtn = el("button", { class: "btn btn-ghost", style: "flex:1", text: "Cancel" });
+    const confirmBtn = el("button", { class: "btn", style: `flex:1;${danger ? "background:#c0453e;color:#fff" : "background:#d9a441;color:#33230a"}`, text: confirmLabel });
+    const close = (result) => { overlay.remove(); resolve(result); };
+    cancelBtn.addEventListener("click", () => close(false));
+    confirmBtn.addEventListener("click", () => close(true));
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) close(false); });
+    row.appendChild(cancelBtn);
+    row.appendChild(confirmBtn);
+    card.appendChild(row);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+  });
+}
+
 export const TAB_DEFS = [
   { id: "home", label: "Home", icon: "⌂" },
   { id: "play-catalog", label: "Play", icon: "▦" },

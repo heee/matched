@@ -8,7 +8,7 @@ import {
   hasMovesRemaining, boardCompletion,
 } from "../game/mahjong.js";
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
-import { PLAYER_COLORS, pointsForSession, highlightsFromLog } from "../game/scoring.js";
+import { PLAYER_COLORS, pointsForSession, highlightsFromLog, BOT_ACT_CHANCE } from "../game/scoring.js";
 
 const BOT_INTERVAL_MS = 5200;
 const REACTIONS = ["🔥", "😮"];
@@ -391,7 +391,14 @@ export function renderBoard(root, ctx, params = {}) {
       if (bots.length === 0) return;
       const pair = findHintPair(room.state.tiles);
       if (!pair) return;
-      const bot = bots[Math.floor(Math.random() * bots.length)];
+      // Harder bots are more likely to be the one who claims a free pair
+      // this tick — a "roll" per bot weighted by its difficulty, falling
+      // back to a uniform pick among all bots if nobody rolls successfully
+      // (keeps something happening even with an all-easy table).
+      const difficulty = room.botDifficulty || {};
+      const eligible = bots.filter((b) => Math.random() < (BOT_ACT_CHANCE[difficulty[b]] ?? BOT_ACT_CHANCE.medium));
+      const pool = eligible.length ? eligible : bots;
+      const bot = pool[Math.floor(Math.random() * pool.length)];
       flyToTray(pair[0], pair[1]);
       performClear(pair[0], pair[1], bot);
     }, BOT_INTERVAL_MS);

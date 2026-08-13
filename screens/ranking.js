@@ -27,7 +27,9 @@ function aggregate(rooms, period) {
     if (Date.parse(room.completedAt) < since) continue;
     const totalPairs = room.tileCount / 2;
     const elapsedS = room.startedAt ? Math.max(1, Math.round((Date.parse(room.completedAt) - room.startedAt) / 1000)) : null;
+    const botNames = new Set(room.botNames || []);
     for (const name of room.players) {
+      if (botNames.has(name)) continue; // bots are session-only, never ranked
       if (!byPlayer.has(name)) byPlayer.set(name, { name, boards: 0, pairs: 0, timeS: 0, share: 0 });
       const agg = byPlayer.get(name);
       agg.boards += 1;

@@ -74,6 +74,14 @@ export function boardCompletionShare(playerPairs, totalPairsCleared) {
 // OKLCH hue rotation for any additional player beyond the four named ones.
 export const PLAYER_COLORS = ["#d9a441", "#5fbf9b", "#e08a6a", "#7aa8e0"];
 
+// Bots are opt-in seats in Shared/Race rooms (see room-setup's Players
+// picker) — session-only opponents, never registered users, never ranked.
+export const BOT_DIFFICULTIES = ["easy", "medium", "hard"];
+export const BOT_NAME_POOL = ["Dana", "Mika", "Jules", "Robin", "Sasha", "Priya", "Theo", "Nadia"];
+// Per-tick odds a bot at this difficulty is the one who claims a free pair,
+// consumed by board.js/race-board.js's simulated-opponent timers.
+export const BOT_ACT_CHANCE = { easy: 0.3, medium: 0.55, hard: 0.85 };
+
 export function colorForSeat(seatIndex) {
   if (seatIndex < PLAYER_COLORS.length) return PLAYER_COLORS[seatIndex];
   // Rotate hue in OKLCH at the same chroma/lightness as the fourth color

@@ -13,6 +13,7 @@ import { renderPlayCatalog } from "./screens/play-catalog.js";
 import { renderRoomSetup } from "./screens/room-setup.js";
 import { renderRanking } from "./screens/ranking.js";
 import { renderProfile } from "./screens/profile.js";
+import { renderManagePlayers } from "./screens/manage-players.js";
 import { renderBoard } from "./screens/board.js";
 import { renderRaceBoard } from "./screens/race-board.js";
 import { renderResults } from "./screens/results.js";
@@ -74,6 +75,7 @@ const SCREENS = {
   "room-setup": renderRoomSetup,
   ranking: renderRanking,
   profile: renderProfile,
+  "manage-players": renderManagePlayers,
   board: renderBoard,
   "race-board": renderRaceBoard,
   results: renderResults,
@@ -90,6 +92,7 @@ const TAB_FOR_SCREEN = {
   "room-setup": "room-setup",
   ranking: "ranking",
   profile: "profile",
+  "manage-players": "profile",
   board: "home",
   "race-board": "home",
   results: "home",

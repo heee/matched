@@ -4,12 +4,12 @@
 import { el, avatarDot } from "./shared-ui.js";
 import { LAYOUTS, defaultLayoutForDifficulty, DIFFICULTY_TILE_COUNTS } from "../game/layouts.js";
 import { buildLocalRoom } from "../game/room.js";
-import { colorForSeat } from "../game/scoring.js";
+import { BOT_DIFFICULTIES, BOT_NAME_POOL } from "../game/scoring.js";
 
 // Optional bot seats for Shared/Race rooms — off by default. A seat left
 // dotted/empty isn't filled by a bot; it just stays open for a real player
 // to join later, same as any other open seat.
-const BOT_POOL = ["Dana", "Mika", "Jules"];
+const BOT_SEAT_COUNT = 3;
 
 const MODES = [
   {
@@ -50,7 +50,8 @@ export function renderRoomSetup(root, ctx, params = {}) {
     freeTilesGlow: true,
     hintsAllowed: true,
     openLink: true,
-    bots: [],
+    bots: new Array(BOT_SEAT_COUNT).fill(null), // each slot: null (open) or { name, difficulty }
+    pickerSeat: null, // seat index (0-based within bots[]) currently showing the difficulty popover
   };
 
   const header = el("div", { style: "padding:6px 20px 16px;display:flex;align-items:baseline;justify-content:space-between" });
@@ -87,29 +88,60 @@ export function renderRoomSetup(root, ctx, params = {}) {
   const seatRow = el("div", { style: "display:flex;gap:10px" });
   playersSection.appendChild(seatRow);
   playersSection.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:8px", text: "Bots you don't add stay open for other players to join." }));
+  const pickerPanel = el("div", { style: "display:none;margin-top:10px;padding:12px;border-radius:12px;background:rgba(0,0,0,.22);flex-direction:column;gap:8px" });
+  playersSection.appendChild(pickerPanel);
+
+  function randomBotName() {
+    const used = local.bots.filter(Boolean).map((b) => b.name);
+    const available = BOT_NAME_POOL.filter((n) => !used.includes(n));
+    return available.length ? available[Math.floor(Math.random() * available.length)] : `Bot ${used.length + 1}`;
+  }
+
+  function renderPicker() {
+    pickerPanel.style.display = local.pickerSeat == null ? "none" : "flex";
+    pickerPanel.innerHTML = "";
+    if (local.pickerSeat == null) return;
+    pickerPanel.appendChild(el("div", { style: "font:600 12px Figtree,sans-serif;color:rgba(246,241,228,.7)", text: "Bot difficulty" }));
+    const diffRow = el("div", { style: "display:flex;gap:8px" });
+    BOT_DIFFICULTIES.forEach((diff) => {
+      const btn = el("button", { class: "btn btn-ghost", style: "flex:1;height:38px;text-transform:capitalize", text: diff });
+      btn.addEventListener("click", () => {
+        local.bots[local.pickerSeat] = { name: randomBotName(), difficulty: diff };
+        local.pickerSeat = null;
+        renderPlayers();
+      });
+      diffRow.appendChild(btn);
+    });
+    pickerPanel.appendChild(diffRow);
+    const cancel = el("button", { style: "background:none;border:none;color:rgba(246,241,228,.5);font:600 12px Figtree,sans-serif;cursor:pointer;align-self:flex-start", text: "Cancel" });
+    cancel.addEventListener("click", () => { local.pickerSeat = null; renderPlayers(); });
+    pickerPanel.appendChild(cancel);
+  }
+
   function renderPlayers() {
     playersSection.style.display = local.mode === "solo" ? "none" : "";
-    if (local.mode === "solo") return;
+    if (local.mode === "solo") { local.pickerSeat = null; return; }
     seatRow.innerHTML = "";
     const you = el("div", { style: "display:flex;flex-direction:column;align-items:center;gap:5px" });
     you.appendChild(avatarDot(ctx.state.currentUser, 0, 48));
     you.appendChild(el("span", { style: "font:600 11px Figtree,sans-serif;color:rgba(246,241,228,.6)", text: "You" }));
     seatRow.appendChild(you);
-    BOT_POOL.forEach((name, i) => {
+    local.bots.forEach((bot, i) => {
       const seatIndex = i + 1;
-      const active = local.bots.includes(name);
       const seat = el("div", { style: "display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer" });
-      const circle = active
-        ? avatarDot(name, seatIndex, 48)
-        : el("div", { style: "width:48px;height:48px;border-radius:50%;border:1.5px dashed rgba(246,241,228,.35);display:flex;align-items:center;justify-content:center;font:300 20px Figtree,sans-serif;color:rgba(246,241,228,.4)", text: "+" });
-      seat.appendChild(circle);
-      seat.appendChild(el("span", { style: `font:600 11px Figtree,sans-serif;color:${active ? "rgba(246,241,228,.85)" : "rgba(246,241,228,.4)"}`, text: active ? name : "Open" }));
-      seat.addEventListener("click", () => {
-        local.bots = active ? local.bots.filter((n) => n !== name) : [...local.bots, name];
-        renderPlayers();
-      });
+      if (bot) {
+        seat.appendChild(avatarDot(bot.name, seatIndex, 48));
+        seat.appendChild(el("span", { style: "font:600 11px Figtree,sans-serif;color:rgba(246,241,228,.85)", text: bot.name }));
+        seat.appendChild(el("span", { style: "font:10px Figtree,sans-serif;color:rgba(246,241,228,.45);text-transform:capitalize;margin-top:-3px", text: bot.difficulty }));
+        seat.addEventListener("click", () => { local.bots[i] = null; local.pickerSeat = null; renderPlayers(); });
+      } else {
+        seat.appendChild(el("div", { style: "width:48px;height:48px;border-radius:50%;border:1.5px dashed rgba(246,241,228,.35);display:flex;align-items:center;justify-content:center;font:300 20px Figtree,sans-serif;color:rgba(246,241,228,.4)", text: "+" }));
+        seat.appendChild(el("span", { style: "font:600 11px Figtree,sans-serif;color:rgba(246,241,228,.4)", text: "Open" }));
+        seat.addEventListener("click", () => { local.pickerSeat = local.pickerSeat === i ? null : i; renderPlayers(); });
+      }
       seatRow.appendChild(seat);
     });
+    renderPicker();
   }
   renderPlayers();
   body.appendChild(playersSection);
@@ -187,7 +219,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
         createdBy: ctx.state.currentUser,
         freeTilesGlow: local.freeTilesGlow,
         hintsAllowed: local.hintsAllowed,
-        bots: local.bots,
+        bots: local.bots.filter(Boolean),
       });
       ctx.state.store.rooms[room.id] = room;
       ctx.state.activeRoomId = room.id;

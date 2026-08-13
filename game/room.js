@@ -15,9 +15,14 @@ export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, 
   const resolvedSeed = seed ?? hashSeed(id);
   const layout = layoutId || defaultLayoutForDifficulty(difficulty).id;
   const board = generateBoard(layout, { rng: mulberry32(resolvedSeed) });
-  // Bots are opt-in per room (picked in room-setup's seat grid) — a solo
-  // room never has them regardless of what was picked before switching mode.
-  const players = mode === "solo" ? [createdBy] : [createdBy, ...(bots || [])];
+  // Bots are opt-in per room (picked in room-setup's seat grid, each with
+  // its own { name, difficulty }) — a solo room never has them regardless
+  // of what was picked before switching mode. botNames is kept alongside
+  // players so Ranking (and anything else scanning completed rooms) can
+  // exclude bots from real-player stats without guessing by name.
+  const botList = mode === "solo" ? [] : (bots || []);
+  const botNames = botList.map((b) => b.name);
+  const players = mode === "solo" ? [createdBy] : [createdBy, ...botNames];
   const pairsCleared = {};
   const streaks = {};
   for (const p of players) { pairsCleared[p] = 0; streaks[p] = 0; }
@@ -36,6 +41,8 @@ export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, 
     freeTilesGlow: freeTilesGlow !== false,
     hintsAllowed: hintsAllowed !== false,
     players,
+    botNames,
+    botDifficulty: Object.fromEntries(botList.map((b) => [b.name, b.difficulty])),
     pairsCleared,
     streaks,
     assistsUsed: {},

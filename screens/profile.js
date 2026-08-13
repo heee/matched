@@ -189,5 +189,8 @@ export function renderProfile(root, ctx) {
   settingsCard.appendChild(toggleRow("Haptics", "haptic"));
   root.appendChild(settingsCard);
 
+  const manageRow = el("button", { class: "row-link", type: "button", text: "Manage players", onClick: () => ctx.navigate("manage-players") });
+  root.appendChild(manageRow);
+
   root.appendChild(el("div", { style: "flex:1" }));
 }

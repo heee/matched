@@ -5,7 +5,7 @@
 import { el, avatarDot, renderTileFace, formatClock } from "./shared-ui.js";
 import { freeTiles, findHintPair, clearPair, hasMovesRemaining } from "../game/mahjong.js";
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
-import { PLAYER_COLORS } from "../game/scoring.js";
+import { PLAYER_COLORS, BOT_ACT_CHANCE } from "../game/scoring.js";
 
 const BOT_INTERVAL_MS = 4200;
 
@@ -163,12 +163,14 @@ export function renderRaceBoard(root, ctx, params = {}) {
 
   let botTimer = setInterval(() => {
     const bots = room.players.filter((p) => p !== you);
+    const difficulty = room.botDifficulty || {};
     for (const bot of bots) {
       const racer = room.racers[bot];
       if (!racer || racer.tiles.length === 0) continue;
       const pair = findHintPair(racer.tiles);
       if (!pair) continue;
-      if (Math.random() > 0.6) continue; // don't clear on every tick, keeps it a real race
+      const chance = BOT_ACT_CHANCE[difficulty[bot]] ?? BOT_ACT_CHANCE.medium;
+      if (Math.random() > chance) continue; // don't clear on every tick, keeps it a real race
       const result = clearPair(racer.tiles, pair[0], pair[1]);
       if (result) {
         racer.tiles = result.tiles;
