@@ -263,7 +263,7 @@ export function renderHome(root, ctx) {
 
   // ---- swipeable hero ----
   let heroIndex = 0;
-  const heroWrap = el("div", { style: "display:flex;align-items:center;gap:3px;margin:4px 10px 0" });
+  const heroWrap = el("div", { class: "hero-wrap", style: "display:flex;align-items:center;gap:3px;margin:4px 10px 0" });
   const prevBtn = el("div", { text: "‹", style: "flex:none;width:18px;height:56px;display:flex;align-items:center;justify-content:center;font:300 22px Figtree,sans-serif;color:rgba(246,241,228,.55);cursor:pointer;user-select:none" });
   const nextBtn = el("div", { text: "›", style: "flex:none;width:18px;height:56px;display:flex;align-items:center;justify-content:center;font:300 22px Figtree,sans-serif;color:rgba(246,241,228,.55);cursor:pointer;user-select:none" });
   const cardSlot = el("div", { style: "flex:1;min-width:0" });

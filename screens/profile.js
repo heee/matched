@@ -55,7 +55,7 @@ function equippedTierName(ctx, key, currentTierName) {
 // it takes to unlock, mirroring the locked-layout-card convention in
 // design-reference.html.
 function cosmeticGrid(ctx, { key, swatches, nameFor, subFor }, currentTierName, rerender) {
-  const grid = el("div", { style: "padding:8px 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px" });
+  const grid = el("div", { class: "cosmetic-grid" });
   const equippedName = equippedTierName(ctx, key, currentTierName);
   for (const tier of TIERS) {
     const threshold = key === "felt" ? TIER_UNLOCKS[tier.name].feltThreshold : TIER_UNLOCKS[tier.name].materialThreshold;
@@ -180,7 +180,7 @@ export function renderProfile(root, ctx) {
 
   root.appendChild(el("div", { class: "section-label", style: "padding:0 16px 6px", text: "This month" }));
   const stats = monthStats(ctx.state.store.rooms || {}, user);
-  const statGrid = el("div", { style: "padding:8px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px" });
+  const statGrid = el("div", { class: "stat-grid" });
   const statCell = (value, label) => {
     const cell = el("div", { style: "padding:13px;border-radius:13px;background:rgba(255,255,255,.06)" });
     cell.appendChild(el("div", { style: "font:700 22px Figtree,sans-serif;color:#f6f1e4", text: String(value) }));

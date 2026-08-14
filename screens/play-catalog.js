@@ -1,7 +1,7 @@
 // Matched — Play: layout catalog. Curated, not generated. See
 // docs/design-reference.html #1j.
 
-import { el } from "./shared-ui.js";
+import { el, isTabletViewport } from "./shared-ui.js";
 import { LAYOUTS, layoutSilhouette } from "../game/layouts.js";
 import { tierForPoints, TIERS } from "../game/scoring.js";
 
@@ -62,11 +62,11 @@ export function renderPlayCatalog(root, ctx) {
   root.appendChild(el("div", { class: "title-serif", style: "padding:6px 20px 12px" }, "Layouts"));
 
   const chips = el("div", { style: "padding:0 16px 12px;display:flex;gap:7px" });
-  const grid = el("div", { style: "padding:0 16px;display:grid;grid-template-columns:1fr 1fr;gap:12px" });
+  const grid = el("div", { class: "catalog-grid", style: "padding:0 16px" });
 
   function renderGrid() {
     grid.innerHTML = "";
-    const all = Object.values(LAYOUTS).filter((l) => !l.tabletOnly);
+    const all = Object.values(LAYOUTS).filter((l) => !l.tabletOnly || isTabletViewport());
     const filtered = all.filter((l) => {
       if (filter === "All") return true;
       if (filter === "Easy") return l.difficulty === "easy";

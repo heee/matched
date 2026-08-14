@@ -165,6 +165,10 @@ a { color: var(--gold); }
 .row { display: flex; align-items: center; }
 .row-list { display: flex; flex-direction: column; gap: 8px; padding: 0 16px; }
 
+.catalog-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cosmetic-grid { padding: 8px 16px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stat-grid { padding: 8px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
 .pill {
   padding: 7px 13px; border-radius: 999px; font: 600 12.5px var(--font-ui);
   background: rgba(255,255,255,.08); color: rgba(246,241,228,.75); border: none; cursor: pointer;
@@ -496,6 +500,26 @@ a { color: var(--gold); }
 .link-copy button { padding: 7px 12px; border-radius: 9px; background: rgba(255,255,255,.12); font: 600 12px var(--font-ui); color: var(--text); border: none; cursor: pointer; }
 
 .a11y-announcer { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* ---------------- tablet (>=768px) ----------------
+   Matches TABLET_MIN_WIDTH in screens/shared-ui.js — keep both in sync. */
+@media (min-width: 768px) {
+  /* #app and .tab-bar must share the same max-width or the tab bar drifts
+     out from under the content above it. */
+  #app { max-width: min(94vw, 960px); }
+  .tab-bar { max-width: min(94vw, 960px); }
+  .sheet { max-width: min(90vw, 560px); }
+
+  .row-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+  .row-list .empty-note { grid-column: 1 / -1; }
+
+  .hero-wrap { max-width: 640px; margin-left: auto; margin-right: auto; }
+
+  .profile-picker-grid { grid-template-columns: repeat(3, 1fr); max-width: 560px; }
+  .catalog-grid { grid-template-columns: repeat(3, 1fr); }
+  .cosmetic-grid { grid-template-columns: repeat(3, 1fr); }
+  .stat-grid { grid-template-columns: repeat(4, 1fr); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .tile, .toast, .reaction-float { animation: none !important; transition: none !important; }

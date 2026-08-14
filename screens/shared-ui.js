@@ -14,6 +14,13 @@ import { inkOverrideFor } from "../game/materials.js";
 const FACE_W = TILE_W - 6;
 const FACE_H = TILE_H - 6;
 
+// Matches the @media (min-width: 768px) breakpoint in style.css — kept in
+// sync manually since CSS can't import this constant.
+export const TABLET_MIN_WIDTH = 768;
+export function isTabletViewport() {
+  return window.matchMedia(`(min-width: ${TABLET_MIN_WIDTH}px)`).matches;
+}
+
 // SVG ids must be document-unique for url(#id) to resolve to the right
 // element — many tiles are on the board at once, so a fixed id would have
 // every tile's filter resolve to whichever one the browser saw first.
