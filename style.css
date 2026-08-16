@@ -229,7 +229,6 @@ a { color: var(--gold); }
   box-shadow: 1px 3px 0 var(--tile-edge);
   transition: transform .12s ease, box-shadow .12s ease;
   cursor: pointer;
-  animation: popIn .22s ease;
 }
 /* A soft diagonal sheen plus a faint warm undertint at the opposite corner
    — reads as a lacquered, slightly domed face catching light, instead of a
@@ -338,26 +337,13 @@ a { color: var(--gold); }
   100% { transform: translate(var(--dx), var(--dy)) scale(.2); opacity: 0; }
 }
 .tile-face { position: absolute; inset: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; pointer-events: none; z-index: 1; }
-/* Ink painted into a carved groove rather than flat-printed: the gradient
-   varies paint density across every stroke (thinner where the brush lifted
-   at the top-left, pooling darker at the bottom-right) and is clipped to
-   the glyph outline. background-color:currentColor keeps whatever per-face
-   ink color renderTileFace sets inline, so this works for red/green/blue
-   faces without restating any of them. */
+/* Keep glyph ink as real text color. A transparent text fill clipped to a
+   background could remain blank on the first Safari render while the CJK
+   web font loaded; Shuffle appeared to fix it only because it forced a
+   repaint. Real color also gives the fallback font a reliable first paint. */
 .tile-char {
   font-family: var(--font-tile); font-weight: 700; line-height: 1;
-  background-color: currentColor;
-  background-image: linear-gradient(165deg,
-    rgba(255,255,255,.32) 0%, rgba(255,255,255,.06) 34%,
-    rgba(0,0,0,.05) 60%, rgba(0,0,0,.18) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-/* Without background-clip:text the transparent fill would leave the glyphs
-   invisible, so hand the color back. */
-@supports not ((-webkit-background-clip: text) or (background-clip: text)) {
-  .tile-char { background-image: none; -webkit-text-fill-color: currentColor; }
+  -webkit-text-fill-color: currentColor;
 }
 .tile-slot { width: 74%; height: 70%; border: 1px dashed rgba(23,61,47,.4); border-radius: 3px; display: flex; align-items: center; justify-content: center; font: 700 6px ui-monospace, monospace; color: rgba(23,61,47,.55); letter-spacing: .06em; text-align: center; }
 

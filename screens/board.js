@@ -247,6 +247,37 @@ export function renderBoard(root, ctx, params = {}) {
     updateTileSelection();
   }
 
+  // Keeps the existing tile nodes after a clear. Rebuilding the whole board
+  // here used to restart every surviving tile's entrance animation while the
+  // two tray clones were also moving, which caused a visible hitch. Position
+  // and free-state updates are cheap and preserve compositor continuity.
+  function syncBoardTiles(removedIds = []) {
+    for (const id of removedIds) {
+      local.tileEls.get(id)?.remove();
+      local.tileEls.delete(id);
+    }
+
+    const tiles = room.state.tiles;
+    const free = new Set(freeTiles(tiles).map((t) => t.id));
+    const box = tilePixelBox(tiles);
+    boardWrap.style.width = `${box.width}px`;
+    boardWrap.style.height = `${box.height}px`;
+
+    for (const t of tiles) {
+      const tileEl = local.tileEls.get(t.id);
+      if (!tileEl) continue;
+      const isF = free.has(t.id);
+      tileEl.style.left = `${t.x * STEP_X + t.z * LAYER_OFFSET + box.padLeft}px`;
+      tileEl.style.top = `${t.y * STEP_Y - t.z * LAYER_OFFSET + box.padTop}px`;
+      tileEl.style.zIndex = String(t.z * 100 + t.y);
+      tileEl.classList.toggle("blocked", !isF);
+      tileEl.classList.toggle("free", isF && room.freeTilesGlow);
+      tileEl.classList.toggle("glow", isF && room.freeTilesGlow);
+      tileEl.classList.remove("selected");
+    }
+    applyBoardScale();
+  }
+
   // Cheap update for selection/hint state: toggles classes on the tile
   // elements that already exist rather than rebuilding the board.
   function updateTileSelection() {
@@ -351,7 +382,11 @@ export function renderBoard(root, ctx, params = {}) {
       showToast(`${user} took a pair${streak >= 3 ? ` · ${streak} streak` : ""}`, playerList().indexOf(user));
     }
     ctx.persist();
-    fullRender();
+    syncBoardTiles([idA, idB]);
+    renderScoreCards();
+    renderTray();
+    renderSub();
+    renderStuckBanner();
 
     if (room.state.tiles.length === 0 && !room.completedAt) {
       room.completedAt = new Date().toISOString();
