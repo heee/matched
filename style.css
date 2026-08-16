@@ -487,9 +487,10 @@ a { color: var(--gold); }
 
 .a11y-announcer { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
-/* ---------------- tablet (>=768px) ----------------
-   Matches TABLET_MIN_WIDTH in screens/shared-ui.js — keep both in sync. */
-@media (min-width: 768px) {
+/* ---------------- tablet (>=744px) ----------------
+   Matches TABLET_MIN_WIDTH in screens/shared-ui.js — keep both in sync.
+   744px (not 768px) so iPad mini's 744pt portrait CSS viewport qualifies. */
+@media (min-width: 744px) {
   /* #app and .tab-bar must share the same max-width or the tab bar drifts
      out from under the content above it. */
   #app { max-width: min(94vw, 960px); }

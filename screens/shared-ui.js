@@ -14,9 +14,10 @@ import { inkOverrideFor } from "../game/materials.js";
 const FACE_W = TILE_W - 6;
 const FACE_H = TILE_H - 6;
 
-// Matches the @media (min-width: 768px) breakpoint in style.css — kept in
-// sync manually since CSS can't import this constant.
-export const TABLET_MIN_WIDTH = 768;
+// Matches the @media (min-width: 744px) breakpoint in style.css — kept in
+// sync manually since CSS can't import this constant. 744px (not 768px) so
+// iPad mini's 744pt portrait CSS viewport still gets the tablet layout.
+export const TABLET_MIN_WIDTH = 744;
 export function isTabletViewport() {
   return window.matchMedia(`(min-width: ${TABLET_MIN_WIDTH}px)`).matches;
 }
