@@ -30,6 +30,16 @@
     window.addEventListener("load", () => {
       navigator.serviceWorker.register("./sw.js").catch(() => {});
     });
+    // A new SW activates (skipWaiting + clients.claim in sw.js) without
+    // reloading already-open clients, so a shipped fix can sit inert in an
+    // already-running PWA session indefinitely — reload once control
+    // actually changes hands so it takes effect.
+    let refreshedOnce = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshedOnce) return;
+      refreshedOnce = true;
+      window.location.reload();
+    });
   }
 </script>
 </body>
