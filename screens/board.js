@@ -208,7 +208,9 @@ export function renderBoard(root, ctx, params = {}) {
   const BOARD_FILL = 0.85;
   const BOARD_MAX_SCALE = 1.9;
   function applyBoardScale() {
-    const box = tilePixelBox(room.state.tiles);
+    // Uses the cached full-board box, not the live (shrinking) tile set —
+    // see syncBoardTiles for why recomputing per-clear causes a stutter.
+    const box = local.boardBox || tilePixelBox(room.state.tiles);
     if (box.width === 0 || box.height === 0) return;
     const availW = boardArea.clientWidth * BOARD_FILL;
     const availH = boardArea.clientHeight * BOARD_FILL;
@@ -219,7 +221,9 @@ export function renderBoard(root, ctx, params = {}) {
   function renderBoardTiles() {
     const tiles = room.state.tiles;
     const free = new Set(freeTiles(tiles).map((t) => t.id));
-    const box = tilePixelBox(tiles);
+    // Cached so syncBoardTiles (per-clear) doesn't recompute it from the
+    // shrinking tile set — see syncBoardTiles for why that matters.
+    const box = local.boardBox = tilePixelBox(tiles);
     boardWrap.style.width = `${box.width}px`;
     boardWrap.style.height = `${box.height}px`;
     applyBoardScale();
@@ -251,6 +255,12 @@ export function renderBoard(root, ctx, params = {}) {
   // here used to restart every surviving tile's entrance animation while the
   // two tray clones were also moving, which caused a visible hitch. Position
   // and free-state updates are cheap and preserve compositor continuity.
+  //
+  // Box is the cached one from the last full render, NOT recomputed from
+  // the post-clear tile set: recomputing here shrank the bounding box
+  // whenever a cleared pair sat on its edge, which shifted padLeft/padTop
+  // (and boardWrap's size, feeding applyBoardScale) and snapped every
+  // surviving tile to a new position on every single match — the stutter.
   function syncBoardTiles(removedIds = []) {
     for (const id of removedIds) {
       local.tileEls.get(id)?.remove();
@@ -259,9 +269,7 @@ export function renderBoard(root, ctx, params = {}) {
 
     const tiles = room.state.tiles;
     const free = new Set(freeTiles(tiles).map((t) => t.id));
-    const box = tilePixelBox(tiles);
-    boardWrap.style.width = `${box.width}px`;
-    boardWrap.style.height = `${box.height}px`;
+    const box = local.boardBox;
 
     for (const t of tiles) {
       const tileEl = local.tileEls.get(t.id);
