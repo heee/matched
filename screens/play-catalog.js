@@ -4,8 +4,9 @@
 import { el, isTabletViewport } from "./shared-ui.js";
 import { LAYOUTS, layoutSilhouette } from "../game/layouts.js";
 import { tierForPoints, TIERS } from "../game/scoring.js";
+import { completedLayoutStats } from "../game/layout-stats.js";
 
-const FILTERS = ["All", "Easy", "Classic", "Locked"];
+const FILTERS = ["All", "Easy", "Medium", "Hard"];
 
 function tierIndex(name) {
   return TIERS.findIndex((t) => t.name === name);
@@ -28,12 +29,12 @@ function blockPattern(layout) {
   return layoutSilhouette(layout, 9, 5).map((p) => ({ left: 12 + (p.xPct / 100) * 76, top: 15 + (p.yPct / 100) * 70, z: p.z }));
 }
 
-function layoutCard(ctx, layout) {
+function layoutCard(ctx, layout, stats) {
   const unlocked = isUnlocked(layout, ctx.state.points);
   const card = el("div", {
-    style: `border-radius:15px;overflow:hidden;background:rgba(255,255,255,.06);border:1px solid ${unlocked ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.07)"};${unlocked ? "" : "opacity:.72"};cursor:pointer`,
+    style: `display:flex;min-height:104px;border-radius:15px;overflow:hidden;background:rgba(255,255,255,.06);border:1px solid ${unlocked ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.07)"};${unlocked ? "" : "opacity:.72"};cursor:pointer`,
   });
-  const thumb = el("div", { style: "height:88px;position:relative;background:radial-gradient(120% 120% at 50% 30%,#1d6349,#0e3527)" });
+  const thumb = el("div", { style: "width:112px;flex:none;position:relative;background:radial-gradient(120% 120% at 50% 30%,#1d6349,#0e3527)" });
   blockPattern(layout).forEach(({ left, top, z }) => {
     const upper = z > 0;
     thumb.appendChild(el("div", { style: `position:absolute;left:${left}%;top:${top}%;width:9px;height:12px;margin:-6px 0 0 -4.5px;border-radius:2px;background:${upper ? "#d9a441" : "#f2ecdc"};box-shadow:1px 1px 0 ${upper ? "rgba(0,0,0,.45)" : "rgba(0,0,0,.3)"};z-index:${z}` }));
@@ -42,12 +43,15 @@ function layoutCard(ctx, layout) {
     thumb.appendChild(el("div", { style: "position:absolute;inset:0;background:rgba(8,26,20,.72);display:flex;align-items:center;justify-content:center;font-size:19px", text: "🔒" }));
   }
   card.appendChild(thumb);
-  const body = el("div", { style: "padding:10px 12px 12px" });
-  body.appendChild(el("div", { style: "font:600 14px Figtree,sans-serif;color:#f6f1e4", text: layout.name }));
+  const body = el("div", { style: "padding:13px 14px;flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center" });
+  body.appendChild(el("div", { style: "font:600 15px Figtree,sans-serif;color:#f6f1e4", text: layout.name }));
   const sub = unlocked
-    ? `${layout.tileCount} tiles · ${layout.difficulty}`
-    : `${layout.tileCount} tiles · ${layout.tier}`;
+    ? `${layout.tileCount} tiles · ${layout.difficulty[0].toUpperCase()}${layout.difficulty.slice(1)}`
+    : `${layout.tileCount} tiles · Unlocks at ${layout.tier}`;
   body.appendChild(el("div", { style: `font:11.5px Figtree,sans-serif;color:${unlocked ? "rgba(246,241,228,.5)" : "#e08a6a"};margin-top:3px`, text: sub }));
+  const boardLabel = `${stats.boards} board${stats.boards === 1 ? "" : "s"} completed`;
+  const pairLabel = `${stats.pairs} pair${stats.pairs === 1 ? "" : "s"} matched`;
+  body.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.7);margin-top:9px", text: `${boardLabel} · ${pairLabel}` }));
   card.appendChild(body);
 
   card.addEventListener("click", () => {
@@ -59,10 +63,11 @@ function layoutCard(ctx, layout) {
 
 export function renderPlayCatalog(root, ctx) {
   let filter = "All";
+  const layoutStats = completedLayoutStats(ctx.state.store.rooms, ctx.state.currentUser);
   root.appendChild(el("div", { class: "title-serif", style: "padding:6px 20px 12px" }, "Layouts"));
 
   const chips = el("div", { style: "padding:0 16px 12px;display:flex;gap:7px" });
-  const grid = el("div", { class: "catalog-grid", style: "padding:0 16px" });
+  const grid = el("div", { class: "catalog-list", style: "padding:0 16px" });
 
   function renderGrid() {
     grid.innerHTML = "";
@@ -70,11 +75,11 @@ export function renderPlayCatalog(root, ctx) {
     const filtered = all.filter((l) => {
       if (filter === "All") return true;
       if (filter === "Easy") return l.difficulty === "easy";
-      if (filter === "Classic") return l.difficulty === "medium";
-      if (filter === "Locked") return !!l.tier;
+      if (filter === "Medium") return l.difficulty === "medium";
+      if (filter === "Hard") return l.difficulty === "hard";
       return true;
     });
-    filtered.forEach((l) => grid.appendChild(layoutCard(ctx, l)));
+    filtered.forEach((l) => grid.appendChild(layoutCard(ctx, l, layoutStats[l.id] || { boards: 0, pairs: 0 })));
   }
 
   FILTERS.forEach((name) => {

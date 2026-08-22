@@ -11,7 +11,7 @@ import { equippedFeltName, feltCssVars } from "./game/felts.js?v=39";
 
 import { renderNameEntry } from "./screens/name-entry.js?v=38";
 import { renderHome } from "./screens/home.js?v=45";
-import { renderPlayCatalog } from "./screens/play-catalog.js?v=38";
+import { renderPlayCatalog } from "./screens/play-catalog.js?v=39";
 import { renderRoomSetup } from "./screens/room-setup.js?v=40";
 import { renderRanking } from "./screens/ranking.js?v=42";
 import { renderProfile } from "./screens/profile.js?v=42";

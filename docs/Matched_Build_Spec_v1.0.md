@@ -55,8 +55,8 @@ Sentence case for all headers and labels ("Continue playing", not "Continue Play
 ### Play — Layout catalog
 
 - Layouts are **curated, not generated**. Mahjong geometry does not benefit from generation the way crossword fill does.
-- Two-column grid of cards. Thumbnail draws the actual tile silhouette of the layout.
-- Filter chips: All · Easy · Classic · Locked.
+- One full-width card per row. Each card draws the actual tile silhouette and shows the active player's completed-board and matched-pair totals for that layout.
+- Filter chips: All · Easy · Medium · Hard, matching room creation.
 - Locked layouts stay visible with a lock badge and the tier that unlocks them, so progression always has a named target.
 
 ### + — Room setup

@@ -371,19 +371,20 @@ a{color:#d9a441}a:hover{color:#f0c069}
 <div style="padding:0 16px 12px;display:flex;gap:7px">
 <div style="padding:7px 13px;border-radius:999px;background:#d9a441;font:700 12.5px Figtree,sans-serif;color:#33230a">All</div>
 <div style="padding:7px 13px;border-radius:999px;background:rgba(255,255,255,.08);font:600 12.5px Figtree,sans-serif;color:rgba(246,241,228,.75)">Easy</div>
-<div style="padding:7px 13px;border-radius:999px;background:rgba(255,255,255,.08);font:600 12.5px Figtree,sans-serif;color:rgba(246,241,228,.75)">Classic</div>
-<div style="padding:7px 13px;border-radius:999px;background:rgba(255,255,255,.08);font:600 12.5px Figtree,sans-serif;color:rgba(246,241,228,.75)">Locked</div>
+<div style="padding:7px 13px;border-radius:999px;background:rgba(255,255,255,.08);font:600 12.5px Figtree,sans-serif;color:rgba(246,241,228,.75)">Medium</div>
+<div style="padding:7px 13px;border-radius:999px;background:rgba(255,255,255,.08);font:600 12.5px Figtree,sans-serif;color:rgba(246,241,228,.75)">Hard</div>
 </div>
-<div style="padding:0 16px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">
 <sc-for list="{{ catalog }}" as="c" hint-placeholder-count="6">
 <div style="{{ c.cardStyle }}">
-<div style="height:88px;position:relative;background:radial-gradient(120% 120% at 50% 30%,#1d6349,#0e3527)">
+<div style="width:112px;flex:none;position:relative;background:radial-gradient(120% 120% at 50% 30%,#1d6349,#0e3527)">
 <sc-for list="{{ c.blocks }}" as="b" hint-placeholder-count="6"><div style="{{ b.style }}"></div></sc-for>
 <sc-if value="{{ c.locked }}"><div style="position:absolute;inset:0;background:rgba(8,26,20,.72);display:flex;align-items:center;justify-content:center;font-size:19px">🔒</div></sc-if>
 </div>
-<div style="padding:10px 12px 12px">
-<div style="font:600 14px Figtree,sans-serif;color:#f6f1e4">{{ c.name }}</div>
+<div style="padding:13px 14px;flex:1;display:flex;flex-direction:column;justify-content:center">
+<div style="font:600 15px Figtree,sans-serif;color:#f6f1e4">{{ c.name }}</div>
 <div style="{{ c.subStyle }}">{{ c.sub }}</div>
+<div style="font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.7);margin-top:9px">{{ c.stats }}</div>
 </div>
 </div>
 </sc-for>
@@ -405,7 +406,8 @@ a{color:#d9a441}a:hover{color:#f0c069}
 <ul style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:9px">
 <li>Layouts are curated, not generated — mahjong geometry does not benefit from AI the way crossword fill does.</li>
 <li>Thumbnails draw the actual tile silhouette, the same principle as Across’s real grid minis.</li>
-<li>Filters: All · Easy · Classic · Locked.</li>
+<li>Filters: All · Easy · Medium · Hard, matching room creation.</li>
+<li>One full-width card per row, with completed boards and matched pairs for the active player.</li>
 <li>Locked layouts stay visible with a tier lock so progression always has a named target.</li>
 </ul>
 </div>
@@ -943,7 +945,8 @@ class Component extends DCLogic {
       { name: 'Long Table', sub: '64 tiles · Dragon', locked: true, pat: [[22, 50], [36, 50], [50, 50], [64, 50], [78, 50], [36, 30], [64, 30]] }
     ].map((c, i) => ({
       id: i, name: c.name, sub: c.sub, locked: !!c.locked, blocks: mkBlocks(c.pat),
-      cardStyle: 'border-radius:15px;overflow:hidden;background:rgba(255,255,255,.06);border:1px solid ' + (c.locked ? 'rgba(255,255,255,.07)' : 'rgba(255,255,255,.12)') + (c.locked ? ';opacity:.72' : ''),
+      stats: ['4 boards completed · 58 pairs matched', '7 boards completed · 136 pairs matched', '2 boards completed · 31 pairs matched', '0 boards completed · 0 pairs matched', '0 boards completed · 0 pairs matched', '0 boards completed · 0 pairs matched'][i],
+      cardStyle: 'display:flex;min-height:104px;border-radius:15px;overflow:hidden;background:rgba(255,255,255,.06);border:1px solid ' + (c.locked ? 'rgba(255,255,255,.07)' : 'rgba(255,255,255,.12)') + (c.locked ? ';opacity:.72' : ''),
       subStyle: 'font:11.5px Figtree,sans-serif;color:' + (c.locked ? '#e08a6a' : 'rgba(246,241,228,.5)') + ';margin-top:3px'
     }));
 

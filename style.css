@@ -183,7 +183,7 @@ a { color: var(--gold); }
 .row { display: flex; align-items: center; }
 .row-list { display: flex; flex-direction: column; gap: 8px; padding: 0 16px; }
 
-.catalog-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.catalog-list { display: flex; flex-direction: column; gap: 10px; }
 .cosmetic-grid { padding: 8px 16px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .stat-grid { padding: 8px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
@@ -548,7 +548,6 @@ a { color: var(--gold); }
   .hero-wrap { max-width: 640px; margin-left: auto; margin-right: auto; }
 
   .profile-picker-grid { grid-template-columns: repeat(3, 1fr); max-width: 560px; }
-  .catalog-grid { grid-template-columns: repeat(3, 1fr); }
   .cosmetic-grid { grid-template-columns: repeat(3, 1fr); }
   .stat-grid { grid-template-columns: repeat(4, 1fr); }
 }
