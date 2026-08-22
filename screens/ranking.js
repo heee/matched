@@ -41,9 +41,18 @@ export function renderRanking(root, ctx) {
 
     rows.forEach((r, i) => {
       const isMe = r.name === ctx.state.currentUser;
+      const canCompare = !isMe && !!ctx.state.store.users?.[r.name];
       const row = el("div", {
-        style: `display:flex;align-items:center;gap:11px;padding:12px 13px;border-radius:14px;background:${isMe ? "rgba(217,164,65,.14)" : "rgba(255,255,255,.06)"};border:1px solid ${isMe ? "rgba(217,164,65,.35)" : "rgba(255,255,255,.07)"}`,
+        style: `display:flex;align-items:center;gap:11px;padding:12px 13px;border-radius:14px;background:${isMe ? "rgba(217,164,65,.14)" : "rgba(255,255,255,.06)"};border:1px solid ${isMe ? "rgba(217,164,65,.35)" : "rgba(255,255,255,.07)"};${canCompare ? "cursor:pointer" : ""}`,
       });
+      if (canCompare) {
+        row.setAttribute("role", "button");
+        row.setAttribute("tabindex", "0");
+        row.setAttribute("aria-label", `Compare with ${r.name}`);
+        const openComparison = () => ctx.navigate("head-to-head", { user: r.name, period });
+        row.addEventListener("click", openComparison);
+        row.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openComparison(); } });
+      }
       row.appendChild(el("div", { style: `width:22px;font:700 15px Figtree,sans-serif;color:${i === 0 ? "#d9a441" : "rgba(246,241,228,.4)"}`, text: String(i + 1) }));
       row.appendChild(avatarDot(r.name, i, 34));
       const info = el("div", { style: "flex:1;min-width:0" });

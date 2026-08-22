@@ -4,22 +4,7 @@
 import { el, avatarDot } from "./shared-ui.js";
 import { dailyLayoutFor, dailySeedFor, todayDateStr, msUntilNextReset } from "../game/daily.js";
 import { LAYOUTS } from "../game/layouts.js";
-import { hashSeed } from "../game/mahjong.js";
 import { buildLocalRoom } from "../game/room.js";
-
-const GROUP = ["Dana", "Mika", "Jules", "Robin"];
-
-// Deterministic, date-seeded "who's finished" demo data for the group list
-// — same idea as the board's simulated opponents, so this screen never
-// looks frozen when nobody else is actually connected yet.
-function groupStatus(date) {
-  return GROUP.map((name, i) => {
-    const h = hashSeed(`${date}-${name}`);
-    const finished = h % 3 !== 0;
-    const seconds = 180 + (h % 240);
-    return { name, finished, seconds, playing: !finished && h % 5 === 0 };
-  });
-}
 
 export function renderDaily(root, ctx) {
   const date = todayDateStr();
@@ -50,6 +35,7 @@ export function renderDaily(root, ctx) {
       title: layout.name, mode: "solo", layoutId, difficulty: layout.difficulty,
       visibility: "private", createdBy: ctx.state.currentUser, seed, isDaily: true,
     });
+    room.dailyDate = date;
     ctx.state.store.rooms[room.id] = room;
     ctx.state.activeRoomId = room.id;
     ctx.persist();
@@ -59,26 +45,43 @@ export function renderDaily(root, ctx) {
   boardCard.appendChild(card);
   root.appendChild(boardCard);
 
-  root.appendChild(el("div", { class: "section-label", style: "padding-top:22px", text: "Your group today" }));
+  root.appendChild(el("div", { class: "section-label", style: "padding-top:22px", text: "Today's results" }));
   const list = el("div", { class: "row-list" });
-  const rows = [
-    { name: ctx.state.currentUser, me: true, finished: done, seconds: 0, playing: false },
-    ...groupStatus(date),
-  ];
-  rows.forEach((r, i) => {
-    const row = el("div", { style: `display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:13px;background:${r.me ? "rgba(217,164,65,.13)" : "rgba(255,255,255,.05)"}` });
-    row.appendChild(avatarDot(r.name, i, 30));
-    const info = el("div", { style: "flex:1;min-width:0" });
-    info.appendChild(el("div", { style: `font:${r.me ? 700 : 500} 14px Figtree,sans-serif;color:#f6f1e4`, text: r.name }));
-    info.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.45);margin-top:2px", text: r.playing ? "Playing now" : r.finished ? "Finished" : "Not played yet" }));
-    row.appendChild(info);
-    // Group times stay hidden until you finish today's board yourself.
-    const canSeeTimes = done || r.me;
-    const timeText = r.playing ? "live" : (r.finished && canSeeTimes) ? `${Math.floor(r.seconds / 60)}:${String(r.seconds % 60).padStart(2, "0")}` : r.finished ? "Finished" : "—";
-    row.appendChild(el("div", { style: `font:700 14px Figtree,sans-serif;color:${timeText === "live" ? "#5fbf9b" : timeText === "—" ? "rgba(246,241,228,.3)" : "#f6f1e4"}`, text: timeText }));
-    list.appendChild(row);
-  });
   root.appendChild(list);
+
+  function renderResults(results) {
+    list.innerHTML = "";
+    if (!results.length) {
+      list.appendChild(el("div", { class: "empty-note", style: "padding:0 4px", text: "No registered players have finished today's board yet." }));
+      return;
+    }
+    results.forEach((result, i) => {
+      const me = result.name === ctx.state.currentUser;
+      const row = el("div", { style: `display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:13px;background:${me ? "rgba(217,164,65,.13)" : "rgba(255,255,255,.05)"}` });
+      row.appendChild(el("div", { style: `width:18px;font:700 13px Figtree,sans-serif;color:${i === 0 ? "#d9a441" : "rgba(246,241,228,.35)"}`, text: String(i + 1) }));
+      row.appendChild(avatarDot(result.name, i, 30));
+      const info = el("div", { style: "flex:1;min-width:0" });
+      info.appendChild(el("div", { style: `font:${me ? 700 : 500} 14px Figtree,sans-serif;color:#f6f1e4`, text: me ? "You" : result.name }));
+      info.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.45);margin-top:2px", text: `${result.pairsMatched} pairs matched` }));
+      row.appendChild(info);
+      const seconds = Math.max(0, Math.round(Number(result.elapsedMs) / 1000));
+      row.appendChild(el("div", { style: "font:700 14px Figtree,sans-serif;color:#f6f1e4", text: done ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}` : "Finished" }));
+      list.appendChild(row);
+    });
+  }
+
+  const localResults = Object.values(ctx.state.store.rooms || {})
+    .filter((room) => room.isDaily && room.completedAt?.slice(0, 10) === date && room.createdBy === ctx.state.currentUser)
+    .map((room) => ({ name: ctx.state.currentUser, elapsedMs: room.elapsedMs || 0, pairsMatched: Number(room.pairsCleared?.[ctx.state.currentUser]) || 0 }));
+  renderResults(localResults);
+  if (ctx.api.configured()) {
+    ctx.api.fetchDaily().then((daily) => {
+      if (daily.date !== date) return;
+      const merged = new Map((daily.results || []).map((result) => [result.name, result]));
+      localResults.forEach((result) => { if (!merged.has(result.name)) merged.set(result.name, result); });
+      renderResults([...merged.values()].sort((a, b) => Number(a.elapsedMs) - Number(b.elapsedMs)));
+    }).catch(() => {});
+  }
 
   const note = el("div", { style: "margin:16px;padding:13px 15px;border-radius:14px;background:rgba(255,255,255,.05);font:12.5px/1.5 Figtree,sans-serif;color:rgba(246,241,228,.55)", text: "Times stay hidden until you finish, so nobody plays with a target in their head." });
   root.appendChild(note);

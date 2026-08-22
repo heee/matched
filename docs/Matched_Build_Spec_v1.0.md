@@ -78,6 +78,7 @@ One scrollable screen, never a wizard. Target: under a minute from tap to invite
 - **One metric at a time**, behind a "Change" control. Never a dense table. Metrics: Pairs cleared (default) · Speed to clear · Board completion share.
 - Rows: rank numeral (gold for 1st, no medals or podium), avatar, name, sub-line ("9 boards · 4:38 avg"), metric value.
 - The current user's row is highlighted in gold wherever it falls.
+- Tapping another registered player's row opens a **Head to head** screen with its own Today · Week · Month · All time control, direct win/loss/tie record, boards completed, pairs matched, average board share, and best streak for both players.
 
 ### You — Profile
 
@@ -125,8 +126,8 @@ Hint (highlights one valid pair) · Shuffle when stuck · Undo last match · Aut
 
 - One board for everyone, one attempt, resets on a 24h clock.
 - The **streak lives here**, not on Home — it is tied to the habit that earns it.
-- "Your group today" list: who has finished and their time.
-- **Group times stay hidden until you finish**, so nobody plays to a target.
+- "Today's results" lists only registered human players who actually completed that day's board. Bots never simulate or submit Daily attempts.
+- **Times stay hidden until you finish**, so nobody plays to a target.
 - Finishing feeds the same metrics Ranking sorts by. The daily is not a separate scoreboard.
 
 ### Results

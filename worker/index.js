@@ -6,7 +6,8 @@
 // periodically and on every clear.
 //
 //   GET  /data?scope=open|mine&user=NAME     -> current D1 contents (no auth to read)
-//   GET  /daily                              -> today's shared daily board (generated/cached in D1)
+//   GET  /daily                              -> today's shared daily board + registered-human results
+//   POST /daily-result   { date, user, elapsedMs, pairsMatched } -> records one registered human completion
 //   POST /register-user   { user }                      -> creates the user if new, assigns a stable color hue
 //   POST /create-room     { title, mode, layoutId, tileCount, difficulty, visibility, createdBy }
 //                                                          -> generates a solvable board server-side and seeds the room's DO
@@ -69,6 +70,25 @@ export default {
     if (url.pathname === "/daily" && request.method === "GET") {
       try {
         return json(await getOrCreateDaily(env.DB), 200, cors);
+      } catch (e) {
+        return json({ error: e.message }, 502, cors);
+      }
+    }
+
+    if (url.pathname === "/daily-result" && request.method === "POST") {
+      if (!checkAppKey(request, env)) return json({ error: "unauthorized" }, 401, cors);
+      const body = await safeJson(request);
+      const today = new Date().toISOString().slice(0, 10);
+      const date = typeof body?.date === "string" ? body.date : "";
+      const user = typeof body?.user === "string" ? body.user.trim().slice(0, 40) : "";
+      const elapsedMs = Math.round(Number(body?.elapsedMs));
+      const pairsMatched = Math.max(0, Math.round(Number(body?.pairsMatched)));
+      if (date !== today || !isActualPlayerName(user) || !Number.isFinite(elapsedMs) || elapsedMs <= 0 || !Number.isFinite(pairsMatched)) {
+        return json({ error: "invalid daily result" }, 400, cors);
+      }
+      try {
+        const saved = await saveDailyResult(env.DB, { date, user, elapsedMs, pairsMatched });
+        return json({ ok: true, result: saved }, 200, cors);
       } catch (e) {
         return json({ error: e.message }, 502, cors);
       }
@@ -742,12 +762,27 @@ async function deleteUser(db, name) {
 async function getOrCreateDaily(db) {
   const today = new Date().toISOString().slice(0, 10);
   const existing = await db.prepare("SELECT date, layout_id, seed FROM daily_boards WHERE date = ?").bind(today).first();
-  if (existing) return { date: existing.date, layoutId: existing.layout_id, seed: existing.seed, tiles: generateBoard(existing.layout_id, existing.seed) };
+  if (existing) return { date: existing.date, layoutId: existing.layout_id, seed: existing.seed, tiles: generateBoard(existing.layout_id, existing.seed), results: await dailyResults(db, today) };
   const layoutIds = Object.keys(LAYOUT_POSITIONS);
   const layoutId = layoutIds[hashSeed(today) % layoutIds.length];
   const seed = hashSeed(`daily-${today}`);
   await db.prepare("INSERT OR IGNORE INTO daily_boards (date, layout_id, seed) VALUES (?, ?, ?)").bind(today, layoutId, seed).run();
-  return { date: today, layoutId, seed, tiles: generateBoard(layoutId, seed) };
+  return { date: today, layoutId, seed, tiles: generateBoard(layoutId, seed), results: [] };
 }
 
-export { loadData, registerUser, upsertRoom, getRoom, joinRoom, deleteRoom, deleteUser, buildRoom, validateCreateRoom, generateBoard, getOrCreateDaily };
+async function dailyResults(db, date) {
+  const result = await db.prepare("SELECT user_name, elapsed_ms, pairs_matched, completed_at FROM daily_results WHERE date = ? ORDER BY elapsed_ms ASC, completed_at ASC").bind(date).all();
+  return (result.results || []).map((row) => ({ name: row.user_name, elapsedMs: Number(row.elapsed_ms), pairsMatched: Number(row.pairs_matched), completedAt: row.completed_at }));
+}
+
+async function saveDailyResult(db, { date, user, elapsedMs, pairsMatched }) {
+  const registered = await db.prepare("SELECT name FROM users WHERE name = ?").bind(user).first();
+  if (!registered) throw new Error("registered player required");
+  const completedAt = new Date().toISOString();
+  await db.prepare("INSERT OR IGNORE INTO daily_results (date, user_name, elapsed_ms, pairs_matched, completed_at) VALUES (?, ?, ?, ?, ?)")
+    .bind(date, user, elapsedMs, pairsMatched, completedAt).run();
+  const row = await db.prepare("SELECT user_name, elapsed_ms, pairs_matched, completed_at FROM daily_results WHERE date = ? AND user_name = ?").bind(date, user).first();
+  return { name: row.user_name, elapsedMs: Number(row.elapsed_ms), pairsMatched: Number(row.pairs_matched), completedAt: row.completed_at };
+}
+
+export { loadData, registerUser, upsertRoom, getRoom, joinRoom, deleteRoom, deleteUser, buildRoom, validateCreateRoom, generateBoard, getOrCreateDaily, dailyResults, saveDailyResult };

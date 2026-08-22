@@ -17,8 +17,9 @@ Matched — Worker deploy is manual for now. Steps:
    npx wrangler d1 create matched-db
    (or via the Cloudflare dashboard: Workers & Pages -> D1 -> Create database)
 
-2. Apply the schema:
+2. Apply the schemas in order:
    npx wrangler d1 execute matched-db --file=migrations/0001_initial.sql --remote
+   npx wrangler d1 execute matched-db --file=migrations/0002_daily_results.sql --remote
 
 3. Create a Worker (dashboard -> Workers & Pages -> Create -> Worker),
    paste the full contents of worker/index.js into Quick Edit, and deploy.

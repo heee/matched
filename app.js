@@ -2,9 +2,9 @@
 // screens/ and game/; this file wires navigation, the bottom tab bar, and
 // the local-first store, then hands each screen its render call.
 
-import { createWorkerApi } from "./api.js?v=40";
+import { createWorkerApi } from "./api.js?v=41";
 import { createJsonStorage, normalizeSharedData, mergeSharedData, LOCAL_KEYS, DEFAULT_SETTINGS } from "./storage.js?v=41";
-import { createMutationQueue } from "./sync.js?v=39";
+import { createMutationQueue } from "./sync.js?v=40";
 import { el, TAB_DEFS } from "./screens/shared-ui.js?v=41";
 import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.js?v=38";
 import { equippedFeltName, feltCssVars } from "./game/felts.js?v=39";
@@ -13,14 +13,15 @@ import { renderNameEntry } from "./screens/name-entry.js?v=38";
 import { renderHome } from "./screens/home.js?v=45";
 import { renderPlayCatalog } from "./screens/play-catalog.js?v=39";
 import { renderRoomSetup } from "./screens/room-setup.js?v=40";
-import { renderRanking } from "./screens/ranking.js?v=42";
+import { renderRanking } from "./screens/ranking.js?v=43";
+import { renderHeadToHead } from "./screens/head-to-head.js?v=1";
 import { renderProfile } from "./screens/profile.js?v=42";
 import { renderManagePlayers } from "./screens/manage-players.js?v=38";
-import { renderBoard } from "./screens/board.js?v=45";
+import { renderBoard } from "./screens/board.js?v=46";
 import { renderRaceBoard } from "./screens/race-board.js?v=44";
 import { renderResults } from "./screens/results.js?v=38";
 import { renderInvite } from "./screens/invite.js?v=39";
-import { renderDaily } from "./screens/daily.js?v=38";
+import { renderDaily } from "./screens/daily.js?v=39";
 import { renderContinuePlaying } from "./screens/continue-playing.js?v=38";
 import { renderOpenRooms } from "./screens/open-rooms.js?v=44";
 
@@ -95,6 +96,7 @@ const SCREENS = {
   "play-catalog": renderPlayCatalog,
   "room-setup": renderRoomSetup,
   ranking: renderRanking,
+  "head-to-head": renderHeadToHead,
   profile: renderProfile,
   "manage-players": renderManagePlayers,
   board: renderBoard,
@@ -114,6 +116,7 @@ const TAB_FOR_SCREEN = {
   "play-catalog": "play-catalog",
   "room-setup": "room-setup",
   ranking: "ranking",
+  "head-to-head": "ranking",
   profile: "profile",
   "manage-players": "profile",
   board: "home",
@@ -137,6 +140,7 @@ const ctx = {
   reportRoomProgress,
   commitRoomMembership,
   reportCompletedRoom,
+  reportDailyResult,
 };
 
 function commitRoomMembership(room) {
@@ -203,6 +207,20 @@ function reportCompletedRoom(room) {
   });
 }
 
+function reportDailyResult(room, elapsedMs) {
+  persist();
+  const payload = {
+    date: new Date().toISOString().slice(0, 10),
+    user: state.currentUser,
+    elapsedMs,
+    pairsMatched: Number(room.pairsCleared?.[state.currentUser]) || 0,
+  };
+  if (!workerApi.configured()) return;
+  workerApi.reportDailyResult(payload).catch(() => {
+    mutationQueue.enqueue("daily-result", payload, { id: `daily-result:${payload.date}:${payload.user}` });
+  });
+}
+
 async function flushPendingMutations() {
   if (!workerApi.configured()) return;
   await mutationQueue.flush(({ type, payload }) => {
@@ -211,6 +229,7 @@ async function flushPendingMutations() {
     if (type === "create-room") return workerApi.createRoom(payload);
     if (type === "complete-room") return workerApi.completeRoom(payload);
     if (type === "register-user") return workerApi.registerUser(payload.user);
+    if (type === "daily-result") return workerApi.reportDailyResult(payload);
     throw new Error(`Unsupported queued mutation: ${type}`);
   });
 }

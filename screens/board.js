@@ -445,8 +445,10 @@ export function renderBoard(root, ctx, params = {}) {
       const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
       ctx.state.dailyStreak = ctx.state.lastDailyCompleted === yesterday ? ctx.state.dailyStreak + 1 : 1;
       ctx.state.lastDailyCompleted = today;
+      ctx.reportDailyResult(room, elapsedMs);
+    } else {
+      ctx.reportCompletedRoom(room);
     }
-    ctx.reportCompletedRoom(room);
     stopBots();
     setTimeout(() => ctx.navigate("results", { roomId: room.id }), 900);
   }

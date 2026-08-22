@@ -458,6 +458,7 @@ a{color:#d9a441}a:hover{color:#f0c069}
 <li>Time filters: today, week, month, all time.</li>
 <li>One metric at a time behind a Change control — pairs cleared, speed to clear, board share. Never a dense table.</li>
 <li>Your own row is highlighted in gold wherever it lands.</li>
+<li>Other registered-player rows open a head-to-head comparison with its own time-horizon control, direct record, boards, pairs, share, and streak.</li>
 <li>First place gets a gold rank numeral only. No medals, no podium.</li>
 </ul>
 </div>
@@ -645,7 +646,7 @@ a{color:#d9a441}a:hover{color:#f0c069}
 <div style="height:54px;border-radius:15px;background:#d9a441;display:flex;align-items:center;justify-content:center;font:700 16px Figtree,sans-serif;color:#33230a;margin-top:16px">Start · 48 tiles</div>
 </div>
 </div>
-<div style="padding:22px 20px 8px;font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:rgba(246,241,228,.45)">Your group today</div>
+<div style="padding:22px 20px 8px;font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:rgba(246,241,228,.45)">Today's results</div>
 <div style="padding:0 16px;display:flex;flex-direction:column;gap:8px">
 <sc-for list="{{ dailyRows }}" as="d" hint-placeholder-count="5">
 <div style="{{ d.rowStyle }}">
@@ -673,7 +674,8 @@ a{color:#d9a441}a:hover{color:#f0c069}
 <ul style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:9px">
 <li>One board for everyone, one attempt, resets on a 24h clock.</li>
 <li>The streak lives here rather than on Home, so it is tied to the habit that earns it.</li>
-<li>Group times stay hidden until you finish — the one place I argued against pure competition.</li>
+<li>Results contain only registered humans who completed today's board; there are no simulated bot finishes.</li>
+<li>Times stay hidden until you finish — the one place I argued against pure competition.</li>
 <li>Finishing feeds the same metrics Ranking sorts by; the daily is not a separate scoreboard.</li>
 </ul>
 </div>
