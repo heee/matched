@@ -105,6 +105,24 @@ a { color: var(--gold); }
   color: var(--text-dimmer);
   padding: 0 20px 8px;
 }
+.section-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.section-more {
+  padding: 4px 10px;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-top: -4px;
+}
+.section-helper {
+  padding: 0 20px 8px;
+  margin-top: -3px;
+  font: 12px/1.4 var(--font-ui);
+  color: var(--text-dimmer);
+}
 
 .screen-header {
   padding: 10px 20px 14px;
@@ -296,21 +314,26 @@ a { color: var(--gold); }
   30%, 50%, 70% { transform: translateX(-7px) rotate(-2.5deg); }
   40%, 60% { transform: translateX(7px) rotate(2.5deg); }
 }
-/* Fly up, spin (a 3D horizontal-axis flip, not a flat spin), then fly into
-   the tray — --fly-dx/--fly-dy (set per-clone in board.js) is the vector
-   to the tray's center. perspective() lives inside each transform value
-   (rather than on an ancestor) so the flip reads as 3D without touching
-   any shared parent's stacking/perspective context. */
-.tile.flying {
-  pointer-events: none; cursor: default;
-  animation: tileFlyToTray .85s cubic-bezier(.3,.5,.3,1) both;
+/* Match flight has separate compositor layers for its path, responsive
+   board scale, and 3D turn. Keeping those transforms independent prevents
+   matrix interpolation jumps and preserves the clone's exact start size. */
+.match-flight {
+  position: fixed; z-index: 500; pointer-events: none; transform-origin: center;
+  will-change: transform, opacity;
 }
-@keyframes tileFlyToTray {
-  0% { transform: perspective(500px) translate(0, 0) rotateY(0deg) scale(1); opacity: 1; }
-  16% { transform: perspective(500px) translate(0, -28px) rotateY(360deg) scale(1.08); opacity: 1; }
-  50% { transform: perspective(500px) translate(calc(var(--fly-dx) * .12), -30px) rotateY(1080deg) scale(1.05); opacity: 1; }
-  80% { transform: perspective(500px) translate(calc(var(--fly-dx) * .7), calc(var(--fly-dy) * .55 - 14px)) rotateY(1800deg) scale(.7); opacity: 1; }
-  100% { transform: perspective(500px) translate(var(--fly-dx), var(--fly-dy)) rotateY(2160deg) scale(.25); opacity: 0; }
+.match-flight-scale { position: absolute; left: 0; top: 0; transform-origin: top left; perspective: 500px; }
+.match-flight .tile { left: 0; top: 0; pointer-events: none; cursor: default; transition: none; will-change: transform; }
+.match-flight.is-flying { animation: matchFlightPath .76s cubic-bezier(.22,.72,.24,1) both; }
+.match-flight.is-flying .tile { animation: matchFlightSpin .76s linear both; }
+@keyframes matchFlightPath {
+  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
+  24% { transform: translate3d(var(--fly-x1), -28px, 0) scale(1.06); opacity: 1; }
+  62% { transform: translate3d(var(--fly-x2), var(--fly-y2), 0) scale(.9); opacity: 1; }
+  100% { transform: translate3d(var(--fly-dx), var(--fly-dy), 0) scale(.25); opacity: 0; }
+}
+@keyframes matchFlightSpin {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(720deg); }
 }
 .combo-badge {
   position: fixed; transform: translate(-50%, -50%); z-index: 600; pointer-events: none;
@@ -374,8 +397,8 @@ a { color: var(--gold); }
   background: linear-gradient(160deg, #f9f4e6, #e7dec8);
   display: flex; align-items: center; justify-content: center;
   font: 700 13px var(--font-tile); color: var(--ink);
-  animation: popIn .3s ease both;
 }
+.tray-tile.entering { animation: popIn .3s ease both; }
 .tray-row { display: flex; align-items: center; gap: 4px; }
 .tray-nav {
   flex: none; width: 22px; height: 34px; display: flex; align-items: center; justify-content: center;
@@ -509,5 +532,6 @@ a { color: var(--gold); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tile, .toast, .reaction-float { animation: none !important; transition: none !important; }
+  .tile, .toast, .reaction-float, .match-flight { animation: none !important; transition: none !important; }
+  .match-flight { display: none; }
 }

@@ -3,6 +3,7 @@
 // only shown when no local user is saved yet.
 
 import { el, initialFor } from "./shared-ui.js";
+import { isActualPlayerName } from "../game/identity.js";
 
 export function renderNameEntry(root, ctx) {
   root.classList.add("bg-felt");
@@ -57,6 +58,7 @@ export function renderNameEntry(root, ctx) {
     e.preventDefault();
     const name = input.value.trim().slice(0, 40);
     if (!name) return;
+    if (!isActualPlayerName(name)) { ctx.toast("Choose your actual name — ‘You’ is only used as a label."); return; }
     if (users[name]) { ctx.toast(`"${name}" is already taken — pick that card instead, or use a different name`); return; }
     choose(name);
   });

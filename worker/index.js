@@ -29,6 +29,11 @@
 //   ROOM  -> class RoomDO (this file)
 
 const PLAYER_HUES = [42, 155, 20, 213, 280, 190, 340, 95];
+const RESERVED_PLAYER_NAMES = new Set(["you", "anonymous"]);
+
+function isActualPlayerName(name) {
+  return typeof name === "string" && !!name.trim() && !RESERVED_PLAYER_NAMES.has(name.trim().toLowerCase());
+}
 
 export default {
   async fetch(request, env) {
@@ -66,7 +71,7 @@ export default {
       if (!checkAppKey(request, env)) return json({ error: "unauthorized" }, 401, cors);
       const body = await safeJson(request);
       const name = typeof body?.user === "string" ? body.user.trim().slice(0, 40) : "";
-      if (!name) return json({ error: "invalid user" }, 400, cors);
+      if (!isActualPlayerName(name)) return json({ error: "invalid user" }, 400, cors);
       try {
         const user = await registerUser(env.DB, name);
         return json({ ok: true, user: { name, ...user } }, 200, cors);
@@ -101,7 +106,7 @@ export default {
       const body = await safeJson(request);
       const roomId = typeof body?.roomId === "string" ? body.roomId.slice(0, 64) : "";
       const user = typeof body?.user === "string" ? body.user.trim().slice(0, 40) : "";
-      if (!roomId || !user) return json({ error: "invalid payload" }, 400, cors);
+      if (!roomId || !isActualPlayerName(user)) return json({ error: "invalid payload" }, 400, cors);
       try {
         await joinRoom(env.DB, roomId, user);
         return json({ ok: true }, 200, cors);
@@ -179,6 +184,7 @@ export class RoomDO {
     if (this.deleted) return null;
     if (this.room) return this.room;
     this.room = (await this.state.storage.get("room")) || null;
+    if (this.room && repairRoomFaces(this.room)) await this.state.storage.put("room", this.room);
     return this.room;
   }
 
@@ -198,6 +204,7 @@ export class RoomDO {
 
     if (url.pathname === "/seed" && request.method === "POST") {
       const room = await request.json();
+      repairRoomFaces(room);
       this.deleted = false;
       await this.state.storage.put("room", room);
       this.room = room;
@@ -224,7 +231,8 @@ export class RoomDO {
     await this.ensureRoom(roomId);
     if (!this.room) return new Response("room not found", { status: 404 });
 
-    const user = url.searchParams.get("user") || "anonymous";
+    const user = url.searchParams.get("user") || "";
+    if (!isActualPlayerName(user)) return new Response("invalid user", { status: 400 });
     const spectator = url.searchParams.get("spectator") === "1";
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
@@ -375,6 +383,39 @@ function buildFaceSet() {
   return faces;
 }
 
+const FACE_BY_ID = new Map(buildFaceSet().map((face) => [face.id, face]));
+
+function repairFace(face) {
+  const id = typeof face === "string" ? face : face?.id;
+  const canonical = FACE_BY_ID.get(id);
+  if (canonical) return { ...canonical };
+  if (face?.kind) return face;
+  return { id: id || "unknown", kind: "char", top: "?", bot: "", color: INK };
+}
+
+function repairTileList(tiles) {
+  if (!Array.isArray(tiles)) return false;
+  let changed = false;
+  for (const tile of tiles) {
+    if (!tile.face?.kind) changed = true;
+    tile.face = repairFace(tile.face);
+  }
+  return changed;
+}
+
+function repairRoomFaces(room) {
+  if (!room || typeof room !== "object") return false;
+  let changed = repairTileList(room.state?.tiles);
+  for (const entry of room.state?.tray || []) {
+    if (!entry.face?.kind) changed = true;
+    entry.face = repairFace(entry.face);
+  }
+  for (const racer of Object.values(room.racers || {})) {
+    if (repairTileList(racer?.tiles)) changed = true;
+  }
+  return changed;
+}
+
 function isFree(tile, live) {
   const above = live.some((o) => o.z === tile.z + 1 && o.x === tile.x && o.y === tile.y);
   if (above) return false;
@@ -498,7 +539,7 @@ function validateCreateRoom(body) {
   const createdBy = String(body.createdBy || "").trim().slice(0, 40);
   const freeTilesGlow = body.freeTilesGlow !== false;
   const hintsAllowed = body.hintsAllowed !== false;
-  if (!title || !createdBy) return null;
+  if (!title || !isActualPlayerName(createdBy)) return null;
   return { title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed };
 }
 
@@ -524,6 +565,9 @@ function buildRoom(req) {
     freeTilesGlow: req.freeTilesGlow,
     hintsAllowed: req.hintsAllowed,
     players: [req.createdBy],
+    // Server rooms are always created by the requesting player. Bots are
+    // local, opt-in seats and never call or participate in this endpoint.
+    botNames: [],
     pairsCleared: { [req.createdBy]: 0 },
     streaks: { [req.createdBy]: 0 },
     assistsUsed: {},
@@ -574,7 +618,9 @@ function userFromRow(row) {
 }
 
 function roomFromRow(row) {
-  return parseJson(row.payload_json, null);
+  const room = parseJson(row.payload_json, null);
+  repairRoomFaces(room);
+  return room;
 }
 
 async function loadData(db, scope, user) {
@@ -585,7 +631,13 @@ async function loadData(db, scope, user) {
   const users = {};
   for (const row of userResult.results || []) users[row.name] = userFromRow(row);
   let rooms = (roomResult.results || []).map((row) => roomFromRow(row)).filter(Boolean);
-  if (scope === "open") rooms = rooms.filter((r) => r.visibility === "open" && r.state?.state !== "completed");
+  if (scope === "open") rooms = rooms.filter((r) =>
+    r.visibility === "open"
+    && r.state?.state !== "completed"
+    && isActualPlayerName(r.createdBy)
+    && !!users[r.createdBy]
+    && (r.players || []).includes(r.createdBy)
+  );
   else if (scope === "mine" && user) rooms = rooms.filter((r) => (r.players || []).includes(user));
   const roomsById = {};
   for (const r of rooms) roomsById[r.id] = r;
@@ -636,6 +688,7 @@ async function getRoom(db, roomId) {
 }
 
 async function joinRoom(db, roomId, user) {
+  if (!isActualPlayerName(user)) throw new Error("invalid user");
   const room = await getRoom(db, roomId);
   if (!room) throw new Error("room not found");
   if (!Array.isArray(room.players)) room.players = [];

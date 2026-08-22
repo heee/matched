@@ -10,6 +10,7 @@ import {
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
 import { PLAYER_COLORS, pointsForSession, highlightsFromLog, BOT_ACT_CHANCE, COMBO_WINDOW_MS, COMBO_BONUS_POINTS } from "../game/scoring.js";
 import { equippedMaterialName, materialCssVars } from "../game/materials.js";
+import { repairCurrentPlayerAliases } from "../game/identity.js";
 
 const BOT_INTERVAL_MS = 5200;
 const REACTIONS = ["🔥", "😮", "👏", "😂", "😍", "🎉", "💪", "😱", "👍"];
@@ -27,6 +28,7 @@ const ICON_HINT = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" s
 export function renderBoard(root, ctx, params = {}) {
   const room = ctx.state.store.rooms[params.roomId];
   if (!room) { ctx.navigate("home"); return; }
+  if (repairCurrentPlayerAliases(room, ctx.state.currentUser)) ctx.persist();
   ctx.state.activeRoomId = room.id;
   const you = ctx.state.currentUser;
   const isShared = room.mode === "shared";
@@ -41,6 +43,7 @@ export function renderBoard(root, ctx, params = {}) {
     stuckWarned: false,
     lastClearAt: 0, // your last successful clear, for combo timing
     comboCount: 0,
+    persistTimer: null,
   };
 
   root.classList.add("bg-felt");
@@ -253,8 +256,8 @@ export function renderBoard(root, ctx, params = {}) {
 
   // Keeps the existing tile nodes after a clear. Rebuilding the whole board
   // here used to restart every surviving tile's entrance animation while the
-  // two tray clones were also moving, which caused a visible hitch. Position
-  // and free-state updates are cheap and preserve compositor continuity.
+  // two tray clones were also moving, which caused a visible hitch. Only
+  // free-state classes can change after a clear; positions and scale cannot.
   //
   // Box is the cached one from the last full render, NOT recomputed from
   // the post-clear tile set: recomputing here shrank the bounding box
@@ -269,21 +272,15 @@ export function renderBoard(root, ctx, params = {}) {
 
     const tiles = room.state.tiles;
     const free = new Set(freeTiles(tiles).map((t) => t.id));
-    const box = local.boardBox;
-
     for (const t of tiles) {
       const tileEl = local.tileEls.get(t.id);
       if (!tileEl) continue;
       const isF = free.has(t.id);
-      tileEl.style.left = `${t.x * STEP_X + t.z * LAYER_OFFSET + box.padLeft}px`;
-      tileEl.style.top = `${t.y * STEP_Y - t.z * LAYER_OFFSET + box.padTop}px`;
-      tileEl.style.zIndex = String(t.z * 100 + t.y);
       tileEl.classList.toggle("blocked", !isF);
       tileEl.classList.toggle("free", isF && room.freeTilesGlow);
       tileEl.classList.toggle("glow", isF && room.freeTilesGlow);
       tileEl.classList.remove("selected");
     }
-    applyBoardScale();
   }
 
   // Cheap update for selection/hint state: toggles classes on the tile
@@ -295,20 +292,29 @@ export function renderBoard(root, ctx, params = {}) {
   }
 
   function renderTray() {
-    trayStrip.innerHTML = "";
     const trayItems = room.state.tray.slice(0, 14);
+    const existing = new Map(
+      [...trayStrip.querySelectorAll(".tray-tile[data-entry-id]")].map((node) => [node.dataset.entryId, node]),
+    );
+    const nodes = [];
     if (trayItems.length === 0) {
-      trayStrip.appendChild(el("div", { class: "empty-note", text: "Matched pairs land here, tinted by who took them." }));
+      nodes.push(el("div", { class: "empty-note", text: "Matched pairs land here, tinted by who took them." }));
     }
     trayItems.forEach((entry) => {
-      const seatIndex = Math.max(0, playerList().indexOf(entry.user));
-      const chip = el("div", {
-        class: "tray-tile",
-        style: `box-shadow:0 0 0 2px ${PLAYER_COLORS[seatIndex % PLAYER_COLORS.length]},0 2px 5px rgba(0,0,0,.35);color:${entry.face.color || "#23201c"}`,
-        text: trayFaceGlyph(entry.face),
-      });
-      trayStrip.appendChild(chip);
+      let chip = existing.get(entry.id);
+      if (!chip) {
+        const seatIndex = Math.max(0, playerList().indexOf(entry.user));
+        chip = el("div", {
+          class: "tray-tile entering",
+          "data-entry-id": entry.id,
+          style: `box-shadow:0 0 0 2px ${PLAYER_COLORS[seatIndex % PLAYER_COLORS.length]},0 2px 5px rgba(0,0,0,.35);color:${entry.face.color || "#23201c"}`,
+          text: trayFaceGlyph(entry.face),
+        });
+        chip.addEventListener("animationend", () => chip.classList.remove("entering"), { once: true });
+      }
+      nodes.push(chip);
     });
+    trayStrip.replaceChildren(...nodes);
     const myPairs = room.pairsCleared[you] || 0;
     const pct = boardCompletion(room.tileCount, room.state.tiles.length);
     trayCount.textContent = `You ${myPairs} ${myPairs === 1 ? "pair" : "pairs"} · board ${pct}%`;
@@ -367,6 +373,16 @@ export function renderBoard(root, ctx, params = {}) {
     ctx.announce(`${you} reacted ${emoji}`);
   }
 
+  // localStorage serializes the whole room synchronously. Delay and coalesce
+  // writes so match-flight frames are not blocked by a large JSON write.
+  function schedulePersist() {
+    clearTimeout(local.persistTimer);
+    local.persistTimer = setTimeout(() => {
+      local.persistTimer = null;
+      ctx.persist();
+    }, 120);
+  }
+
   function performClear(idA, idB, user) {
     const result = clearPair(room.state.tiles, idA, idB);
     if (!result) return false;
@@ -389,7 +405,7 @@ export function renderBoard(root, ctx, params = {}) {
       const streak = room.streaks[user];
       showToast(`${user} took a pair${streak >= 3 ? ` · ${streak} streak` : ""}`, playerList().indexOf(user));
     }
-    ctx.persist();
+    schedulePersist();
     syncBoardTiles([idA, idB]);
     renderScoreCards();
     renderTray();
@@ -420,7 +436,7 @@ export function renderBoard(root, ctx, params = {}) {
       ctx.state.dailyStreak = ctx.state.lastDailyCompleted === yesterday ? ctx.state.dailyStreak + 1 : 1;
       ctx.state.lastDailyCompleted = today;
     }
-    ctx.persist();
+    ctx.reportCompletedRoom(room);
     stopBots();
     setTimeout(() => ctx.navigate("results", { roomId: room.id }), 900);
   }
@@ -430,22 +446,47 @@ export function renderBoard(root, ctx, params = {}) {
   // the clones are just a visual echo, not on the game-state critical path.
   function flyToTray(idA, idB) {
     const trayRect = trayStrip.getBoundingClientRect();
-    const clones = [idA, idB].map((id) => local.tileEls.get(id)).filter(Boolean).map((tileEl) => {
+    [idA, idB].map((id) => local.tileEls.get(id)).filter(Boolean).forEach((tileEl) => {
       const rect = tileEl.getBoundingClientRect();
+      const logicalWidth = tileEl.offsetWidth;
+      const logicalHeight = tileEl.offsetHeight;
+      if (!logicalWidth || !logicalHeight) return;
+
+      const stage = el("div", { class: "match-flight" });
+      const scaled = el("div", { class: "match-flight-scale" });
       const clone = tileEl.cloneNode(true);
-      clone.className = "tile flying";
+      clone.classList.remove("selected", "free", "glow", "blocked", "shine", "shake", "shuffle-fly");
       const dx = trayRect.left + trayRect.width / 2 - (rect.left + rect.width / 2);
       const dy = trayRect.top + trayRect.height / 2 - (rect.top + rect.height / 2);
-      Object.assign(clone.style, {
-        position: "fixed", left: `${rect.left}px`, top: `${rect.top}px`,
-        width: `${rect.width}px`, height: `${rect.height}px`, margin: "0", zIndex: "500",
+      Object.assign(stage.style, {
+        left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px`,
       });
-      clone.style.setProperty("--fly-dx", `${dx}px`);
-      clone.style.setProperty("--fly-dy", `${dy}px`);
-      document.body.appendChild(clone);
-      return clone;
+      stage.style.setProperty("--fly-dx", `${dx}px`);
+      stage.style.setProperty("--fly-dy", `${dy}px`);
+      stage.style.setProperty("--fly-x1", `${dx * 0.04}px`);
+      stage.style.setProperty("--fly-x2", `${dx * 0.42}px`);
+      stage.style.setProperty("--fly-y2", `${dy * 0.24 - 24}px`);
+      Object.assign(scaled.style, {
+        width: `${logicalWidth}px`, height: `${logicalHeight}px`,
+        transform: `scale(${rect.width / logicalWidth},${rect.height / logicalHeight})`,
+      });
+      Object.assign(clone.style, {
+        position: "absolute", left: "0", top: "0", width: `${logicalWidth}px`, height: `${logicalHeight}px`,
+        margin: "0", zIndex: "auto",
+      });
+      const computed = getComputedStyle(tileEl);
+      for (const prop of ["--tile-a", "--tile-b", "--tile-edge", "--tile-upper", "--tile-ink"]) {
+        stage.style.setProperty(prop, computed.getPropertyValue(prop));
+      }
+      scaled.appendChild(clone);
+      stage.appendChild(scaled);
+      document.body.appendChild(stage);
+      stage.addEventListener("animationend", (event) => {
+        if (event.target === stage) stage.remove();
+      });
+      requestAnimationFrame(() => stage.classList.add("is-flying"));
+      setTimeout(() => stage.remove(), 900);
     });
-    setTimeout(() => { for (const clone of clones) clone.remove(); }, 900);
   }
 
   // A quick pop-and-fade badge plus a small burst of sparks off the
@@ -599,7 +640,7 @@ export function renderBoard(root, ctx, params = {}) {
     if (local.botsActive || !isShared) return;
     local.botsActive = true;
     botTimer = setInterval(() => {
-      const bots = playerList().filter((p) => p !== you);
+      const bots = (room.botNames || []).filter((name) => name !== you && playerList().includes(name));
       if (bots.length === 0) return;
       const pair = findHintPair(room.state.tiles);
       if (!pair) return;
@@ -626,6 +667,11 @@ export function renderBoard(root, ctx, params = {}) {
   window.__matchedCleanup = () => {
     stopBots();
     clearInterval(clockTimer);
+    if (local.persistTimer) {
+      clearTimeout(local.persistTimer);
+      local.persistTimer = null;
+      ctx.persist();
+    }
     window.removeEventListener("resize", applyBoardScale);
   };
 

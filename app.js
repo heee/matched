@@ -3,9 +3,10 @@
 // the local-first store, then hands each screen its render call.
 
 import { createWorkerApi } from "./api.js";
-import { createJsonStorage, normalizeSharedData, LOCAL_KEYS, DEFAULT_SETTINGS } from "./storage.js";
+import { createJsonStorage, normalizeSharedData, mergeSharedData, LOCAL_KEYS, DEFAULT_SETTINGS } from "./storage.js";
 import { createMutationQueue } from "./sync.js";
 import { el, TAB_DEFS } from "./screens/shared-ui.js";
+import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.js";
 
 import { renderNameEntry } from "./screens/name-entry.js";
 import { renderHome } from "./screens/home.js";
@@ -19,6 +20,7 @@ import { renderRaceBoard } from "./screens/race-board.js";
 import { renderResults } from "./screens/results.js";
 import { renderInvite } from "./screens/invite.js";
 import { renderDaily } from "./screens/daily.js";
+import { renderContinuePlaying } from "./screens/continue-playing.js";
 
 const jsonStorage = createJsonStorage(localStorage);
 const workerApi = createWorkerApi({ baseUrl: window.WORKER_URL || "", appKey: window.APP_KEY || "" });
@@ -33,7 +35,10 @@ function saveStore(store) {
 }
 
 const state = {
-  currentUser: jsonStorage.read(LOCAL_KEYS.currentUser, ""),
+  currentUser: (() => {
+    const saved = jsonStorage.read(LOCAL_KEYS.currentUser, "");
+    return isActualPlayerName(saved) ? saved : "";
+  })(),
   settings: { ...DEFAULT_SETTINGS, ...jsonStorage.read(LOCAL_KEYS.settings, {}) },
   points: jsonStorage.read(LOCAL_KEYS.points, 0),
   equipped: jsonStorage.read(LOCAL_KEYS.equipped, {}),
@@ -81,6 +86,7 @@ const SCREENS = {
   results: renderResults,
   invite: renderInvite,
   daily: renderDaily,
+  "continue-playing": renderContinuePlaying,
 };
 
 // Screens not directly reachable from a tab keep whichever tab was active
@@ -98,6 +104,7 @@ const TAB_FOR_SCREEN = {
   results: "home",
   invite: "home",
   daily: "home",
+  "continue-playing": "home",
 };
 
 const ctx = {
@@ -109,7 +116,45 @@ const ctx = {
   announce,
   navigate,
   selectUser,
+  reportCompletedRoom,
 };
+
+function completedRoomPayload(room) {
+  return {
+    completedAt: room.completedAt,
+    startedAt: room.startedAt,
+    state: room.state,
+    players: room.players,
+    botNames: room.botNames || [],
+    botDifficulty: room.botDifficulty || {},
+    pairsCleared: room.pairsCleared,
+    streaks: room.streaks,
+    peakStreaks: room.peakStreaks || {},
+    assistsUsed: room.assistsUsed || {},
+    comboBonus: room.comboBonus || {},
+    racers: room.racers,
+  };
+}
+
+function reportCompletedRoom(room) {
+  persist();
+  if (!workerApi.configured()) return;
+  const mutation = { roomId: room.id, payload: completedRoomPayload(room) };
+  workerApi.completeRoom(mutation).catch(() => {
+    mutationQueue.enqueue("complete-room", mutation, { id: `complete-room:${room.id}` });
+  });
+}
+
+async function flushPendingMutations() {
+  if (!workerApi.configured()) return;
+  await mutationQueue.flush(({ type, payload }) => {
+    if (type === "join-room") return workerApi.joinRoom(payload.roomId, payload.user);
+    if (type === "create-room") return workerApi.createRoom(payload);
+    if (type === "complete-room") return workerApi.completeRoom(payload);
+    if (type === "register-user") return workerApi.registerUser(payload.user);
+    throw new Error(`Unsupported queued mutation: ${type}`);
+  });
+}
 
 function navigate(screenId, params = {}) {
   if (!SCREENS[screenId]) throw new Error(`Unknown screen: ${screenId}`);
@@ -177,6 +222,7 @@ async function joinRoomFromInvite(roomId) {
     navigate("home");
     return;
   }
+  repairCurrentPlayerAliases(room, state.currentUser);
   if (!room.players.includes(state.currentUser)) {
     room.players.push(state.currentUser);
     room.pairsCleared[state.currentUser] = room.pairsCleared[state.currentUser] || 0;
@@ -206,6 +252,10 @@ async function afterLogin() {
 const PLAYER_HUES = [42, 155, 20, 213, 280, 190, 340, 95];
 
 function selectUser(name) {
+  if (!isActualPlayerName(name)) {
+    toast("Choose your actual name — ‘You’ is only used as a label.");
+    return;
+  }
   state.currentUser = name;
   // Write the profile locally right away — previously this only happened
   // via workerApi.registerUser()'s server round-trip, so switching to (or
@@ -236,8 +286,10 @@ function render() {
 // Hydrate the users/rooms cache in the background (best-effort — the app
 // still works offline off whatever's already in localStorage).
 if (workerApi.configured()) {
+  flushPendingMutations().catch(() => {});
+  window.addEventListener("online", () => flushPendingMutations().catch(() => {}));
   workerApi.fetchData().then((data) => {
-    state.store = normalizeSharedData({ ...state.store, ...data });
+    state.store = mergeSharedData(state.store, data);
     saveStore(state.store);
     // The name-entry picker builds its list synchronously from state.store,
     // so if this resolves after it's already on screen, re-render to show

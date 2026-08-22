@@ -5,12 +5,14 @@
 
 import { generateBoard, mulberry32, hashSeed } from "./mahjong.js";
 import { DIFFICULTY_TILE_COUNTS, defaultLayoutForDifficulty } from "./layouts.js";
+import { isActualPlayerName } from "./identity.js";
 
 function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "room";
 }
 
 export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed, seed, isDaily, bots }) {
+  if (!isActualPlayerName(createdBy)) throw new TypeError("A human creator is required");
   const id = `${slugify(title)}-${Date.now().toString(36)}`;
   const resolvedSeed = seed ?? hashSeed(id);
   const layout = layoutId || defaultLayoutForDifficulty(difficulty).id;
@@ -22,6 +24,7 @@ export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, 
   // exclude bots from real-player stats without guessing by name.
   const botList = mode === "solo" ? [] : (bots || []);
   const botNames = botList.map((b) => b.name);
+  if (botNames.includes(createdBy)) throw new TypeError("A bot cannot create a room");
   const players = mode === "solo" ? [createdBy] : [createdBy, ...botNames];
   const pairsCleared = {};
   const streaks = {};

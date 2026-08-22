@@ -2,51 +2,9 @@
 // control, gold highlight for the current user. See design-reference #1k.
 
 import { el, avatarDot } from "./shared-ui.js";
-import { PLAYER_COLORS } from "../game/scoring.js";
+import { RANKING_METRICS, aggregateRankings, rankingMetricValue } from "../game/ranking.js";
 
 const PERIODS = ["Today", "Week", "Month", "All time"];
-const METRICS = [
-  { id: "pairs", label: "Pairs cleared" },
-  { id: "speed", label: "Speed to clear" },
-  { id: "share", label: "Board completion share" },
-];
-
-function periodStartMs(period) {
-  const now = Date.now();
-  if (period === "Today") return now - 24 * 3600 * 1000;
-  if (period === "Week") return now - 7 * 24 * 3600 * 1000;
-  if (period === "Month") return now - 30 * 24 * 3600 * 1000;
-  return 0;
-}
-
-function aggregate(rooms, period) {
-  const since = periodStartMs(period);
-  const byPlayer = new Map();
-  for (const room of Object.values(rooms)) {
-    if (!room.completedAt) continue;
-    if (Date.parse(room.completedAt) < since) continue;
-    const totalPairs = room.tileCount / 2;
-    const elapsedS = room.startedAt ? Math.max(1, Math.round((Date.parse(room.completedAt) - room.startedAt) / 1000)) : null;
-    const botNames = new Set(room.botNames || []);
-    for (const name of room.players) {
-      if (botNames.has(name)) continue; // bots are session-only, never ranked
-      if (!byPlayer.has(name)) byPlayer.set(name, { name, boards: 0, pairs: 0, timeS: 0, share: 0 });
-      const agg = byPlayer.get(name);
-      agg.boards += 1;
-      agg.pairs += room.pairsCleared[name] || 0;
-      if (elapsedS) agg.timeS += elapsedS;
-      agg.share += totalPairs > 0 ? ((room.pairsCleared[name] || 0) / totalPairs) * 100 : 0;
-    }
-  }
-  return [...byPlayer.values()];
-}
-
-function metricValue(row, metric) {
-  if (metric === "pairs") return row.pairs;
-  if (metric === "speed") return row.boards ? Math.round(row.timeS / row.boards) : 0;
-  if (metric === "share") return row.boards ? Math.round(row.share / row.boards) : 0;
-  return 0;
-}
 
 function formatMetric(value, metric) {
   if (metric === "speed") { const m = Math.floor(value / 60); const s = value % 60; return `${m}:${String(s).padStart(2, "0")}`; }
@@ -72,8 +30,8 @@ export function renderRanking(root, ctx) {
 
   function renderList() {
     list.innerHTML = "";
-    const rows = aggregate(ctx.state.store.rooms || {}, period)
-      .map((r) => ({ ...r, value: metricValue(r, metric) }))
+    const rows = aggregateRankings(ctx.state.store.rooms || {}, period)
+      .map((r) => ({ ...r, value: rankingMetricValue(r, metric) }))
       .sort((a, b) => metric === "speed" ? (a.value || Infinity) - (b.value || Infinity) : b.value - a.value);
 
     if (rows.length === 0) {
@@ -99,8 +57,14 @@ export function renderRanking(root, ctx) {
 
   function renderMetricRow() {
     metricRow.innerHTML = "";
-    METRICS.forEach((m) => {
-      const chip = el("button", { class: `pill${m.id === metric ? " active" : ""}`, text: m.label });
+    RANKING_METRICS.forEach((m) => {
+      const chip = el("button", {
+        class: `pill${m.id === metric ? " active" : ""}`,
+        style: "flex:1;white-space:nowrap",
+        text: m.label,
+        "aria-label": `Rank by ${m.fullLabel.toLowerCase()}`,
+        title: m.fullLabel,
+      });
       chip.addEventListener("click", () => {
         metric = m.id;
         renderMetricRow();

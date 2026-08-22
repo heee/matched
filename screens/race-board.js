@@ -8,12 +8,14 @@ import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js
 import { PLAYER_COLORS, BOT_ACT_CHANCE, pointsForSession } from "../game/scoring.js";
 import { equippedMaterialName, materialCssVars } from "../game/materials.js";
 import { ensureRacer } from "../game/room.js";
+import { repairCurrentPlayerAliases } from "../game/identity.js";
 
 const BOT_INTERVAL_MS = 4200;
 
 export function renderRaceBoard(root, ctx, params = {}) {
   const room = ctx.state.store.rooms[params.roomId];
   if (!room) { ctx.navigate("home"); return; }
+  if (repairCurrentPlayerAliases(room, ctx.state.currentUser)) ctx.persist();
   const you = ctx.state.currentUser;
   // Self-heals rooms synced from a server build that (until recently)
   // never wrote a `racers` field at all — without this, opening one of
@@ -181,6 +183,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
   function finishRace() {
     stopBots();
     room.completedAt = room.completedAt || new Date().toISOString();
+    room.state.state = "completed";
     const elapsedMs = Date.now() - (room.startedAt || Date.now());
     const myPairs = room.pairsCleared[you] || 0;
     const assistsUsed = room.assistsUsed[you] || 0;
@@ -188,12 +191,12 @@ export function renderRaceBoard(root, ctx, params = {}) {
     ctx.state.points += earned;
     ctx.state.lastResult = { roomId: room.id, earned, highlights: [], elapsedMs };
     ctx.state.activeRoomId = null;
-    ctx.persist();
+    ctx.reportCompletedRoom(room);
     ctx.navigate("results", { roomId: room.id });
   }
 
   let botTimer = setInterval(() => {
-    const bots = room.players.filter((p) => p !== you);
+    const bots = (room.botNames || []).filter((name) => name !== you && room.players.includes(name));
     const difficulty = room.botDifficulty || {};
     for (const bot of bots) {
       const racer = room.racers[bot];

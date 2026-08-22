@@ -93,7 +93,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
 
   function randomBotName() {
     const used = local.bots.filter(Boolean).map((b) => b.name);
-    const available = BOT_NAME_POOL.filter((n) => !used.includes(n));
+    const available = BOT_NAME_POOL.filter((n) => n !== ctx.state.currentUser && !used.includes(n));
     return available.length ? available[Math.floor(Math.random() * available.length)] : `Bot ${used.length + 1}`;
   }
 
@@ -210,7 +210,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
   const footer = el("div", { style: "padding:14px 16px 30px" });
   footer.appendChild(el("button", {
     class: "btn btn-primary btn-lg", style: "width:100%", text: "Create & invite",
-    onClick: () => {
+    onClick: async () => {
       const layout = LAYOUTS[local.layoutId];
       const room = buildLocalRoom({
         title: layout.name,
@@ -223,12 +223,20 @@ export function renderRoomSetup(root, ctx, params = {}) {
         hintsAllowed: local.hintsAllowed,
         bots: local.bots.filter(Boolean),
       });
+      if (ctx.api.configured()) {
+        try {
+          const result = await ctx.api.createRoom({ title: room.title, mode: room.mode, layoutId: room.layoutId, difficulty: room.difficulty, visibility: room.visibility, createdBy: room.createdBy, freeTilesGlow: room.freeTilesGlow, hintsAllowed: room.hintsAllowed });
+          // Keep the local board/bot setup, but use the persisted room id so
+          // the completion snapshot updates the same D1 record.
+          room.id = result.room.id;
+        } catch {
+          // Offline rooms still play and rank locally. Hydration now keeps
+          // their completed snapshots instead of discarding them.
+        }
+      }
       ctx.state.store.rooms[room.id] = room;
       ctx.state.activeRoomId = room.id;
       ctx.persist();
-      if (ctx.api.configured()) {
-        ctx.api.createRoom({ title: room.title, mode: room.mode, layoutId: room.layoutId, difficulty: room.difficulty, visibility: room.visibility, createdBy: room.createdBy, freeTilesGlow: room.freeTilesGlow, hintsAllowed: room.hintsAllowed }).catch(() => {});
-      }
       ctx.navigate("invite", { roomId: room.id });
     },
   }));
