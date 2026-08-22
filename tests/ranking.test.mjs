@@ -89,9 +89,9 @@ test("explicit elapsed duration wins over inconsistent stored timestamps", () =>
   }), 90);
 });
 
-test("legacy completed rooms recover duration from their creation time", () => {
+test("legacy completed rooms without a real start remain untimed", () => {
   assert.equal(roomElapsedSeconds({
     createdAt: "2026-08-22T17:57:26.000Z",
     completedAt: "2026-08-22T18:00:00.000Z",
-  }), 154);
+  }), null);
 });

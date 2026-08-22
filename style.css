@@ -345,17 +345,18 @@ a { color: var(--gold); }
 }
 .match-flight-scale { position: absolute; left: 0; top: 0; transform-origin: top left; perspective: 500px; }
 .match-flight .tile { left: 0; top: 0; pointer-events: none; cursor: default; transition: none; will-change: transform; }
-.match-flight.is-flying { animation: matchFlightPath .76s cubic-bezier(.22,.72,.24,1) both; }
-.match-flight.is-flying .tile { animation: matchFlightSpin .76s linear both; }
+.match-flight.is-flying { animation: matchFlightPath .85s cubic-bezier(.3,.5,.3,1) both; }
+.match-flight.is-flying .tile { animation: matchFlightSpin .85s linear both; }
 @keyframes matchFlightPath {
   0% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
-  24% { transform: translate3d(var(--fly-x1), -28px, 0) scale(1.06); opacity: 1; }
-  62% { transform: translate3d(var(--fly-x2), var(--fly-y2), 0) scale(.9); opacity: 1; }
+  16% { transform: translate3d(0, -28px, 0) scale(1.08); opacity: 1; }
+  50% { transform: translate3d(calc(var(--fly-dx) * .12), -30px, 0) scale(1.05); opacity: 1; }
+  80% { transform: translate3d(calc(var(--fly-dx) * .7), calc(var(--fly-dy) * .55 - 14px), 0) scale(.7); opacity: 1; }
   100% { transform: translate3d(var(--fly-dx), var(--fly-dy), 0) scale(.25); opacity: 0; }
 }
 @keyframes matchFlightSpin {
   from { transform: rotateY(0deg); }
-  to { transform: rotateY(720deg); }
+  to { transform: rotateY(2160deg); }
 }
 .combo-badge {
   position: fixed; transform: translate(-50%, -50%); z-index: 600; pointer-events: none;

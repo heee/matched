@@ -3,25 +3,25 @@
 // the local-first store, then hands each screen its render call.
 
 import { createWorkerApi } from "./api.js?v=41";
-import { createJsonStorage, normalizeSharedData, mergeSharedData, LOCAL_KEYS, DEFAULT_SETTINGS } from "./storage.js?v=41";
+import { createJsonStorage, normalizeSharedData, mergeSharedData, LOCAL_KEYS, DEFAULT_SETTINGS } from "./storage.js?v=43";
 import { createMutationQueue } from "./sync.js?v=40";
 import { el, TAB_DEFS } from "./screens/shared-ui.js?v=41";
 import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.js?v=38";
 import { equippedFeltName, feltCssVars } from "./game/felts.js?v=39";
 
 import { renderNameEntry } from "./screens/name-entry.js?v=38";
-import { renderHome } from "./screens/home.js?v=45";
+import { renderHome } from "./screens/home.js?v=47";
 import { renderPlayCatalog } from "./screens/play-catalog.js?v=39";
 import { renderRoomSetup } from "./screens/room-setup.js?v=40";
 import { renderRanking } from "./screens/ranking.js?v=43";
 import { renderHeadToHead } from "./screens/head-to-head.js?v=1";
-import { renderProfile } from "./screens/profile.js?v=42";
+import { renderProfile } from "./screens/profile.js?v=44";
 import { renderManagePlayers } from "./screens/manage-players.js?v=38";
-import { renderBoard } from "./screens/board.js?v=46";
+import { renderBoard } from "./screens/board.js?v=48";
 import { renderRaceBoard } from "./screens/race-board.js?v=44";
 import { renderResults } from "./screens/results.js?v=38";
 import { renderInvite } from "./screens/invite.js?v=39";
-import { renderDaily } from "./screens/daily.js?v=39";
+import { renderDaily } from "./screens/daily.js?v=41";
 import { renderContinuePlaying } from "./screens/continue-playing.js?v=38";
 import { renderOpenRooms } from "./screens/open-rooms.js?v=44";
 
@@ -39,6 +39,16 @@ const legacyActiveRoomId = jsonStorage.read(LOCAL_KEYS.activeRoom, null);
 if (savedCurrentUser && legacyActiveRoomId && !activeRoomIds[savedCurrentUser]) {
   activeRoomIds[savedCurrentUser] = legacyActiveRoomId;
 }
+const savedDailyCompletedByUser = jsonStorage.read(LOCAL_KEYS.dailyCompletedByUser, {});
+const dailyCompletedByUser = savedDailyCompletedByUser && typeof savedDailyCompletedByUser === "object" ? savedDailyCompletedByUser : {};
+const legacyLastDailyCompleted = jsonStorage.read(LOCAL_KEYS.lastDailyCompleted, null);
+if (savedCurrentUser && legacyLastDailyCompleted && !dailyCompletedByUser[savedCurrentUser]) {
+  dailyCompletedByUser[savedCurrentUser] = legacyLastDailyCompleted;
+}
+const savedDailyStreaks = jsonStorage.read(LOCAL_KEYS.dailyStreaks, {});
+const dailyStreaks = savedDailyStreaks && typeof savedDailyStreaks === "object" ? savedDailyStreaks : {};
+const legacyDailyStreak = jsonStorage.read(LOCAL_KEYS.dailyStreak, 0);
+if (savedCurrentUser && legacyDailyStreak && !dailyStreaks[savedCurrentUser]) dailyStreaks[savedCurrentUser] = legacyDailyStreak;
 
 function loadStore() {
   const raw = jsonStorage.read(LOCAL_KEYS.cacheData, {});
@@ -53,8 +63,9 @@ const state = {
   settings: { ...DEFAULT_SETTINGS, ...jsonStorage.read(LOCAL_KEYS.settings, {}) },
   points: jsonStorage.read(LOCAL_KEYS.points, 0),
   equipped: jsonStorage.read(LOCAL_KEYS.equipped, {}),
-  dailyStreak: jsonStorage.read(LOCAL_KEYS.dailyStreak, 0),
-  lastDailyCompleted: jsonStorage.read(LOCAL_KEYS.lastDailyCompleted, null),
+  dailyStreaks,
+  dailyCompletedByUser,
+  dailyResults: jsonStorage.read(LOCAL_KEYS.dailyResults, {}),
   activeRoomId: activeRoomIds[savedCurrentUser] || null,
   activeRoomIds,
   store: loadStore(),
@@ -72,8 +83,11 @@ function persist() {
   jsonStorage.write(LOCAL_KEYS.settings, state.settings);
   jsonStorage.write(LOCAL_KEYS.points, state.points);
   jsonStorage.write(LOCAL_KEYS.equipped, state.equipped);
-  jsonStorage.write(LOCAL_KEYS.dailyStreak, state.dailyStreak);
-  jsonStorage.write(LOCAL_KEYS.lastDailyCompleted, state.lastDailyCompleted);
+  jsonStorage.write(LOCAL_KEYS.dailyStreaks, state.dailyStreaks);
+  jsonStorage.write(LOCAL_KEYS.dailyStreak, state.dailyStreaks[state.currentUser] || 0);
+  jsonStorage.write(LOCAL_KEYS.dailyCompletedByUser, state.dailyCompletedByUser);
+  jsonStorage.write(LOCAL_KEYS.lastDailyCompleted, state.dailyCompletedByUser[state.currentUser] || null);
+  jsonStorage.write(LOCAL_KEYS.dailyResults, state.dailyResults);
   jsonStorage.write(LOCAL_KEYS.activeRoom, state.activeRoomId);
   jsonStorage.write(LOCAL_KEYS.activeRooms, state.activeRoomIds);
   saveStore(state.store);
@@ -141,6 +155,7 @@ const ctx = {
   commitRoomMembership,
   reportCompletedRoom,
   reportDailyResult,
+  refreshAppearance,
 };
 
 function commitRoomMembership(room) {
@@ -208,15 +223,17 @@ function reportCompletedRoom(room) {
 }
 
 function reportDailyResult(room, elapsedMs) {
-  persist();
   const payload = {
-    date: new Date().toISOString().slice(0, 10),
+    date: room.dailyDate || new Date().toISOString().slice(0, 10),
     user: state.currentUser,
     elapsedMs,
     pairsMatched: Number(room.pairsCleared?.[state.currentUser]) || 0,
   };
+  state.dailyResults[`${payload.date}:${payload.user}`] = payload;
+  persist();
   if (!workerApi.configured()) return;
-  workerApi.reportDailyResult(payload).catch(() => {
+  workerApi.registerUser(payload.user).then(() => workerApi.reportDailyResult(payload)).catch(() => {
+    mutationQueue.enqueue("register-user", { user: payload.user }, { id: `register-user:${payload.user}` });
     mutationQueue.enqueue("daily-result", payload, { id: `daily-result:${payload.date}:${payload.user}` });
   });
 }
@@ -354,11 +371,15 @@ function selectUser(name) {
   afterLogin();
 }
 
-function render() {
+function refreshAppearance() {
   const app = document.getElementById("app");
   app.style.cssText = state.settings.feltAcrossApp
     ? feltCssVars(equippedFeltName(state.points, state.equipped))
     : "";
+}
+
+function render() {
+  refreshAppearance();
   const root = document.getElementById("screen-root");
   root.innerHTML = "";
   const screenEl = el("div", { class: "screen active", id: `screen-${state.screen}` });

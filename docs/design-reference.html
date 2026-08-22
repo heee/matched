@@ -177,7 +177,7 @@ a{color:#d9a441}a:hover{color:#f0c069}
 <div style="padding:6px 16px 0;display:flex;align-items:center;gap:10px">
 <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.13);display:flex;align-items:center;justify-content:center;font-size:15px">⌂</div>
 <div style="flex:1;min-width:0"><div style="font:600 15px Figtree,sans-serif;color:#f6f1e4">Dragon's Nest</div><div style="font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.55)">{{ clearedCount }} of 52 cleared · {{ clock }}</div></div>
-<div style="{{ hintBtnStyle }}" onClick="{{ onHint }}">✦</div>
+<div style="{{ hintBtnStyle }}" onClick="{{ onHint }}">✨</div>
 </div>
 
 <div style="margin:12px 16px 0;display:flex;gap:7px">
@@ -235,7 +235,7 @@ a{color:#d9a441}a:hover{color:#f0c069}
 <li>Tap a free tile to select, tap its match to clear. Blocked tiles are dimmed, desaturated, and reject the tap.</li>
 <li>Four score cards on top show pairs taken. At two or more in a row the player’s name is replaced by their streak.</li>
 <li>Cleared pairs fly to the tray and stay tinted with the taker’s color — permanent attribution, the mahjong equivalent of Across’s per-letter coloring.</li>
-<li>✦ opens assists: hint, shuffle, undo, and the no-moves-remain flag. Usage counts against leaderboard credit.</li>
+<li>The multi-spark stroke icon gives a hint; adjacent controls shuffle, undo, and toggle a live count of currently playable free matching pairs. Assist usage counts against leaderboard credit.</li>
 <li>Reactions fire from the bottom right and float over the felt; a toast announces another player’s take, outlined in their color.</li>
 <li>Simulated players stay idle until your first match so the board is intact when you arrive.</li>
 <li><b>Table backgrounds under consideration:</b> felt green (shown) as the default; night slate, used here for race mode, as a low-light option; and tier-unlocked felts — deep felt at Jade, a wood-rail table at Rosewood. Cap is two colors in play at once so tiles stay the only source of color.</li>
@@ -675,8 +675,10 @@ a{color:#d9a441}a:hover{color:#f0c069}
 <li>One board for everyone, one attempt, resets on a 24h clock.</li>
 <li>The streak lives here rather than on Home, so it is tied to the habit that earns it.</li>
 <li>Results contain only registered humans who completed today's board; there are no simulated bot finishes.</li>
+<li>After the active player finishes, Home shows only View results and the Daily screen removes its disabled play button.</li>
+<li>The active player's result is written locally before network sync, so it appears immediately even while offline.</li>
 <li>Times stay hidden until you finish — the one place I argued against pure competition.</li>
-<li>Finishing feeds the same metrics Ranking sorts by; the daily is not a separate scoreboard.</li>
+<li>Finishing also feeds the same metrics Ranking sorts by.</li>
 </ul>
 </div>
 </div>

@@ -76,7 +76,10 @@ export const LOCAL_KEYS = {
   points: "matched-points",
   assistUsage: "matched-assist-usage",
   dailyStreak: "matched-daily-streak",
+  dailyStreaks: "matched-daily-streaks-by-user",
   lastDailyCompleted: "matched-last-daily-completed",
+  dailyCompletedByUser: "matched-daily-completed-by-user",
+  dailyResults: "matched-daily-results",
   activeRoom: "matched-active-room",
   activeRooms: "matched-active-rooms-by-player",
 };

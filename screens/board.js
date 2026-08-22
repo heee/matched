@@ -4,7 +4,7 @@
 
 import { el, avatarDot, renderTileFace, trayFaceGlyph, formatClock, haptic, playMatchSound } from "./shared-ui.js?v=41";
 import {
-  isFree, freeTiles, findHintPair, clearPair, restorePair, shuffleRemaining,
+  isFree, freeTiles, findHintPair, findHintPairs, clearPair, restorePair, shuffleRemaining,
   hasMovesRemaining, boardCompletion,
 } from "../game/mahjong.js";
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
@@ -26,7 +26,8 @@ const REACTION_BTN_W = 40;
 // triggered from the header, now consolidated here).
 const ICON_SHUFFLE = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.8-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.4c1.3 0 2.5.6 3.3 1.7l.8 1.1"/><path d="M22 18h-1.4c-1.3 0-2.5-.6-3.3-1.7l-.8-1.1"/><path d="m18 14 4 4-4 4"/></svg>`;
 const ICON_UNDO = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>`;
-const ICON_HINT = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.8 1.9a2 2 0 0 1 1.288 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.288L21 12l-5.8-1.9a2 2 0 0 1-1.288-1.287Z"/></svg>`;
+const ICON_HINT = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.8 1.9a2 2 0 0 1 1.288 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.288L21 12l-5.8-1.9a2 2 0 0 1-1.288-1.287Z"/><path d="m5 2-.45 1.55L3 4l1.55.45L5 6l.45-1.55L7 4l-1.55-.45Z"/><path d="m19 17-.7 2.3L16 20l2.3.7L19 23l.7-2.3L22 20l-2.3-.7Z"/></svg>`;
+const ICON_MOVES = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="2"/><circle cx="17" cy="7" r="2"/><path d="M9 7h6"/><path d="M12 9v5"/><path d="m9 17 3-3 3 3"/></svg>`;
 
 export function renderBoard(root, ctx, params = {}) {
   const room = ctx.state.store.rooms[params.roomId];
@@ -46,6 +47,7 @@ export function renderBoard(root, ctx, params = {}) {
     stuckWarned: false,
     lastClearAt: 0, // your last successful clear, for combo timing
     comboCount: 0,
+    showMoves: false,
     persistTimer: null,
   };
   let clueController = null;
@@ -82,6 +84,8 @@ export function renderBoard(root, ctx, params = {}) {
   const stuckBanner = el("div", { style: "position:absolute;left:16px;right:16px;bottom:8px;padding:10px 14px;border-radius:12px;background:rgba(217,164,65,.18);border:1px solid rgba(217,164,65,.4);font:600 12.5px Figtree,sans-serif;color:#f2e6cc;text-align:center;display:none" });
   stuckBanner.textContent = "No moves remaining — try Shuffle.";
   boardArea.appendChild(stuckBanner);
+  const movesBadge = el("div", { style: "position:absolute;top:10px;right:16px;padding:7px 11px;border-radius:999px;background:rgba(8,26,20,.82);border:1px solid rgba(232,200,135,.38);box-shadow:0 5px 16px rgba(0,0,0,.24);font:700 11.5px Figtree,sans-serif;color:#f2e6cc;display:none;z-index:20;pointer-events:none" });
+  boardArea.appendChild(movesBadge);
   root.appendChild(boardArea);
 
   // ---- tray ----
@@ -114,9 +118,11 @@ export function renderBoard(root, ctx, params = {}) {
   const shuffleBtn = el("button", { class: "icon-btn", style: "width:42px;height:42px", html: ICON_SHUFFLE, "aria-label": "Shuffle" });
   const undoBtn = el("button", { class: "icon-btn", style: "width:42px;height:42px", html: ICON_UNDO, "aria-label": "Undo" });
   const hintBtn = el("button", { class: "icon-btn amber", style: "width:42px;height:42px", html: ICON_HINT, "aria-label": "Hint" });
+  const movesBtn = el("button", { class: "icon-btn", style: "width:42px;height:42px", html: ICON_MOVES, "aria-label": "Show available matching pairs", "aria-pressed": "false" });
   controls.appendChild(shuffleBtn);
   controls.appendChild(undoBtn);
   controls.appendChild(hintBtn);
+  controls.appendChild(movesBtn);
   controls.appendChild(el("div", { style: "flex:1" }));
 
   // Reactions don't make sense with nobody else on the board to see them.
@@ -337,6 +343,9 @@ export function renderBoard(root, ctx, params = {}) {
   function renderStuckBanner() {
     const stuck = room.state.tiles.length > 0 && !hasMovesRemaining(room.state.tiles);
     stuckBanner.style.display = stuck ? "block" : "none";
+    const count = findHintPairs(room.state.tiles).length;
+    movesBadge.textContent = `${count} playable ${count === 1 ? "pair" : "pairs"}`;
+    movesBadge.style.display = local.showMoves ? "block" : "none";
   }
 
   function fullRender() {
@@ -443,8 +452,8 @@ export function renderBoard(root, ctx, params = {}) {
     if (room.isDaily) {
       const today = new Date().toISOString().slice(0, 10);
       const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-      ctx.state.dailyStreak = ctx.state.lastDailyCompleted === yesterday ? ctx.state.dailyStreak + 1 : 1;
-      ctx.state.lastDailyCompleted = today;
+      ctx.state.dailyStreaks[you] = ctx.state.dailyCompletedByUser[you] === yesterday ? (ctx.state.dailyStreaks[you] || 0) + 1 : 1;
+      ctx.state.dailyCompletedByUser[you] = today;
       ctx.reportDailyResult(room, elapsedMs);
     } else {
       ctx.reportCompletedRoom(room);
@@ -475,9 +484,6 @@ export function renderBoard(root, ctx, params = {}) {
       });
       stage.style.setProperty("--fly-dx", `${dx}px`);
       stage.style.setProperty("--fly-dy", `${dy}px`);
-      stage.style.setProperty("--fly-x1", `${dx * 0.04}px`);
-      stage.style.setProperty("--fly-x2", `${dx * 0.42}px`);
-      stage.style.setProperty("--fly-y2", `${dy * 0.24 - 24}px`);
       Object.assign(scaled.style, {
         width: `${logicalWidth}px`, height: `${logicalHeight}px`,
         transform: `scale(${rect.width / logicalWidth},${rect.height / logicalHeight})`,
@@ -499,17 +505,21 @@ export function renderBoard(root, ctx, params = {}) {
       // can coalesce that with the insertion and never observe a pre-animation
       // style, leaving the clone with no visible flight at all.
       if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches && typeof stage.animate === "function") {
-        const timing = { duration: 760, easing: "cubic-bezier(.22,.72,.24,1)", fill: "both" };
+        const timing = { duration: 850, easing: "cubic-bezier(.3,.5,.3,1)", fill: "both" };
         stage.animate([
           { transform: "translate3d(0,0,0) scale(1)", opacity: 1, offset: 0 },
-          { transform: `translate3d(${dx * 0.04}px,-28px,0) scale(1.06)`, opacity: 1, offset: 0.24 },
-          { transform: `translate3d(${dx * 0.42}px,${dy * 0.24 - 24}px,0) scale(.9)`, opacity: 1, offset: 0.62 },
+          { transform: "translate3d(0,-28px,0) scale(1.08)", opacity: 1, offset: 0.16 },
+          { transform: `translate3d(${dx * 0.12}px,-30px,0) scale(1.05)`, opacity: 1, offset: 0.5 },
+          { transform: `translate3d(${dx * 0.7}px,${dy * 0.55 - 14}px,0) scale(.7)`, opacity: 1, offset: 0.8 },
           { transform: `translate3d(${dx}px,${dy}px,0) scale(.25)`, opacity: 0, offset: 1 },
         ], timing);
         clone.animate([
-          { transform: "rotateY(0deg)" },
-          { transform: "rotateY(720deg)" },
-        ], { duration: 760, easing: "linear", fill: "both" });
+          { transform: "rotateY(0deg)", offset: 0 },
+          { transform: "rotateY(360deg)", offset: 0.16 },
+          { transform: "rotateY(1080deg)", offset: 0.5 },
+          { transform: "rotateY(1800deg)", offset: 0.8 },
+          { transform: "rotateY(2160deg)", offset: 1 },
+        ], { duration: 850, easing: "linear", fill: "both" });
       } else if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         // Older browsers without Web Animations still get the CSS version;
         // two frames keep insertion and animation start in separate paints.
@@ -665,6 +675,13 @@ export function renderBoard(root, ctx, params = {}) {
   hintBtn.addEventListener("click", () => { clueController?.reset(); useHint(); });
   shuffleBtn.addEventListener("click", () => { clueController?.reset(); useShuffle(); });
   undoBtn.addEventListener("click", () => { clueController?.reset(); useUndo(); });
+  movesBtn.addEventListener("click", () => {
+    local.showMoves = !local.showMoves;
+    movesBtn.classList.toggle("amber", local.showMoves);
+    movesBtn.setAttribute("aria-pressed", String(local.showMoves));
+    movesBtn.setAttribute("aria-label", local.showMoves ? "Hide available matching pairs" : "Show available matching pairs");
+    renderStuckBanner();
+  });
 
   // ===================== simulated opponents =====================
 

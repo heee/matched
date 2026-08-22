@@ -11,7 +11,7 @@ export function renderDaily(root, ctx) {
   const layoutId = dailyLayoutFor(date);
   const layout = LAYOUTS[layoutId];
   const seed = dailySeedFor(date);
-  const done = ctx.state.lastDailyCompleted === date;
+  const done = ctx.state.dailyCompletedByUser?.[ctx.state.currentUser] === date;
 
   const header = el("div", { style: "padding:6px 20px 4px;display:flex;align-items:baseline;justify-content:space-between" });
   header.appendChild(el("div", { class: "title-serif", text: "Today" }));
@@ -23,25 +23,26 @@ export function renderDaily(root, ctx) {
   const card = el("div", { class: "gold-card" });
   const head = el("div", { style: "display:flex;justify-content:space-between;align-items:center" });
   head.appendChild(el("span", { style: "font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#e8c887", text: `Board ${seed % 900}` }));
-  head.appendChild(el("span", { style: "padding:5px 11px;border-radius:999px;background:rgba(0,0,0,.28);font:700 12px Figtree,sans-serif;color:#f6f1e4", text: `🔥 ${ctx.state.dailyStreak} day streak` }));
+  const streak = ctx.state.dailyStreaks?.[ctx.state.currentUser] || 0;
+  head.appendChild(el("span", { style: "padding:5px 11px;border-radius:999px;background:rgba(0,0,0,.28);font:700 12px Figtree,sans-serif;color:#f6f1e4", text: `🔥 ${streak} day streak` }));
   card.appendChild(head);
   card.appendChild(el("div", { class: "title-serif", style: "font-size:28px;margin:11px 0 6px", text: layout.name }));
   card.appendChild(el("div", { style: "font:13px Figtree,sans-serif;color:rgba(246,241,228,.6)", text: done ? "You already finished today's board." : "Everyone plays the same board. One attempt." }));
-  const startBtn = el("button", { class: "btn btn-primary btn-lg", style: "width:100%;margin-top:16px", text: done ? "Already played" : `Start · ${layout.tileCount} tiles` });
-  startBtn.disabled = done;
-  startBtn.addEventListener("click", () => {
-    if (done) return;
-    const room = buildLocalRoom({
-      title: layout.name, mode: "solo", layoutId, difficulty: layout.difficulty,
-      visibility: "private", createdBy: ctx.state.currentUser, seed, isDaily: true,
+  if (!done) {
+    const startBtn = el("button", { class: "btn btn-primary btn-lg", style: "width:100%;margin-top:16px", text: `Start · ${layout.tileCount} tiles` });
+    startBtn.addEventListener("click", () => {
+      const room = buildLocalRoom({
+        title: layout.name, mode: "solo", layoutId, difficulty: layout.difficulty,
+        visibility: "private", createdBy: ctx.state.currentUser, seed, isDaily: true,
+      });
+      room.dailyDate = date;
+      ctx.state.store.rooms[room.id] = room;
+      ctx.state.activeRoomId = room.id;
+      ctx.persist();
+      ctx.navigate("board", { roomId: room.id });
     });
-    room.dailyDate = date;
-    ctx.state.store.rooms[room.id] = room;
-    ctx.state.activeRoomId = room.id;
-    ctx.persist();
-    ctx.navigate("board", { roomId: room.id });
-  });
-  card.appendChild(startBtn);
+    card.appendChild(startBtn);
+  }
   boardCard.appendChild(card);
   root.appendChild(boardCard);
 
@@ -70,9 +71,15 @@ export function renderDaily(root, ctx) {
     });
   }
 
-  const localResults = Object.values(ctx.state.store.rooms || {})
-    .filter((room) => room.isDaily && room.completedAt?.slice(0, 10) === date && room.createdBy === ctx.state.currentUser)
-    .map((room) => ({ name: ctx.state.currentUser, elapsedMs: room.elapsedMs || 0, pairsMatched: Number(room.pairsCleared?.[ctx.state.currentUser]) || 0 }));
+  const localByName = new Map();
+  const savedResult = ctx.state.dailyResults?.[`${date}:${ctx.state.currentUser}`];
+  if (savedResult) {
+    localByName.set(ctx.state.currentUser, { name: ctx.state.currentUser, elapsedMs: savedResult.elapsedMs, pairsMatched: savedResult.pairsMatched });
+  }
+  Object.values(ctx.state.store.rooms || {})
+    .filter((room) => room.isDaily && (room.dailyDate === date || (!room.dailyDate && room.completedAt?.slice(0, 10) === date)) && room.createdBy === ctx.state.currentUser)
+    .forEach((room) => localByName.set(ctx.state.currentUser, { name: ctx.state.currentUser, elapsedMs: room.elapsedMs || 0, pairsMatched: Number(room.pairsCleared?.[ctx.state.currentUser]) || 0 }));
+  const localResults = [...localByName.values()];
   renderResults(localResults);
   if (ctx.api.configured()) {
     ctx.api.fetchDaily().then((daily) => {

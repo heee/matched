@@ -6,7 +6,7 @@ import { el, avatarDot, supportsHaptics } from "./shared-ui.js?v=41";
 import { tierForPoints, nextTier, pointsToNextTier, TIER_UNLOCKS, TIERS, nextCosmeticUnlock, cosmeticUnlockEvents } from "../game/scoring.js";
 import { MATERIALS, equippedMaterialName } from "../game/materials.js";
 import { FELTS, equippedFeltName } from "../game/felts.js";
-import { roomElapsedSeconds } from "../game/ranking.js?v=41";
+import { roomElapsedSeconds } from "../game/ranking.js?v=42";
 
 const ICON_SWITCH_PLAYER = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>`;
 
@@ -70,6 +70,7 @@ function cosmeticGrid(ctx, { key, swatches, nameFor, subFor }, currentTierName, 
         ctx.state.equipped = ctx.state.equipped || {};
         ctx.state.equipped[key] = tier.name;
         ctx.persist();
+        if (key === "felt") ctx.refreshAppearance();
         rerender();
       });
     }
@@ -172,7 +173,7 @@ export function renderProfile(root, ctx) {
   statGrid.appendChild(statCell(stats.boards, "Boards cleared"));
   statGrid.appendChild(statCell(stats.pairs, "Pairs cleared"));
   const avgM = Math.floor(stats.avgTimeS / 60), avgS = stats.avgTimeS % 60;
-  statGrid.appendChild(statCell(stats.hasTimedBoards ? `${avgM}:${String(avgS).padStart(2, "0")}` : "—", "Average time"));
+  statGrid.appendChild(statCell(stats.hasTimedBoards ? `${avgM}:${String(avgS).padStart(2, "0")}` : "—", "Average board time"));
   statGrid.appendChild(statCell(stats.longestStreak, "Longest streak"));
   root.appendChild(statGrid);
 
@@ -203,6 +204,7 @@ export function renderProfile(root, ctx) {
       ctx.state.settings[key] = !ctx.state.settings[key];
       t.classList.toggle("on", ctx.state.settings[key]);
       ctx.persist();
+      if (key === "feltAcrossApp") ctx.refreshAppearance();
     });
     row.appendChild(t);
     return row;

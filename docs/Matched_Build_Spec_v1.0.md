@@ -47,7 +47,7 @@ Sentence case for all headers and labels ("Continue playing", not "Continue Play
 
 - **Swipeable hero card.** Three states, swiped horizontally with chevron controls outside both edges of the card, dot indicators below, and pointer/touch drag:
   1. **Live now** — the room you are currently in. Elapsed clock, mini board silhouette, title, "Shared board · 72 tiles · 61% cleared", a split progress bar breaking that 61% into each player's share colored by player identity, primary action "Jump back in", plus a chat shortcut.
-  2. **Today's board** — the daily puzzle. Countdown to reset, title, "3 of 5 in your group have finished. Best time 4:12", actions "Play daily" and "Results".
+  2. **Today's board** — the daily puzzle. Countdown to reset, title, and actions "Play daily" and "Results" before completion. After the active user finishes, the card exposes only "View results"; the Daily screen likewise omits disabled play controls.
   3. **Your day** — the active player's local-calendar-day overview, counting completed boards only: boards, pairs matched, average completion time, and best streak.
 - **Continue playing** — vertical list (never a horizontal carousel) of rooms you have joined but are not currently in. Each row: mini board thumbnail (the layout's real tile silhouette, not a generic icon), title, status line, thin completion bar, one avatar.
 - **Open rooms** — vertical list of joinable rooms. Row: tile-count chip, title, "Shared · 60 tiles · 1 joined", "Join".
@@ -120,7 +120,7 @@ Tile geometry: 40 × 52pt face, 40pt column step, 40pt row step, 5pt up-left off
 
 **Assists (behind ✦)**
 
-Hint (highlights one valid pair) · Shuffle when stuck · Undo last match · Auto-flag when no moves remain · Free-tile glow toggle. Usage is tracked and reduces leaderboard credit.
+Hint (multi-spark icon; highlights one valid pair) · Shuffle when stuck · Undo last match · Toggle showing the current number of playable free matching pairs · Auto-flag when no moves remain · Free-tile glow toggle. Assist usage is tracked and reduces leaderboard credit.
 
 ### Daily puzzle
 
@@ -128,7 +128,7 @@ Hint (highlights one valid pair) · Shuffle when stuck · Undo last match · Aut
 - The **streak lives here**, not on Home — it is tied to the habit that earns it.
 - "Today's results" lists only registered human players who actually completed that day's board. Bots never simulate or submit Daily attempts.
 - **Times stay hidden until you finish**, so nobody plays to a target.
-- Finishing feeds the same metrics Ranking sorts by. The daily is not a separate scoreboard.
+- Finishing immediately records the active registered human's result locally and syncs it to the Daily results leaderboard; bots never submit Daily results.
 
 ### Results
 
@@ -179,7 +179,7 @@ Reference tier values used in the design: Bone (start), Jade (2,500), Rosewood (
 - **Ink colors on tile faces**: `#23201c` ink, `#b5322c` red, `#1f7a4d` green, `#2b5f9e` blue.
 - **Typography**: Instrument Serif for the wordmark and screen titles; Figtree for all UI; Noto Serif SC for tile characters.
 - **Surfaces on felt**: translucent white glass cards (`rgba(255,255,255,.06–.13)`) with hairline borders, 14–18px radius.
-- **Motion**: restrained. Tiles pop in at 250ms; matched pairs fly to the tray; completion is a soft glow with light haptics, never confetti.
+- **Motion**: restrained. Tiles pop in at 250ms; matched pairs rise, spin six turns, then fly down to the tray over 850ms; completion is a soft glow with light haptics, never confetti.
 
 ## App Icon
 

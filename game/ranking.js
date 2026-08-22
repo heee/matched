@@ -27,9 +27,10 @@ export function roomElapsedSeconds(room) {
     return Math.max(1, Math.round(elapsedMs / 1000));
   }
   const completedMs = timestampMs(room?.completedAt);
-  // Historical rooms can lack startedAt; room creation was the original
-  // start-of-session boundary, so it is the best recoverable duration.
-  const startedMs = timestampMs(room?.startedAt) ?? timestampMs(room?.createdAt);
+  // A room can sit open for days before anyone starts playing. Treating
+  // createdAt as the start time turns that idle period into a bogus board
+  // duration, so legacy rooms without an explicit start remain untimed.
+  const startedMs = timestampMs(room?.startedAt);
   if (completedMs == null || startedMs == null || completedMs < startedMs) return null;
   return Math.max(1, Math.round((completedMs - startedMs) / 1000));
 }

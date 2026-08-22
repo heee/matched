@@ -155,12 +155,16 @@ function dailyCard(ctx) {
   head.appendChild(el("span", { style: "font:12px Figtree,sans-serif;color:rgba(246,241,228,.6)", text: `Resets in ${hours}h ${mins}m` }));
   top.appendChild(head);
   top.appendChild(el("div", { class: "title-serif", style: "font-size:24px", text: layout.name }));
-  const done = ctx.state.lastDailyCompleted === date;
+  const done = ctx.state.dailyCompletedByUser?.[ctx.state.currentUser] === date;
   top.appendChild(el("div", { style: "font:13px Figtree,sans-serif;color:rgba(246,241,228,.65);margin-top:6px", text: done ? "You finished today's board." : "Everyone plays the same board. One attempt." }));
   card.appendChild(top);
   const actions = el("div", { style: "display:flex;gap:10px;margin-top:14px" });
-  actions.appendChild(el("button", { class: "btn btn-primary", style: "flex:1", text: "Play daily", onClick: () => ctx.navigate("daily") }));
-  actions.appendChild(el("button", { class: "btn btn-outline", style: "padding:0 16px;height:44px", text: "Results", onClick: () => ctx.navigate("daily") }));
+  if (done) {
+    actions.appendChild(el("button", { class: "btn btn-primary", style: "flex:1", text: "View results", onClick: () => ctx.navigate("daily") }));
+  } else {
+    actions.appendChild(el("button", { class: "btn btn-primary", style: "flex:1", text: "Play daily", onClick: () => ctx.navigate("daily") }));
+    actions.appendChild(el("button", { class: "btn btn-outline", style: "padding:0 16px;height:44px", text: "Results", onClick: () => ctx.navigate("daily") }));
+  }
   card.appendChild(actions);
   return card;
 }
