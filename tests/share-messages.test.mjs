@@ -5,13 +5,23 @@ import {
   liveBoardShareMessage,
   newBoardShareMessage,
   resultShareMessage,
+  SHARE_MESSAGE_VARIANT_COUNTS,
 } from "../game/share-messages.js";
+
+test("every share surface has 80 message variants", () => {
+  assert.deepEqual(SHARE_MESSAGE_VARIANT_COUNTS, {
+    newBoard: 80,
+    liveBoard: 80,
+    result: 80,
+    notice: 80,
+  });
+});
 
 test("new-board shares name the challenger and board", () => {
   const message = newBoardShareMessage({ inviter: "Henning", title: "Dragon's Nest" }, () => 0);
   assert.match(message, /Henning/);
   assert.match(message, /Dragon's Nest/);
-  assert.match(message, /pairs|tiles|move|competition|challenge|seat/i);
+  assert.match(message, /pairs|tiles|move|competition|challenge|seat|board/i);
 });
 
 test("live shares use current board state and vary", () => {
@@ -36,5 +46,5 @@ test("received invitation notices keep the playful competitive voice", () => {
   const message = inviteNoticeMessage({ fromUser: "Henning", roomTitle: "Dragon's Nest" }, () => 0.5);
   assert.match(message, /Henning/);
   assert.match(message, /Dragon's Nest/);
-  assert.match(message, /seat|pairs|competition|confident/i);
+  assert.match(message, /seat|pairs|competition|confident|move|board|eyes/i);
 });
