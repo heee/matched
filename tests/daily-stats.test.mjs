@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { completedDayStats, localDayBounds } from "../game/daily-stats.js";
+import { completedDayStats, completedWeekStats, localDayBounds } from "../game/daily-stats.js";
 
 test("day bounds follow the local calendar rather than a rolling 24-hour window", () => {
   const now = new Date(2026, 7, 22, 15, 30);
@@ -29,4 +29,18 @@ test("daily overview uses a dash-ready null when no completed board has timing d
   const now = new Date(2026, 7, 22, 15, 30);
   const today = new Date(2026, 7, 22, 10, 0).toISOString();
   assert.equal(completedDayStats({ one: { completedAt: today, players: ["A"], pairsCleared: { A: 2 } } }, "A", now).avgTimeS, null);
+});
+
+test("weekly overview returns seven local days oldest-first", () => {
+  const now = new Date(2026, 7, 22, 15, 30);
+  const rooms = {
+    sixDaysAgo: { completedAt: new Date(2026, 7, 16, 10, 0).toISOString(), players: ["A"], pairsCleared: { A: 3 } },
+    yesterday: { completedAt: new Date(2026, 7, 21, 10, 0).toISOString(), players: ["A"], pairsCleared: { A: 8 } },
+    today: { completedAt: new Date(2026, 7, 22, 10, 0).toISOString(), players: ["A"], pairsCleared: { A: 20 } },
+  };
+  const week = completedWeekStats(rooms, "A", now);
+  assert.equal(week.length, 7);
+  assert.deepEqual(week.map((day) => day.pairs), [3, 0, 0, 0, 0, 8, 20]);
+  assert.equal(week[0].date.getDate(), 16);
+  assert.equal(week[6].date.getDate(), 22);
 });

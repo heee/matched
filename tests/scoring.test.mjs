@@ -5,6 +5,9 @@ import {
   tierForPoints,
   nextTier,
   pointsToNextTier,
+  pointsForLevel,
+  levelForPoints,
+  levelProgress,
   assistMultiplier,
   speedMultiplier,
   pointsForSession,
@@ -34,6 +37,20 @@ test("nextTier / pointsToNextTier agree with the reference thresholds", () => {
 
 test("TIERS is sorted ascending by threshold", () => {
   for (let i = 1; i < TIERS.length; i++) assert.ok(TIERS[i].threshold > TIERS[i - 1].threshold);
+});
+
+test("overall level curve matches the reference and remains unbounded", () => {
+  assert.equal(levelForPoints(0), 1);
+  assert.equal(levelForPoints(9140), 24);
+  assert.equal(pointsForLevel(25), 10000);
+  assert.deepEqual(levelProgress(9140), {
+    level: 24,
+    nextLevel: 25,
+    nextLevelAt: 10000,
+    pointsToNext: 860,
+    progressPct: (9140 - pointsForLevel(24)) / (10000 - pointsForLevel(24)) * 100,
+  });
+  assert.ok(levelForPoints(1000000) > 100);
 });
 
 test("assistMultiplier reduces credit per assist, floored", () => {

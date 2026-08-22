@@ -85,6 +85,46 @@ export function pointsToNextTier(points) {
   return next ? Math.max(0, next.threshold - points) : 0;
 }
 
+// Account levels are a finer-grained, unbounded progression track than the
+// ten cosmetic tiers above. The power curve is calibrated so the reference
+// account (9,140 points) is level 24 and level 25 begins at 10,000 points.
+// Early levels arrive quickly; later gaps widen steadily, like the layout
+// unlock ladder, without imposing a maximum level.
+const LEVEL_REFERENCE = 25;
+const LEVEL_REFERENCE_POINTS = 10000;
+const LEVEL_CURVE_EXPONENT = 2.2;
+
+export function pointsForLevel(level) {
+  const normalizedLevel = Math.max(1, Math.floor(Number(level) || 1));
+  if (normalizedLevel === 1) return 0;
+  const progress = (normalizedLevel - 1) / (LEVEL_REFERENCE - 1);
+  return Math.round(LEVEL_REFERENCE_POINTS * Math.pow(progress, LEVEL_CURVE_EXPONENT));
+}
+
+export function levelForPoints(points) {
+  const safePoints = Math.max(0, Number(points) || 0);
+  let level = Math.max(1, Math.floor(
+    (LEVEL_REFERENCE - 1) * Math.pow(safePoints / LEVEL_REFERENCE_POINTS, 1 / LEVEL_CURVE_EXPONENT)
+  ) + 1);
+  while (pointsForLevel(level + 1) <= safePoints) level += 1;
+  while (level > 1 && pointsForLevel(level) > safePoints) level -= 1;
+  return level;
+}
+
+export function levelProgress(points) {
+  const safePoints = Math.max(0, Number(points) || 0);
+  const level = levelForPoints(safePoints);
+  const levelStart = pointsForLevel(level);
+  const nextLevelAt = pointsForLevel(level + 1);
+  return {
+    level,
+    nextLevel: level + 1,
+    nextLevelAt,
+    pointsToNext: Math.max(0, nextLevelAt - safePoints),
+    progressPct: Math.max(0, Math.min(100, ((safePoints - levelStart) / (nextLevelAt - levelStart)) * 100)),
+  };
+}
+
 // Every felt-unlock and material-unlock event across all ten tiers,
 // chronologically — what the tier bar's "Next unlock" card and any other
 // "what's coming up" UI should walk, since felt and material no longer

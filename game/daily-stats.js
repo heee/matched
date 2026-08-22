@@ -44,3 +44,16 @@ export function completedDayStats(rooms, user, now = new Date()) {
     avgTimeS: timedBoards ? Math.round(timeS / timedBoards) : null,
   };
 }
+
+// Oldest-to-newest snapshots for the home card's seven-day context. Local
+// noon keeps DST transitions from shifting a requested calendar day.
+export function completedWeekStats(rooms, user, now = new Date()) {
+  const days = [];
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const date = new Date(now);
+    date.setHours(12, 0, 0, 0);
+    date.setDate(date.getDate() - offset);
+    days.push({ date, ...completedDayStats(rooms, user, date) });
+  }
+  return days;
+}
