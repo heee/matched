@@ -39,16 +39,22 @@ test("TIERS is sorted ascending by threshold", () => {
   for (let i = 1; i < TIERS.length; i++) assert.ok(TIERS[i].threshold > TIERS[i - 1].threshold);
 });
 
-test("overall level curve matches the reference and remains unbounded", () => {
-  assert.equal(levelForPoints(0), 1);
-  assert.equal(levelForPoints(9140), 24);
-  assert.equal(pointsForLevel(25), 10000);
+test("overall level curve starts at zero, ramps gently, and remains unbounded", () => {
+  assert.equal(levelForPoints(0), 0);
+  assert.equal(levelForPoints(1799), 0);
+  assert.equal(levelForPoints(1800), 1);
+  assert.equal(levelForPoints(9140), 4);
+  assert.equal(pointsForLevel(1), 1800);
+  assert.equal(pointsForLevel(5), 9159);
+  assert.equal(pointsForLevel(25), 51171);
+  assert.equal(pointsForLevel(50), 118009);
+  assert.equal(pointsForLevel(100), 305678);
   assert.deepEqual(levelProgress(9140), {
-    level: 24,
-    nextLevel: 25,
-    nextLevelAt: 10000,
-    pointsToNext: 860,
-    progressPct: (9140 - pointsForLevel(24)) / (10000 - pointsForLevel(24)) * 100,
+    level: 4,
+    nextLevel: 5,
+    nextLevelAt: 9159,
+    pointsToNext: 19,
+    progressPct: (9140 - pointsForLevel(4)) / (pointsForLevel(5) - pointsForLevel(4)) * 100,
   });
   assert.ok(levelForPoints(1000000) > 100);
 });

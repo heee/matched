@@ -86,28 +86,40 @@ export function pointsToNextTier(points) {
 }
 
 // Account levels are a finer-grained, unbounded progression track than the
-// ten cosmetic tiers above. The power curve is calibrated so the reference
-// account (9,140 points) is level 24 and level 25 begins at 10,000 points.
-// Early levels arrive quickly; later gaps widen steadily, like the layout
-// unlock ladder, without imposing a maximum level.
-const LEVEL_REFERENCE = 25;
-const LEVEL_REFERENCE_POINTS = 10000;
-const LEVEL_CURVE_EXPONENT = 2.2;
+// ten cosmetic tiers above. Players begin at Level 0; Level 1 costs 1,800
+// points (about 5-10 games). Each following level costs a little more, rising
+// from 1,800 to 4,500 points by Level 100 on a mildly convex curve. The same
+// curve continues beyond 100 without a cap.
+const LEVEL_FIRST_COST = 1800;
+const LEVEL_100_COST = 4500;
+const LEVEL_RAMP_SPAN = 99;
+const LEVEL_COST_EXPONENT = 1.15;
+
+function costForLevel(level) {
+  const targetLevel = Math.max(1, Math.floor(Number(level) || 1));
+  const progress = (targetLevel - 1) / LEVEL_RAMP_SPAN;
+  return Math.round(
+    LEVEL_FIRST_COST + (LEVEL_100_COST - LEVEL_FIRST_COST) * Math.pow(progress, LEVEL_COST_EXPONENT)
+  );
+}
 
 export function pointsForLevel(level) {
-  const normalizedLevel = Math.max(1, Math.floor(Number(level) || 1));
-  if (normalizedLevel === 1) return 0;
-  const progress = (normalizedLevel - 1) / (LEVEL_REFERENCE - 1);
-  return Math.round(LEVEL_REFERENCE_POINTS * Math.pow(progress, LEVEL_CURVE_EXPONENT));
+  const targetLevel = Math.max(0, Math.floor(Number(level) || 0));
+  let total = 0;
+  for (let current = 1; current <= targetLevel; current += 1) {
+    total += costForLevel(current);
+  }
+  return total;
 }
 
 export function levelForPoints(points) {
   const safePoints = Math.max(0, Number(points) || 0);
-  let level = Math.max(1, Math.floor(
-    (LEVEL_REFERENCE - 1) * Math.pow(safePoints / LEVEL_REFERENCE_POINTS, 1 / LEVEL_CURVE_EXPONENT)
-  ) + 1);
-  while (pointsForLevel(level + 1) <= safePoints) level += 1;
-  while (level > 1 && pointsForLevel(level) > safePoints) level -= 1;
+  let level = 0;
+  let total = 0;
+  while (total + costForLevel(level + 1) <= safePoints) {
+    level += 1;
+    total += costForLevel(level);
+  }
   return level;
 }
 
