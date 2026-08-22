@@ -12,7 +12,7 @@ import { roomHasProgress, shouldAbandonRoomOnExit } from "./game/room-lists.js";
 
 import { renderNameEntry } from "./screens/name-entry.js?v=39";
 import { renderHome } from "./screens/home.js?v=53";
-import { renderPlayCatalog } from "./screens/play-catalog.js?v=40";
+import { renderPlayCatalog } from "./screens/play-catalog.js?v=41";
 import { renderRoomSetup } from "./screens/room-setup.js?v=41";
 import { renderRanking } from "./screens/ranking.js?v=43";
 import { renderHeadToHead } from "./screens/head-to-head.js?v=1";

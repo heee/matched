@@ -53,10 +53,10 @@ function layoutCard(ctx, layout, stats) {
   const unlocked = isLayoutUnlocked(layout, ctx.state.points);
   const card = el("button", {
     type: "button",
-    style: `width:100%;padding:0;text-align:left;display:flex;align-items:stretch;min-height:88px;border-radius:15px;overflow:hidden;background:rgba(255,255,255,.06);border:1px solid ${unlocked ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.07)"};${unlocked ? "cursor:pointer" : "opacity:.62;cursor:default"}`,
+    style: `width:100%;padding:0;text-align:left;display:flex;align-items:stretch;min-height:80px;border-radius:15px;overflow:hidden;background:rgba(255,255,255,.06);border:1px solid ${unlocked ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.07)"};${unlocked ? "cursor:pointer" : "opacity:.62;cursor:default"}`,
   });
 
-  const thumb = el("div", { style: "width:102px;flex:none;position:relative;background:radial-gradient(120% 120% at 50% 30%,#1d6349,#0e3527)" });
+  const thumb = el("div", { style: "width:94px;flex:none;position:relative;background:radial-gradient(120% 120% at 50% 30%,#1d6349,#0e3527)" });
   blockPattern(layout).forEach(({ left, top, z }) => {
     thumb.appendChild(el("div", {
       style: `position:absolute;left:${left}%;top:${top}%;width:9px;height:12px;margin:-6px 0 0 -4.5px;border-radius:2px;background:#f2ecdc;box-shadow:1px 1px 0 rgba(0,0,0,.32);z-index:${z}`,
@@ -67,7 +67,7 @@ function layoutCard(ctx, layout, stats) {
   }
   card.appendChild(thumb);
 
-  const body = el("div", { style: "padding:13px 12px 13px 16px;flex:1;min-width:0;display:flex;align-items:center;gap:10px" });
+  const body = el("div", { style: "padding:9px 12px 9px 14px;flex:1;min-width:0;display:flex;align-items:center;gap:10px" });
   const copy = el("div", { style: "flex:1;min-width:0" });
   copy.appendChild(el("div", { style: `overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 16px Figtree,sans-serif;color:${unlocked ? "#f6f1e4" : "rgba(246,241,228,.55)"}`, text: layout.name }));
   const difficulty = layout.difficulty[0].toUpperCase() + layout.difficulty.slice(1);
@@ -93,7 +93,7 @@ export function renderPlayCatalog(root, ctx) {
   let filter = FILTERS[0];
   const layoutStats = completedLayoutStats(ctx.state.store.rooms, ctx.state.currentUser);
 
-  const header = el("div", { style: "padding:8px 20px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px" });
+  const header = el("div", { style: "position:sticky;top:env(safe-area-inset-top, 0);z-index:20;padding:8px 20px 12px;display:flex;align-items:center;justify-content:space-between;gap:14px;background:rgba(24,74,55,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)" });
   header.appendChild(el("div", { class: "title-serif", text: "Play" }));
   const selectWrap = el("div", { style: "position:relative;flex:none" });
   const select = el("select", {
