@@ -53,6 +53,14 @@ export function renderRoomSetup(root, ctx, params = {}) {
     bots: new Array(BOT_SEAT_COUNT).fill(null), // each slot: null (open) or { name, difficulty }
     pickerSeat: null, // seat index (0-based within bots[]) currently showing the difficulty popover
   };
+  let openLinkRow = null;
+  let primaryButton = null;
+
+  function renderModeDependentControls() {
+    const solo = local.mode === "solo";
+    if (openLinkRow) openLinkRow.style.display = solo ? "none" : "flex";
+    if (primaryButton) primaryButton.textContent = solo ? "Create and play" : "Create & invite";
+  }
 
   const header = el("div", { style: "padding:6px 20px 16px;display:flex;align-items:baseline;justify-content:space-between" });
   header.appendChild(el("div", { class: "title-serif", text: "New room" }));
@@ -75,7 +83,12 @@ export function renderRoomSetup(root, ctx, params = {}) {
       card.appendChild(m.icon());
       card.appendChild(el("div", { style: "font:700 13.5px Figtree,sans-serif;color:#f6f1e4", text: m.name }));
       card.appendChild(el("div", { style: "font:11px/1.4 Figtree,sans-serif;color:rgba(246,241,228,.6);margin-top:3px", text: m.desc }));
-      card.addEventListener("click", () => { local.mode = m.id; renderModes(); renderPlayers(); });
+      card.addEventListener("click", () => {
+        local.mode = m.id;
+        renderModes();
+        renderPlayers();
+        renderModeDependentControls();
+      });
       modeRow.appendChild(card);
     });
   }
@@ -202,13 +215,14 @@ export function renderRoomSetup(root, ctx, params = {}) {
   }
   toggles.appendChild(toggleRow("Free tiles glow", "freeTilesGlow"));
   toggles.appendChild(toggleRow("Hints allowed", "hintsAllowed"));
-  toggles.appendChild(toggleRow("Open to anyone with the link", "openLink"));
+  openLinkRow = toggleRow("Open to anyone with the link", "openLink");
+  toggles.appendChild(openLinkRow);
   body.appendChild(toggles);
 
   root.appendChild(el("div", { style: "flex:1" }));
 
   const footer = el("div", { style: "padding:14px 16px 30px" });
-  footer.appendChild(el("button", {
+  primaryButton = el("button", {
     class: "btn btn-primary btn-lg", style: "width:100%", text: "Create & invite",
     onClick: async () => {
       const layout = LAYOUTS[local.layoutId];
@@ -217,7 +231,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
         mode: local.mode,
         layoutId: local.layoutId,
         difficulty: local.difficulty,
-        visibility: local.openLink ? "open" : "private",
+        visibility: local.mode === "solo" ? "private" : local.openLink ? "open" : "private",
         createdBy: ctx.state.currentUser,
         freeTilesGlow: local.freeTilesGlow,
         hintsAllowed: local.hintsAllowed,
@@ -237,8 +251,10 @@ export function renderRoomSetup(root, ctx, params = {}) {
       ctx.state.store.rooms[room.id] = room;
       ctx.state.activeRoomId = room.id;
       ctx.persist();
-      ctx.navigate("invite", { roomId: room.id });
+      ctx.navigate(room.mode === "solo" ? "board" : "invite", { roomId: room.id });
     },
-  }));
+  });
+  footer.appendChild(primaryButton);
+  renderModeDependentControls();
   root.appendChild(footer);
 }

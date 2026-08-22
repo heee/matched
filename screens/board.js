@@ -128,8 +128,10 @@ export function renderBoard(root, ctx, params = {}) {
   const movesBtn = el("button", { class: "icon-btn", style: "width:42px;height:42px", html: ICON_MOVES, "aria-label": "Show available matching pairs", "aria-pressed": "false" });
   controls.appendChild(shuffleBtn);
   controls.appendChild(undoBtn);
-  controls.appendChild(hintBtn);
-  controls.appendChild(movesBtn);
+  if (room.hintsAllowed) {
+    controls.appendChild(hintBtn);
+    controls.appendChild(movesBtn);
+  }
   controls.appendChild(el("div", { style: "flex:1" }));
 
   // Reactions don't make sense with nobody else on the board to see them.

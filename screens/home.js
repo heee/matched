@@ -30,12 +30,9 @@ function miniSilhouette(layoutId) {
   return wrap;
 }
 
-// All four hero card variants share this height so swiping between them
-// doesn't visibly jump. Each card is
-// a flex column with its non-action content in a flex:1 wrapper, so the
-// bottom row (button/actions) always lands at the same height regardless
-// of how much the card above it has to say.
-const HERO_CARD_HEIGHT = 252;
+// Keep sparse cards compact, but let denser states (for example a full
+// three-person group ranking) grow instead of clipping their contents.
+const HERO_CARD_MIN_HEIGHT = 190;
 const GROUP_METRICS = [
   { id: "pairs", label: "Pairs" },
   { id: "speed", label: "Speed" },
@@ -68,7 +65,7 @@ function groupRankingCard(ctx, metric, onChangeMetric) {
   const rows = allRows.slice(0, 3);
   const userOrder = [...new Set([...Object.keys(ctx.state.store.users || {}), ...allRows.map((row) => row.name)])];
   const leaderValue = rows[0]?.value || 0;
-  const card = el("div", { class: "glass-card group-card", style: `height:${HERO_CARD_HEIGHT}px` });
+  const card = el("div", { class: "glass-card group-card", style: `min-height:${HERO_CARD_MIN_HEIGHT}px` });
   const head = el("div", { class: "group-card-head" });
   head.appendChild(el("span", { text: "Today in your group" }));
   const metricIndex = GROUP_METRICS.findIndex((candidate) => candidate.id === metric);
@@ -132,7 +129,7 @@ function overallLevelCard(ctx) {
     "aria-label": `Overall level ${progress.level}. Open profile`,
     onClick: () => ctx.navigate("profile"),
   });
-  card.style.height = `${HERO_CARD_HEIGHT}px`;
+  card.style.minHeight = `${HERO_CARD_MIN_HEIGHT}px`;
   card.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -183,7 +180,7 @@ function dailyCard(ctx) {
   const ms = msUntilNextReset();
   const hours = Math.floor(ms / 3600000);
   const mins = Math.floor((ms % 3600000) / 60000);
-  const card = el("div", { class: "gold-card", style: `display:flex;flex-direction:column;height:${HERO_CARD_HEIGHT}px` });
+  const card = el("div", { class: "gold-card", style: `display:flex;flex-direction:column;min-height:${HERO_CARD_MIN_HEIGHT}px` });
   const top = el("div", { style: "flex:1" });
   const head = el("div", { style: "display:flex;align-items:center;justify-content:space-between;margin-bottom:10px" });
   head.appendChild(el("span", { style: "font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#e8c887", text: "Today's board" }));
@@ -212,7 +209,7 @@ function dailyOverviewCard(ctx) {
   const avgTime = stats.avgTimeS == null ? "—" : formatClock(stats.avgTimeS);
   const todayLabel = `${stats.date.toLocaleDateString("en-US", { weekday: "short" })} ${stats.date.getDate()} ${stats.date.toLocaleDateString("en-US", { month: "short" })}`;
   const firstDayLabel = week[0].date.toLocaleDateString("en-US", { weekday: "short" });
-  const card = el("div", { class: "glass-card daily-overview-card", style: `height:${HERO_CARD_HEIGHT}px` });
+  const card = el("div", { class: "glass-card daily-overview-card", style: `min-height:${HERO_CARD_MIN_HEIGHT}px` });
   const head = el("div", { class: "daily-overview-head" });
   head.appendChild(el("span", { text: "Your day" }));
   head.appendChild(el("span", { text: todayLabel }));

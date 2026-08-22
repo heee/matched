@@ -45,7 +45,7 @@ Sentence case for all headers and labels ("Continue playing", not "Continue Play
 
 ### Home
 
-- **Swipeable hero card.** Four fixed-height states, swiped horizontally with chevron controls outside both edges of the card, dot indicators below, and pointer/touch drag:
+- **Swipeable hero card.** Four compact states with a shared minimum height; dense content may grow rather than clip. Cards are swiped horizontally with chevron controls outside both edges, dot indicators below, and pointer/touch drag:
   1. **Overall level** — account-wide, points-based progression across every mode and layout. Players begin at Level 0; Level 1 requires 1,800 points (roughly 5–10 games). The points required for each new level rise on a mildly convex curve from 1,800 to 4,500 by Level 100, then continue unbounded. Existing players are always recalculated from lifetime points. Shows the level on a current-tier-material badge, arc progress to the next level, points progress through the current tier, and the next named cosmetic unlock. Tapping opens the profile.
   2. **Today's board** — the daily puzzle. Countdown to reset, title, and actions "Play daily" and "Results" before completion. After the active user finishes, the card exposes only "View results"; the Daily screen likewise omits disabled play controls.
   3. **Your day** — the active player's local-calendar-day overview, counting completed boards only. Pairs matched is the 46px hero metric with a worded comparison to yesterday and a seven-day bar sparkline; boards, average time, and best run share one compact supporting row.
@@ -72,8 +72,8 @@ One scrollable screen, never a wizard. Target: under a minute from tap to invite
    - **Solo** — just you; times still count toward Ranking and the daily streak.
 2. **Layout** — row showing the current pick with a silhouette thumbnail; opens the catalog.
 3. **Difficulty** — Easy / Medium / Hard preset toggle, which sets tile count (36 / 52 / 72). Easy doubles as the mixed adult-and-child mode.
-4. **Toggles** — Free tiles glow · Hints allowed · Open to anyone with the link.
-5. Single primary action: **Create & invite**, which creates the room and opens the invite sheet immediately.
+4. **Toggles** — Free tiles glow · Hints allowed · Open to anyone with the link. Solo omits the link toggle. Turning Hints allowed off removes Hint and the playable-pairs indicator and disables automatic idle clues.
+5. Single primary action: **Create & invite**, which creates a Shared/Race room and opens the invite sheet immediately. Solo instead uses **Create and play** and enters the board directly.
 
 ### Ranking
 
