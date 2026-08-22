@@ -10,28 +10,7 @@ import { materialFor } from "../game/materials.js";
 import { continuePlayingRooms, hasStartedRoom, openRoomsForUser, randomRoomSample } from "../game/room-lists.js";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { completedWeekStats } from "../game/daily-stats.js";
-
-// Randomized invite lines for the Live now card's share button — same
-// templated-message-plus-link pattern as Boys Pushup Bonanza's share
-// functions, in Matched's own terser voice, filled in with live room state.
-const INVITE_MESSAGES = [
-  (ctx) => `${ctx.cleared} of ${ctx.total} cleared on ${ctx.title} — come take the rest.`,
-  (ctx) => `${ctx.pct}% down on ${ctx.title}. Seats are still open.`,
-  (ctx) => `Mid-board on ${ctx.title}, ${ctx.left} tiles left. Jump in?`,
-  (ctx) => `${ctx.title} is ${ctx.pct}% cleared and I'm not slowing down 🀄`,
-  (ctx) => `Clearing ${ctx.title} right now — grab a pair before I do.`,
-  (ctx) => `${ctx.cleared} pairs down on ${ctx.title}. Your seat's still open.`,
-  (ctx) => `Board's open: ${ctx.title}, ${ctx.left} tiles left. Come match some tiles.`,
-  (ctx) => `On ${ctx.title} — ${ctx.pct}% cleared. Tap in before it's gone.`,
-];
-let lastInviteTemplate = null;
-function pickInviteTemplate() {
-  let template, guard = 0;
-  do { template = INVITE_MESSAGES[Math.floor(Math.random() * INVITE_MESSAGES.length)]; }
-  while (template === lastInviteTemplate && INVITE_MESSAGES.length > 1 && ++guard < 10);
-  lastInviteTemplate = template;
-  return template;
-}
+import { liveBoardShareMessage } from "../game/share-messages.js";
 
 // Lucide's "send" icon — stroke-only paper plane, matches the icon-btn
 // glyphs elsewhere on this screen but as an SVG since no emoji reads as a
@@ -42,7 +21,7 @@ async function shareLiveRoom(ctx, room) {
   const remaining = room.state.tiles.length;
   const cleared = room.tileCount - remaining;
   const pct = boardCompletion(room.tileCount, remaining);
-  const message = pickInviteTemplate()({ title: room.title, cleared, total: room.tileCount, left: remaining, pct });
+  const message = liveBoardShareMessage({ title: room.title, cleared, total: room.tileCount, left: remaining, pct });
   const url = roomInviteUrl(room.id);
   const text = `${message} ${url}`;
 

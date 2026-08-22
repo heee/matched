@@ -4,6 +4,7 @@
 // docs/design-reference.html #1n.
 
 import { el, avatarDot, roomInviteUrl } from "./shared-ui.js";
+import { newBoardShareMessage } from "../game/share-messages.js";
 
 const TOTAL_SEATS = 4; // you + up to 3 others, matching room-setup's bot-seat count
 
@@ -129,12 +130,18 @@ export function renderInvite(root, ctx, params = {}) {
 
       const shareBtn = el("button", { class: "btn btn-primary btn-lg", style: "width:100%;margin-top:16px", text: "Share invite" });
       shareBtn.addEventListener("click", async () => {
-        const shareData = { title: room.title, text: `${ctx.state.currentUser} invited you to ${room.title}`, url: link };
+        const message = newBoardShareMessage({
+          inviter: ctx.state.currentUser,
+          title: room.title,
+          mode: room.mode,
+          tileCount: room.tileCount,
+        });
+        const shareData = { title: room.title, text: message, url: link };
         if (navigator.share) {
           try { await navigator.share(shareData); } catch (e) {}
         } else {
-          navigator.clipboard?.writeText(shareData.url).catch(() => {});
-          ctx.toast("Link copied");
+          navigator.clipboard?.writeText(`${message} ${link}`).catch(() => {});
+          ctx.toast("Invite copied");
         }
       });
       sheet.appendChild(shareBtn);

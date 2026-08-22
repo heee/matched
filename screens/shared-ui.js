@@ -5,6 +5,7 @@ import { colorForSeat } from "../game/scoring.js";
 import { TILE_W, TILE_H } from "../game/layouts.js";
 import { dotPips, bamSticks, RED } from "../game/tiles.js";
 import { inkOverrideFor, soundMaterialFor } from "../game/materials.js";
+import { inviteNoticeMessage } from "../game/share-messages.js";
 
 // Tile faces render as inline SVG at this fixed viewBox — it matches the
 // on-board tile size (40x52) minus .tile-face's 3px inset on each side, so
@@ -308,8 +309,8 @@ export function inviteNoticeDialog({ fromUser, roomTitle, link }) {
     const overlay = el("div", { style: "position:fixed;inset:0;background:rgba(5,15,11,.6);display:flex;align-items:center;justify-content:center;z-index:100;padding:24px" });
     const card = el("div", { style: "max-width:340px;width:100%;background:#183226;border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,.12);text-align:center" });
     card.appendChild(el("div", { style: "font-size:30px;margin-bottom:6px", text: "🔔" }));
-    card.appendChild(el("div", { style: "font:700 17px Figtree,sans-serif;color:#f6f1e4", text: "You're invited!" }));
-    card.appendChild(el("div", { style: "font:13.5px/1.5 Figtree,sans-serif;color:rgba(246,241,228,.65);margin-top:8px", text: `${fromUser} invited you to ${roomTitle}.` }));
+    card.appendChild(el("div", { style: "font:700 17px Figtree,sans-serif;color:#f6f1e4", text: "Challenge incoming" }));
+    card.appendChild(el("div", { style: "font:13.5px/1.5 Figtree,sans-serif;color:rgba(246,241,228,.65);margin-top:8px", text: inviteNoticeMessage({ fromUser, roomTitle }) }));
     const row = el("div", { style: "display:flex;gap:10px;margin-top:18px" });
     const dismissBtn = el("button", { class: "btn btn-ghost", style: "flex:1", text: "Not now" });
     const joinBtn = el("button", { class: "btn btn-primary", style: "flex:1", text: "Join" });

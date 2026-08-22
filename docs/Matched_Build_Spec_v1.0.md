@@ -140,12 +140,12 @@ Hint (multi-spark icon; highlights one valid pair) · Shuffle when stuck · Undo
 - **Worth mentioning** — three highlight lines generated from the match log, written competitively rather than congratulatory (e.g. "Dana ran a 7-pair streak in the last minute and took it from you").
 - Points earned and distance to the next tier, closing the loop back into progression.
 - Three actions in one row: **Share · Rematch · Done**.
-- Share hands off to the **OS-native share sheet** with a prefilled message and deep link. No in-app share screen.
+- Share hands off to the **OS-native share sheet** with a state-aware, playfully competitive message and deep link. Messages vary across shares without immediately repeating. No in-app share screen.
 
 ### Invite and join by link
 
 - **Invite sheet** (bottom sheet over the board): copyable link (`matched.app/r/<slug>`), recent people as one-tap invite chips, "Share invite" as the primary action.
-- **Recipient's first screen**: two tiles as the mark, "Dana invited you to Dragon's Nest", room summary, stacked avatars of who is already playing, primary action **"Take a seat"**, secondary "Just watching for now" (spectator mode — sees the board, cannot take tiles).
+- **Recipient's first screen**: two tiles as the mark, a varied playfully competitive challenge naming the inviter and room (for example, "Dana has claimed Dragon's Nest. Think you can take more pairs?"), room summary, stacked avatars of who is already playing, primary action **"Take a seat"**, secondary "Just watching for now" (spectator mode — sees the board, cannot take tiles).
 - No account and no download wall. **Joining commits at the first cleared pair**, matching the Across rule.
 
 ---

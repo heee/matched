@@ -4,6 +4,7 @@
 import { el, avatarDot, formatDuration, roomInviteUrl } from "./shared-ui.js";
 import { PLAYER_COLORS, highlightsFromLog, pointsToNextTier, nextTier, tierForPoints } from "../game/scoring.js";
 import { buildLocalRoom } from "../game/room.js";
+import { resultShareMessage } from "../game/share-messages.js";
 
 // Stroke-only action icons for the Board Cleared action row, same Lucide
 // convention as the board's control-row icons (currentColor, no fill).
@@ -71,9 +72,19 @@ export function renderResults(root, ctx, params = {}) {
   const actions = el("div", { style: "display:flex;gap:9px;padding:0 16px 30px" });
   const shareBtn = el("button", { class: "btn btn-ghost", style: "flex:1;height:50px;border-radius:14px;gap:7px", html: `${ICON_SHARE}<span>Share</span>` });
   shareBtn.addEventListener("click", async () => {
-    const shareData = { title: room.title, text: `I just cleared ${room.title} in Matched — ${formatDuration(elapsedS)}.`, url: roomInviteUrl(room.id) };
+    const me = results.find((result) => result.name === ctx.state.currentUser);
+    const rank = Math.max(1, results.findIndex((result) => result.name === ctx.state.currentUser) + 1);
+    const message = resultShareMessage({
+      title: room.title,
+      elapsed: formatDuration(elapsedS),
+      pairs: me?.pairs || 0,
+      rank,
+      playerCount: results.length,
+    });
+    const url = roomInviteUrl(room.id);
+    const shareData = { title: room.title, text: message, url };
     if (navigator.share) { try { await navigator.share(shareData); } catch (e) {} }
-    else { navigator.clipboard?.writeText(shareData.url).catch(() => {}); ctx.toast("Link copied"); }
+    else { navigator.clipboard?.writeText(`${message} ${url}`).catch(() => {}); ctx.toast("Result copied"); }
   });
   const rematchBtn = el("button", { class: "btn btn-ghost", style: "flex:1;height:50px;border-radius:14px;gap:7px", html: `${ICON_REMATCH}<span>Rematch</span>` });
   rematchBtn.addEventListener("click", () => {
