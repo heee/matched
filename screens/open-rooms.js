@@ -1,7 +1,7 @@
 // Expanded list of every room currently open for the current player to join.
 
 import { el } from "./shared-ui.js";
-import { openRoomsForUser } from "../game/room-lists.js";
+import { openRoomsForUser } from "../game/room-lists.js?v=2";
 import { openRow } from "./home.js?v=44";
 
 export function renderOpenRooms(root, ctx) {

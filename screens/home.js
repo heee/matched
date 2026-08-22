@@ -7,7 +7,7 @@ import { dailyLayoutFor, dailySeedFor, todayDateStr, msUntilNextReset } from "..
 import { LAYOUTS, layoutSilhouette } from "../game/layouts.js";
 import { TIERS, colorForSeat, levelProgress, nextCosmeticUnlock, nextTier, tierForPoints } from "../game/scoring.js";
 import { materialFor } from "../game/materials.js";
-import { continuePlayingRooms, openRoomsForUser, randomRoomSample, waitingForPlayersRooms } from "../game/room-lists.js";
+import { continuePlayingRooms, openRoomsForUser, randomRoomSample, waitingForPlayersRooms } from "../game/room-lists.js?v=2";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { completedWeekStats } from "../game/daily-stats.js";
 import { topRegisteredRankings } from "../game/ranking.js";

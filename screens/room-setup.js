@@ -3,7 +3,7 @@
 
 import { el, avatarDot } from "./shared-ui.js";
 import { LAYOUTS, defaultLayoutForDifficulty, DIFFICULTY_TILE_COUNTS } from "../game/layouts.js";
-import { buildLocalRoom } from "../game/room.js";
+import { buildLocalRoom } from "../game/room.js?v=2";
 import { BOT_DIFFICULTIES, BOT_NAME_POOL } from "../game/scoring.js";
 
 // Optional bot seats for Shared/Race rooms — off by default. A seat left
