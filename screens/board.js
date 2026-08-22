@@ -117,7 +117,7 @@ export function renderBoard(root, ctx, params = {}) {
   const controls = el("div", { class: "controls-row" });
   const shuffleBtn = el("button", { class: "icon-btn", style: "width:42px;height:42px", html: ICON_SHUFFLE, "aria-label": "Shuffle" });
   const undoBtn = el("button", { class: "icon-btn", style: "width:42px;height:42px", html: ICON_UNDO, "aria-label": "Undo" });
-  const hintBtn = el("button", { class: "icon-btn amber", style: "width:42px;height:42px", html: ICON_HINT, "aria-label": "Hint" });
+  const hintBtn = el("button", { class: "icon-btn", style: "width:42px;height:42px", html: ICON_HINT, "aria-label": "Hint" });
   const movesBtn = el("button", { class: "icon-btn", style: "width:42px;height:42px", html: ICON_MOVES, "aria-label": "Show available matching pairs", "aria-pressed": "false" });
   controls.appendChild(shuffleBtn);
   controls.appendChild(undoBtn);
@@ -610,9 +610,8 @@ export function renderBoard(root, ctx, params = {}) {
     }
   }
 
-  // Briefly shines a bright outline on a random available pair, then fades
-  // — transient, unlike the old persistent hint ring, so it never fights
-  // with tap-to-select state.
+  // Sends three increasingly large gold pulses from a random available pair,
+  // then fades — transient, so it never fights with tap-to-select state.
   function useHint() {
     if (!room.hintsAllowed) { ctx.toast("Hints are off for this room."); return; }
     room.assistsUsed[you] = (room.assistsUsed[you] || 0) + 1;
@@ -625,6 +624,7 @@ export function renderBoard(root, ctx, params = {}) {
       void tileEl.offsetWidth; // restart the animation if a previous shine is still fading
       tileEl.classList.add("shine");
       tileEl.addEventListener("animationend", () => tileEl.classList.remove("shine"), { once: true });
+      setTimeout(() => tileEl.classList.remove("shine"), 2300);
     }
   }
 
