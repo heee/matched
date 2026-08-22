@@ -8,6 +8,7 @@ import { LAYOUTS, layoutSilhouette } from "../game/layouts.js";
 import { PLAYER_COLORS } from "../game/scoring.js";
 import { continuePlayingRooms, hasStartedRoom, openRoomsForUser, randomRoomSample } from "../game/room-lists.js";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
+import { completedDayStats } from "../game/daily-stats.js";
 
 // Randomized invite lines for the Live now card's share button — same
 // templated-message-plus-link pattern as Boys Pushup Bonanza's share
@@ -164,6 +165,32 @@ function dailyCard(ctx) {
   return card;
 }
 
+function dailyOverviewCard(ctx) {
+  const stats = completedDayStats(ctx.state.store.rooms, ctx.state.currentUser);
+  const avgTime = stats.avgTimeS == null ? "—" : formatClock(stats.avgTimeS);
+  const card = el("div", { class: "glass-card", style: `display:flex;flex-direction:column;min-height:${HERO_CARD_HEIGHT}px` });
+  const head = el("div", { style: "display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px" });
+  head.appendChild(el("span", { style: "font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#e8c887", text: "Your day" }));
+  head.appendChild(el("span", { style: "font:12px Figtree,sans-serif;color:rgba(246,241,228,.5)", text: "Completed boards" }));
+  card.appendChild(head);
+
+  const grid = el("div", { style: "display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;flex:1" });
+  const items = [
+    [stats.boards, stats.boards === 1 ? "Board" : "Boards"],
+    [stats.pairs, stats.pairs === 1 ? "Pair matched" : "Pairs matched"],
+    [avgTime, "Average time"],
+    [stats.bestStreak, "Best streak"],
+  ];
+  for (const [value, label] of items) {
+    const cell = el("div", { style: "padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.065)" });
+    cell.appendChild(el("div", { style: "font:700 22px Figtree,sans-serif;color:#f6f1e4;line-height:1.05", text: String(value) }));
+    cell.appendChild(el("div", { style: "font:11px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:4px", text: label }));
+    grid.appendChild(cell);
+  }
+  card.appendChild(grid);
+  return card;
+}
+
 export function continueRow(ctx, room) {
   const remaining = room.state.tiles.length;
   const pct = boardCompletion(room.tileCount, remaining);
@@ -276,15 +303,16 @@ export function renderHome(root, ctx) {
   const dots = el("div", { style: "display:flex;justify-content:center;gap:6px;margin-top:10px" });
 
   function setHero(i) {
-    heroIndex = (i + 2) % 2;
+    heroIndex = (i + 3) % 3;
     cardSlot.innerHTML = "";
-    cardSlot.appendChild(heroIndex === 0 ? (activeRoom ? liveNowCard(ctx, activeRoom) : noLiveCard(ctx)) : dailyCard(ctx));
+    const cards = [activeRoom ? liveNowCard(ctx, activeRoom) : noLiveCard(ctx), dailyCard(ctx), dailyOverviewCard(ctx)];
+    cardSlot.appendChild(cards[heroIndex]);
     [...dots.children].forEach((d, i2) => {
       d.style.width = i2 === heroIndex ? "18px" : "6px";
       d.style.background = i2 === heroIndex ? "#d9a441" : "rgba(246,241,228,.25)";
     });
   }
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < 3; i++) {
     const dot = el("div", { style: "height:6px;border-radius:3px;transition:width .2s;cursor:pointer" });
     dot.addEventListener("click", () => setHero(i));
     dots.appendChild(dot);

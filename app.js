@@ -10,7 +10,7 @@ import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.
 import { equippedFeltName, feltCssVars } from "./game/felts.js?v=39";
 
 import { renderNameEntry } from "./screens/name-entry.js?v=38";
-import { renderHome } from "./screens/home.js?v=44";
+import { renderHome } from "./screens/home.js?v=45";
 import { renderPlayCatalog } from "./screens/play-catalog.js?v=38";
 import { renderRoomSetup } from "./screens/room-setup.js?v=40";
 import { renderRanking } from "./screens/ranking.js?v=42";

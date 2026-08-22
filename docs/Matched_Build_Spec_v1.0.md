@@ -45,9 +45,10 @@ Sentence case for all headers and labels ("Continue playing", not "Continue Play
 
 ### Home
 
-- **Swipeable hero card.** Two states, swiped horizontally with chevron controls outside both edges of the card, dot indicators below, and pointer/touch drag:
+- **Swipeable hero card.** Three states, swiped horizontally with chevron controls outside both edges of the card, dot indicators below, and pointer/touch drag:
   1. **Live now** — the room you are currently in. Elapsed clock, mini board silhouette, title, "Shared board · 72 tiles · 61% cleared", a split progress bar breaking that 61% into each player's share colored by player identity, primary action "Jump back in", plus a chat shortcut.
   2. **Today's board** — the daily puzzle. Countdown to reset, title, "3 of 5 in your group have finished. Best time 4:12", actions "Play daily" and "Results".
+  3. **Your day** — the active player's local-calendar-day overview, counting completed boards only: boards, pairs matched, average completion time, and best streak.
 - **Continue playing** — vertical list (never a horizontal carousel) of rooms you have joined but are not currently in. Each row: mini board thumbnail (the layout's real tile silhouette, not a generic icon), title, status line, thin completion bar, one avatar.
 - **Open rooms** — vertical list of joinable rooms. Row: tile-count chip, title, "Shared · 60 tiles · 1 joined", "Join".
 
