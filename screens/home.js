@@ -7,7 +7,7 @@ import { dailyLayoutFor, dailySeedFor, todayDateStr, msUntilNextReset } from "..
 import { LAYOUTS, layoutSilhouette } from "../game/layouts.js";
 import { TIERS, colorForSeat, levelProgress, nextCosmeticUnlock, nextTier, tierForPoints } from "../game/scoring.js";
 import { materialFor } from "../game/materials.js";
-import { continuePlayingRooms, openRoomsForUser, randomRoomSample } from "../game/room-lists.js";
+import { continuePlayingRooms, openRoomsForUser, randomRoomSample, waitingForPlayersRooms } from "../game/room-lists.js";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { completedWeekStats } from "../game/daily-stats.js";
 import { topRegisteredRankings } from "../game/ranking.js";
@@ -275,6 +275,31 @@ export function continueRow(ctx, room) {
   return row;
 }
 
+function waitingRow(ctx, room) {
+  const row = el("div", { style: "display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07)" });
+  row.appendChild(modeIcon(room.mode));
+  const info = el("div", { style: "flex:1;min-width:0" });
+  info.appendChild(el("div", { style: "font:600 14.5px Figtree,sans-serif;color:#f6f1e4", text: room.title }));
+  info.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:2px", text: "Waiting for players" }));
+  row.appendChild(info);
+  row.appendChild(el("button", {
+    class: "btn",
+    style: "background:none;border:none;font:600 12px Figtree,sans-serif;color:rgba(246,241,228,.55);padding:4px;height:auto",
+    text: "Cancel",
+    onClick: () => {
+      ctx.abandonRoom(room);
+      ctx.navigate("home");
+    },
+  }));
+  row.appendChild(el("button", {
+    class: "btn",
+    style: "background:none;border:none;font:600 12px Figtree,sans-serif;color:#d9a441;padding:4px;height:auto",
+    text: "Resume",
+    onClick: () => ctx.navigate("invite", { roomId: room.id }),
+  }));
+  return row;
+}
+
 export function openRow(ctx, room) {
   const row = el("div", { style: "display:flex;align-items:center;gap:13px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08)" });
   row.appendChild(el("div", { style: "flex:none;width:40px;height:40px;border-radius:11px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font:700 13px Figtree,sans-serif;color:#e8c887", text: String(room.tileCount) }));
@@ -330,6 +355,7 @@ async function showInviteNotice(ctx, invite) {
 export function renderHome(root, ctx) {
   const rooms = Object.values(ctx.state.store.rooms || {});
   const continuePlaying = continuePlayingRooms(rooms, ctx.state.currentUser);
+  const waitingForPlayers = waitingForPlayersRooms(rooms, ctx.state.currentUser, ctx.state.activeRoomId, ctx.state.store.invites || []);
   const openRooms = openRoomsForUser(rooms, ctx.state.store.users, ctx.state.currentUser);
   const featuredOpenRooms = randomRoomSample(openRooms, 3);
 
@@ -439,6 +465,13 @@ export function renderHome(root, ctx) {
   if (continuePlaying.length === 0) continueList.appendChild(el("div", { class: "empty-note", style: "padding:0 4px", text: "Your unfinished rooms will show up here." }));
   continuePlaying.slice(0, 3).forEach((r) => continueList.appendChild(continueRow(ctx, r)));
   root.appendChild(continueList);
+
+  if (waitingForPlayers.length > 0) {
+    root.appendChild(el("div", { class: "section-label", style: "padding-top:20px", text: "Waiting for players" }));
+    const waitingList = el("div", { class: "row-list" });
+    waitingForPlayers.forEach((room) => waitingList.appendChild(waitingRow(ctx, room)));
+    root.appendChild(waitingList);
+  }
 
   const openLabel = el("div", { class: "section-label section-label-row", style: "padding-top:20px" });
   openLabel.appendChild(el("span", { text: "Open rooms" }));

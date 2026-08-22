@@ -8,6 +8,7 @@ import { createMutationQueue } from "./sync.js?v=40";
 import { el, TAB_DEFS } from "./screens/shared-ui.js?v=41";
 import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.js?v=38";
 import { equippedFeltName, feltCssVars } from "./game/felts.js?v=39";
+import { roomHasProgress, shouldAbandonRoomOnExit } from "./game/room-lists.js";
 
 import { renderNameEntry } from "./screens/name-entry.js?v=39";
 import { renderHome } from "./screens/home.js?v=53";
@@ -155,8 +156,20 @@ const ctx = {
   commitRoomMembership,
   reportCompletedRoom,
   reportDailyResult,
+  abandonRoom,
   refreshAppearance,
 };
+
+function abandonRoom(room) {
+  if (!room) return;
+  delete state.store.rooms[room.id];
+  state.store.invites = (state.store.invites || []).filter((invite) => invite.roomId !== room.id);
+  if (state.activeRoomId === room.id) state.activeRoomId = null;
+  persist();
+  if (!workerApi.configured()) return;
+  workerApi.deleteRoom(room.id)
+    .catch(() => mutationQueue.enqueue("delete-room", { roomId: room.id }, { id: `delete-room:${room.id}` }));
+}
 
 function commitRoomMembership(room) {
   const user = state.currentUser;
@@ -247,12 +260,26 @@ async function flushPendingMutations() {
     if (type === "complete-room") return workerApi.completeRoom(payload);
     if (type === "register-user") return workerApi.registerUser(payload.user);
     if (type === "daily-result") return workerApi.reportDailyResult(payload);
+    if (type === "delete-room") return workerApi.deleteRoom(payload.roomId);
     throw new Error(`Unsupported queued mutation: ${type}`);
   });
 }
 
 function navigate(screenId, params = {}) {
   if (!SCREENS[screenId]) throw new Error(`Unknown screen: ${screenId}`);
+  const roomScreen = ["invite", "board", "race-board"].includes(state.screen);
+  const leavingRoomId = roomScreen ? state.screenParams.roomId : null;
+  const stayingInSameRoom = ["invite", "board", "race-board"].includes(screenId) && params.roomId === leavingRoomId;
+  if (leavingRoomId && !stayingInSameRoom) {
+    const room = state.store.rooms[leavingRoomId];
+    const invites = state.store.invites || [];
+    if (shouldAbandonRoomOnExit(room, state.currentUser, invites)) {
+      abandonRoom(room);
+    } else if (room && !roomHasProgress(room) && state.activeRoomId === room.id) {
+      state.activeRoomId = null;
+      persist();
+    }
+  }
   // Screens that run timers (board, race-board) register a cleanup hook
   // here since a navigation just replaces the DOM wholesale rather than
   // unmounting through any lifecycle callback.

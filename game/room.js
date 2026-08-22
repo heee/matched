@@ -49,7 +49,7 @@ export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, 
     pairsCleared,
     streaks,
     assistsUsed: {},
-    state: { tiles: board.tiles, tray: [], matchLog: [], state: "open", seed: resolvedSeed },
+    state: { tiles: board.tiles, tray: [], matchLog: [], state: mode === "solo" ? "ready" : "waiting", seed: resolvedSeed },
     completedAt: null,
     isDaily: !!isDaily,
   };

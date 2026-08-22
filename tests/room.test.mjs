@@ -33,3 +33,10 @@ test("bots remain optional seats in a human-created room", () => {
   assert.deepEqual(room.botNames, ["Bamboo"]);
   assert.deepEqual(room.players, ["Alex", "Bamboo"]);
 });
+
+test("new rooms begin ready or waiting, not in progress", () => {
+  const shared = buildLocalRoom({ ...baseRoom, createdBy: "Alex" });
+  const solo = buildLocalRoom({ ...baseRoom, createdBy: "Alex", mode: "solo" });
+  assert.equal(shared.state.state, "waiting");
+  assert.equal(solo.state.state, "ready");
+});

@@ -184,7 +184,8 @@ export function renderRaceBoard(root, ctx, params = {}) {
       playMatchSound(ctx.state.settings.sound, material);
       mine.tiles = result.tiles;
       room.pairsCleared[you] = (room.pairsCleared[you] || 0) + 1;
-      if (room.createdBy !== you && room.pairsCleared[you] === 1) {
+      room.state.state = "in_progress";
+      if (room.pairsCleared[you] === 1) {
         ctx.commitRoomMembership(room);
       }
       room.state.matchLog = [...(room.state.matchLog || []), { user: you, at: Date.now() }];

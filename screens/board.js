@@ -412,7 +412,8 @@ export function renderBoard(root, ctx, params = {}) {
     if (!result) return false;
     room.state.tiles = result.tiles;
     room.pairsCleared[user] = (room.pairsCleared[user] || 0) + 1;
-    if (user === you && room.createdBy !== you && room.pairsCleared[user] === 1) {
+    room.state.state = "in_progress";
+    if (user === you && room.pairsCleared[user] === 1) {
       ctx.commitRoomMembership(room);
     }
     for (const name of Object.keys(room.streaks)) room.streaks[name] = name === user ? (room.streaks[name] || 0) + 1 : 0;

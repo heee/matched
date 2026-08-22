@@ -45,6 +45,7 @@ Sentence case for all headers and labels ("Continue playing", not "Continue Play
 
 ### Home
 
+- **Waiting for players** keeps zero-progress multiplayer rooms created by the active player separate from Continue playing while they are open, have pending invites, or another human has joined. The creator can resume or cancel them. A zero-progress solo room, or a private multiplayer room with nobody pending or joined, is abandoned when its creator exits.
 - **Swipeable hero card.** Four compact states with a shared minimum height; dense content may grow rather than clip. Cards are swiped horizontally with chevron controls outside both edges, dot indicators below, and pointer/touch drag:
   1. **Overall level** — account-wide, points-based progression across every mode and layout. Players begin at Level 0; Level 1 requires 1,800 points (roughly 5–10 games). The points required for each new level rise on a mildly convex curve from 1,800 to 4,500 by Level 100, then continue unbounded. Existing players are always recalculated from lifetime points. Shows the level on a current-tier-material badge, arc progress to the next level, points progress through the current tier, and the next named cosmetic unlock. Tapping opens the profile.
   2. **Today's board** — the daily puzzle. Countdown to reset, title, and actions "Play daily" and "Results" before completion. After the active user finishes, the card exposes only "View results"; the Daily screen likewise omits disabled play controls.

@@ -38,9 +38,15 @@ function isActualPlayerName(name) {
 }
 
 function hasStartedRoom(room, user) {
-  return room?.createdBy === user
-    || room?.startedPlayers?.includes(user)
-    || Number(room?.pairsCleared?.[user] || 0) > 0;
+  return room?.startedPlayers?.includes(user)
+    || Number(room?.pairsCleared?.[user] || 0) > 0
+    || (room?.createdBy === user && roomHasProgress(room));
+}
+
+function roomHasProgress(room) {
+  return Object.values(room?.pairsCleared || {}).some((count) => Number(count) > 0)
+    || room?.state?.state === "in_progress"
+    || room?.state?.state === "completed";
 }
 
 export default {
@@ -341,6 +347,7 @@ export class RoomDO {
       this.room.streaks[user] = this.room.streaks[user] || 0;
       this.room.state.tiles = tiles.filter((t) => t.id !== idA && t.id !== idB);
       this.room.pairsCleared[user] = (this.room.pairsCleared[user] || 0) + 1;
+      this.room.state.state = "in_progress";
       for (const name of Object.keys(this.room.streaks)) {
         this.room.streaks[name] = name === user ? (this.room.streaks[name] || 0) + 1 : 0;
       }
@@ -618,7 +625,7 @@ function buildRoom(req) {
     pairsCleared: { [req.createdBy]: 0 },
     streaks: { [req.createdBy]: 0 },
     assistsUsed: {},
-    state: { tiles, tray: [], matchLog: [], state: "open", seed },
+    state: { tiles, tray: [], matchLog: [], state: req.mode === "solo" ? "ready" : "waiting", seed },
     completedAt: null,
   };
   // Race mode: same layout, but each player clears their own independent

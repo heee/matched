@@ -1,6 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { continuePlayingRooms, hasStartedRoom, openRoomsForUser, randomRoomSample } from "../game/room-lists.js";
+import {
+  continuePlayingRooms,
+  hasStartedRoom,
+  openRoomsForUser,
+  randomRoomSample,
+  shouldAbandonRoomOnExit,
+  waitingForPlayersRooms,
+} from "../game/room-lists.js";
 
 function room(overrides = {}) {
   return {
@@ -17,7 +24,7 @@ function room(overrides = {}) {
 
 test("continue playing includes the current room and excludes completed rooms", () => {
   const rooms = [
-    room({ id: "active", players: ["Sam"], startedPlayers: ["Sam"] }),
+    room({ id: "active", players: ["Sam"], startedPlayers: ["Sam"], state: { state: "in_progress" } }),
     room({ id: "waiting", players: ["Sam"], pairsCleared: { Sam: 1 } }),
     room({ id: "done", players: ["Sam"], state: { state: "completed" } }),
     room({ id: "someone-else" }),
@@ -25,15 +32,43 @@ test("continue playing includes the current room and excludes completed rooms", 
   assert.deepEqual(continuePlayingRooms(rooms, "Sam").map((r) => r.id), ["active", "waiting"]);
 });
 
-test("continue playing requires the current user to have created or played the room", () => {
+test("continue playing requires actual committed progress, not room creation", () => {
   const rooms = [
     room({ id: "created", createdBy: "Sam", players: ["Sam"], pairsCleared: { Sam: 0 } }),
     room({ id: "played", players: ["Alex", "Sam"], pairsCleared: { Sam: 1 } }),
     room({ id: "joined-only", players: ["Alex", "Sam"], pairsCleared: { Sam: 0 } }),
   ];
 
-  assert.equal(hasStartedRoom(rooms[0], "Sam"), true);
-  assert.deepEqual(continuePlayingRooms(rooms, "Sam").map((r) => r.id), ["created", "played"]);
+  assert.equal(hasStartedRoom(rooms[0], "Sam"), false);
+  assert.deepEqual(continuePlayingRooms(rooms, "Sam").map((r) => r.id), ["played"]);
+});
+
+test("a creator can continue once anyone has progressed the board", () => {
+  const progressed = room({
+    id: "progressed",
+    createdBy: "Sam",
+    players: ["Sam", "Alex"],
+    pairsCleared: { Sam: 0, Alex: 1 },
+    state: { state: "in_progress" },
+  });
+
+  assert.equal(hasStartedRoom(progressed, "Sam"), true);
+  assert.deepEqual(continuePlayingRooms([progressed], "Sam").map((r) => r.id), ["progressed"]);
+});
+
+test("zero-progress multiplayer rooms with a waiting reason stay separate", () => {
+  const rooms = [
+    room({ id: "open", createdBy: "Sam", players: ["Sam"], pairsCleared: { Sam: 0 } }),
+    room({ id: "invited", createdBy: "Sam", visibility: "private", players: ["Sam"], pairsCleared: { Sam: 0 } }),
+    room({ id: "private", createdBy: "Sam", visibility: "private", players: ["Sam"], pairsCleared: { Sam: 0 } }),
+    room({ id: "solo", createdBy: "Sam", mode: "solo", players: ["Sam"], pairsCleared: { Sam: 0 } }),
+  ];
+  const invites = [{ roomId: "invited", toUser: "Alex" }];
+
+  assert.deepEqual(waitingForPlayersRooms(rooms, "Sam", null, invites).map((r) => r.id), ["open", "invited"]);
+  assert.equal(shouldAbandonRoomOnExit(rooms[0], "Sam", invites), false);
+  assert.equal(shouldAbandonRoomOnExit(rooms[2], "Sam", invites), true);
+  assert.equal(shouldAbandonRoomOnExit(rooms[3], "Sam", invites), true);
 });
 
 test("a committed first-pair membership stays started even if the pair is later undone", () => {
@@ -42,6 +77,7 @@ test("a committed first-pair membership stays started even if the pair is later 
     players: ["Alex", "Sam"],
     startedPlayers: ["Sam"],
     pairsCleared: { Sam: 0 },
+    state: { state: "in_progress" },
   });
 
   assert.equal(hasStartedRoom(committed, "Sam"), true);
