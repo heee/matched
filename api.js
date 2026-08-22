@@ -64,11 +64,12 @@ export function createWorkerApi({ baseUrl, appKey, timeoutMs = DEFAULT_TIMEOUT_M
     fetchData: (scope) => request(`/data${scope ? `?scope=${encodeURIComponent(scope)}` : ""}`),
     registerUser: (user) => request("/register-user", { method: "POST", body: { user } }),
     createRoom: (room) => request("/create-room", { method: "POST", body: room }),
-    joinRoom: (roomId, user) => request("/join-room", { method: "POST", body: { roomId, user } }),
+    joinRoom: (roomId, user) => request("/join-room", { method: "POST", body: { roomId, user, started: true } }),
     listRooms: (scope, user) => request(`/list-rooms?scope=${encodeURIComponent(scope)}${user ? `&user=${encodeURIComponent(user)}` : ""}`),
     deleteRoom: (roomId) => request("/delete-room", { method: "POST", body: { roomId } }),
     deleteUser: (user) => request("/delete-user", { method: "POST", body: { user } }),
     completeRoom: (payload) => request("/complete-room", { method: "POST", body: payload }),
+    updateRoom: (payload) => request("/update-room", { method: "POST", body: payload }),
     fetchDaily: () => request("/daily"),
     wsUrl(roomId, user) {
       const httpBase = baseUrl.replace(/\/$/, "");

@@ -2,7 +2,7 @@
 // control, gold highlight for the current user. See design-reference #1k.
 
 import { el, avatarDot } from "./shared-ui.js";
-import { RANKING_METRICS, aggregateRankings, rankingMetricValue } from "../game/ranking.js";
+import { RANKING_METRICS, aggregateRankings, rankingMetricValue } from "../game/ranking.js?v=42";
 
 const PERIODS = ["Today", "Week", "Month", "All time"];
 
@@ -35,7 +35,7 @@ export function renderRanking(root, ctx) {
       .sort((a, b) => metric === "speed" ? (a.value || Infinity) - (b.value || Infinity) : b.value - a.value);
 
     if (rows.length === 0) {
-      list.appendChild(el("div", { class: "empty-note", style: "padding:8px 4px", text: "No completed boards in this window yet — finish one to show up here." }));
+      list.appendChild(el("div", { class: "empty-note", style: "padding:8px 4px", text: "No boards or pairs in this window yet." }));
       return;
     }
 
@@ -48,7 +48,7 @@ export function renderRanking(root, ctx) {
       row.appendChild(avatarDot(r.name, i, 34));
       const info = el("div", { style: "flex:1;min-width:0" });
       info.appendChild(el("div", { style: `font:${isMe ? 700 : 500} 15px Figtree,sans-serif;color:#f6f1e4`, text: r.name }));
-      info.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.45);margin-top:2px", text: `${r.boards} board${r.boards === 1 ? "" : "s"} · ${metric === "speed" ? `${formatMetric(Math.round(r.timeS / r.boards), "speed")} avg` : `${r.pairs} pairs`}` }));
+      info.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.45);margin-top:2px", text: `${r.boards} board${r.boards === 1 ? "" : "s"} · ${metric === "speed" ? `${formatMetric(r.value, "speed")} avg` : `${r.pairs} pairs`}` }));
       row.appendChild(info);
       row.appendChild(el("div", { style: "font:700 17px Figtree,sans-serif;color:#f6f1e4", text: formatMetric(r.value, metric) }));
       list.appendChild(row);

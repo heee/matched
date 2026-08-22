@@ -2,24 +2,17 @@
 // "This month" stats, settings flattened onto the screen. See
 // design-reference.html #1l.
 
-import { el, avatarDot } from "./shared-ui.js";
+import { el, avatarDot, supportsHaptics } from "./shared-ui.js?v=41";
 import { tierForPoints, nextTier, pointsToNextTier, TIER_UNLOCKS, TIERS, nextCosmeticUnlock, cosmeticUnlockEvents } from "../game/scoring.js";
 import { MATERIALS, equippedMaterialName } from "../game/materials.js";
+import { FELTS, equippedFeltName } from "../game/felts.js";
+import { roomElapsedSeconds } from "../game/ranking.js?v=41";
 
 const ICON_SWITCH_PLAYER = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>`;
 
-const FELT_SWATCHES = {
-  Wood: "background:radial-gradient(120% 120% at 40% 20%,#20694e,#0e3527)",
-  Stone: "background:radial-gradient(120% 120% at 40% 20%,#454b4d,#1c2021)",
-  Resin: "background:radial-gradient(120% 120% at 40% 20%,#2f6b57,#123128)",
-  Bamboo: "background:radial-gradient(120% 120% at 40% 20%,#4d6b28,#233312)",
-  Bone: "background:radial-gradient(120% 120% at 40% 20%,#0f4a38,#072019)",
-  Porcelain: "background:radial-gradient(120% 120% at 40% 20%,#1f3f6e,#0c1b30)",
-  Rosewood: "background:radial-gradient(120% 120% at 40% 20%,#5a3822,#2a1a0f)",
-  Jade: "background:radial-gradient(120% 120% at 40% 20%,#1f6b4e,#0c2b1f)",
-  Cloisonné: "background:radial-gradient(120% 120% at 40% 20%,#173a5c,#081a2b)",
-  Lacquer: "background:radial-gradient(120% 120% at 40% 20%,#241a17,#0a0706)",
-};
+const FELT_SWATCHES = Object.fromEntries(Object.entries(FELTS).map(([name, felt]) => [
+  name, `background:radial-gradient(120% 120% at 40% 20%,${felt.a},${felt.c})`,
+]));
 // Textures per the material brief: rough-sawn timber / aggregate stone /
 // molded resin / carved bamboo / aged bone / cobalt porcelain / brass-
 // inlaid rosewood / quiet jade / enamel-and-brass cloisonné / lacquer with
@@ -45,6 +38,7 @@ function cosmeticUnlocked(key, tierName, points) {
 // Resolves what's actually equipped: the user's saved choice if it's still
 // unlocked, otherwise falls back to the current tier's default.
 function equippedTierName(ctx, key, currentTierName) {
+  if (key === "felt") return equippedFeltName(ctx.state.points, ctx.state.equipped);
   const stored = ctx.state.equipped?.[key];
   if (stored && cosmeticUnlocked(key, stored, ctx.state.points)) return stored;
   return currentTierName;
@@ -86,16 +80,20 @@ function cosmeticGrid(ctx, { key, swatches, nameFor, subFor }, currentTierName, 
 
 function monthStats(rooms, user) {
   const since = Date.now() - 30 * 24 * 3600 * 1000;
-  let boards = 0, pairs = 0, timeS = 0, longestStreak = 0;
+  let boards = 0, timedBoards = 0, pairs = 0, timeS = 0, longestStreak = 0;
   for (const room of Object.values(rooms)) {
     if (!room.completedAt || Date.parse(room.completedAt) < since) continue;
     if (!room.players.includes(user)) continue;
     boards += 1;
     pairs += room.pairsCleared[user] || 0;
-    if (room.startedAt) timeS += Math.max(1, Math.round((Date.parse(room.completedAt) - room.startedAt) / 1000));
+    const elapsedS = roomElapsedSeconds(room);
+    if (elapsedS != null) {
+      timeS += elapsedS;
+      timedBoards += 1;
+    }
     longestStreak = Math.max(longestStreak, (room.peakStreaks && room.peakStreaks[user]) || room.streaks[user] || 0);
   }
-  return { boards, pairs, avgTimeS: boards ? Math.round(timeS / boards) : 0, longestStreak };
+  return { boards, pairs, avgTimeS: timedBoards ? Math.round(timeS / timedBoards) : 0, hasTimedBoards: timedBoards > 0, longestStreak };
 }
 
 export function renderProfile(root, ctx) {
@@ -162,6 +160,22 @@ export function renderProfile(root, ctx) {
   tierCard.appendChild(unlocksRow);
   root.appendChild(tierCard);
 
+  root.appendChild(el("div", { class: "section-label", style: "padding:0 16px 6px", text: "This month" }));
+  const stats = monthStats(ctx.state.store.rooms || {}, user);
+  const statGrid = el("div", { class: "stat-grid" });
+  const statCell = (value, label) => {
+    const cell = el("div", { style: "padding:13px;border-radius:13px;background:rgba(255,255,255,.06)" });
+    cell.appendChild(el("div", { style: "font:700 22px Figtree,sans-serif;color:#f6f1e4", text: String(value) }));
+    cell.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:3px", text: label }));
+    return cell;
+  };
+  statGrid.appendChild(statCell(stats.boards, "Boards cleared"));
+  statGrid.appendChild(statCell(stats.pairs, "Pairs cleared"));
+  const avgM = Math.floor(stats.avgTimeS / 60), avgS = stats.avgTimeS % 60;
+  statGrid.appendChild(statCell(stats.hasTimedBoards ? `${avgM}:${String(avgS).padStart(2, "0")}` : "—", "Average time"));
+  statGrid.appendChild(statCell(stats.longestStreak, "Longest streak"));
+  root.appendChild(statGrid);
+
   root.appendChild(el("div", { class: "section-label", style: "padding:0 16px 6px", text: "Your table" }));
   root.appendChild(cosmeticGrid(ctx, {
     key: "felt",
@@ -177,22 +191,6 @@ export function renderProfile(root, ctx) {
     nameFor: (t) => t.material,
     subFor: () => "Tiles",
   }, tier.name, rerender));
-
-  root.appendChild(el("div", { class: "section-label", style: "padding:0 16px 6px", text: "This month" }));
-  const stats = monthStats(ctx.state.store.rooms || {}, user);
-  const statGrid = el("div", { class: "stat-grid" });
-  const statCell = (value, label) => {
-    const cell = el("div", { style: "padding:13px;border-radius:13px;background:rgba(255,255,255,.06)" });
-    cell.appendChild(el("div", { style: "font:700 22px Figtree,sans-serif;color:#f6f1e4", text: String(value) }));
-    cell.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:3px", text: label }));
-    return cell;
-  };
-  statGrid.appendChild(statCell(stats.boards, "Boards cleared"));
-  statGrid.appendChild(statCell(stats.pairs, "Pairs cleared"));
-  const avgM = Math.floor(stats.avgTimeS / 60), avgS = stats.avgTimeS % 60;
-  statGrid.appendChild(statCell(stats.boards ? `${avgM}:${String(avgS).padStart(2, "0")}` : "—", "Average time"));
-  statGrid.appendChild(statCell(stats.longestStreak, "Longest streak"));
-  root.appendChild(statGrid);
 
   root.appendChild(el("div", { class: "section-label", style: "padding-top:8px", text: "Settings" }));
   const settingsCard = el("div", { style: "margin:0 16px 16px;display:flex;flex-direction:column;gap:1px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.07)" });
@@ -210,9 +208,10 @@ export function renderProfile(root, ctx) {
     return row;
   };
   settingsCard.appendChild(toggleRow("Free tiles glow", "freeTilesGlow"));
-  settingsCard.appendChild(toggleRow("Hints allowed", "hintsAllowed"));
+  settingsCard.appendChild(toggleRow("Provide clues", "provideClues"));
   settingsCard.appendChild(toggleRow("Sound", "sound"));
-  settingsCard.appendChild(toggleRow("Haptics", "haptic"));
+  if (supportsHaptics()) settingsCard.appendChild(toggleRow("Haptics", "haptic"));
+  settingsCard.appendChild(toggleRow("Use table felt across app", "feltAcrossApp"));
   root.appendChild(settingsCard);
 
   const manageRow = el("button", { class: "row-link", type: "button", text: "Manage players", onClick: () => ctx.navigate("manage-players") });

@@ -32,6 +32,27 @@ export const MATERIALS = {
 
 export const DEFAULT_MATERIAL = "Bone";
 
+// Sound families follow the material's physical construction. The four
+// upper tiers reuse the closest real recording until they warrant their own
+// distinct foley: rosewood is wood, jade is stone, enamelled cloisonné is
+// porcelain-like, and lacquer is closest to hard resin.
+export const SOUND_MATERIALS = {
+  Wood: "Wood",
+  Stone: "Stone",
+  Resin: "Resin",
+  Bamboo: "Bamboo",
+  Bone: "Bone",
+  Porcelain: "Porcelain",
+  Rosewood: "Wood",
+  Jade: "Stone",
+  "Cloisonné": "Porcelain",
+  Lacquer: "Resin",
+};
+
+export function soundMaterialFor(name) {
+  return SOUND_MATERIALS[name] || "Wood";
+}
+
 export function materialFor(name) {
   return MATERIALS[name] || MATERIALS[DEFAULT_MATERIAL];
 }

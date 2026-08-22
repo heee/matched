@@ -4,7 +4,7 @@
 import { colorForSeat } from "../game/scoring.js";
 import { TILE_W, TILE_H } from "../game/layouts.js";
 import { dotPips, bamSticks, RED } from "../game/tiles.js";
-import { inkOverrideFor } from "../game/materials.js";
+import { inkOverrideFor, soundMaterialFor } from "../game/materials.js";
 
 // Tile faces render as inline SVG at this fixed viewBox — it matches the
 // on-board tile size (40x52) minus .tile-face's 3px inset on each side, so
@@ -138,6 +138,42 @@ export function avatarDot(name, seatIndex, size = 34) {
 // on Android. `enabled` should be the user's Haptics setting.
 export function haptic(enabled, pattern = 12) {
   if (enabled && typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(pattern);
+}
+
+export function supportsHaptics() {
+  return typeof navigator !== "undefined" && typeof navigator.vibrate === "function";
+}
+
+const MATCH_SOUND_POOL_SIZE = 3;
+const MATCH_SOUND_FILES = {
+  Wood: "tile-match.wav",
+  Stone: "tile-match-stone.wav",
+  Resin: "tile-match-resin.wav",
+  Bamboo: "tile-match-bamboo.wav",
+  Bone: "tile-match-bone.wav",
+  Porcelain: "tile-match-porcelain.wav",
+};
+const matchSoundPools = new Map();
+const matchSoundIndexes = new Map();
+
+export function playMatchSound(enabled, material = "Wood") {
+  if (!enabled || typeof Audio === "undefined") return;
+  const soundMaterial = soundMaterialFor(material);
+  if (!matchSoundPools.has(soundMaterial)) {
+    const pool = Array.from({ length: MATCH_SOUND_POOL_SIZE }, () => {
+      const audio = new Audio(`./assets/audio/${MATCH_SOUND_FILES[soundMaterial]}`);
+      audio.preload = "auto";
+      return audio;
+    });
+    matchSoundPools.set(soundMaterial, pool);
+    matchSoundIndexes.set(soundMaterial, 0);
+  }
+  const pool = matchSoundPools.get(soundMaterial);
+  const index = matchSoundIndexes.get(soundMaterial);
+  const audio = pool[index];
+  matchSoundIndexes.set(soundMaterial, (index + 1) % pool.length);
+  audio.currentTime = 0;
+  audio.play().catch(() => {});
 }
 
 // A compact room-mode glyph (shared/race/solo) for list rows — same visual

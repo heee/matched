@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { MATERIALS, materialFor, materialCssVars, inkOverrideFor, equippedMaterialName } from "../game/materials.js";
+import { MATERIALS, materialFor, materialCssVars, inkOverrideFor, equippedMaterialName, soundMaterialFor } from "../game/materials.js";
 import { TIERS, TIER_UNLOCKS } from "../game/scoring.js";
 
 test("every tier material has a palette entry", () => {
@@ -46,6 +46,15 @@ test("equippedMaterialName honors an unlocked pick but refuses a locked one", ()
 
 test("equippedMaterialName ignores a material that no longer exists", () => {
   assert.equal(equippedMaterialName(0, { material: "Adamantium" }), "Wood");
+});
+
+test("soundMaterialFor maps upper tiers to the closest recorded material", () => {
+  assert.equal(soundMaterialFor("Rosewood"), "Wood");
+  assert.equal(soundMaterialFor("Jade"), "Stone");
+  assert.equal(soundMaterialFor("Cloisonné"), "Porcelain");
+  assert.equal(soundMaterialFor("Lacquer"), "Resin");
+  assert.equal(soundMaterialFor("Bamboo"), "Bamboo");
+  assert.equal(soundMaterialFor("Adamantium"), "Wood");
 });
 
 // Face art has to stay legible on every material. A material's face used to

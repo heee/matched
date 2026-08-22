@@ -321,6 +321,28 @@ a { color: var(--gold); }
   position: fixed; z-index: 500; pointer-events: none; transform-origin: center;
   will-change: transform, opacity;
 }
+.tile.idle-clue {
+  animation: idleClue 1.8s ease-in-out;
+}
+@keyframes idleClue {
+  0%, 100% {
+    transform: translateX(0) rotate(0);
+    box-shadow: 1px 3px 0 var(--tile-edge), 0 0 0 0 rgba(217,164,65,0), inset 0 0 0 999px rgba(217,164,65,0);
+  }
+  12%, 36% { transform: translateX(-3px) rotate(-1.5deg); }
+  24%, 48% { transform: translateX(3px) rotate(1.5deg); }
+  30%, 54% {
+    box-shadow: 1px 3px 0 var(--tile-edge), 0 0 0 4px rgba(232,200,135,.95), 0 0 18px rgba(217,164,65,.72), inset 0 0 0 999px rgba(217,164,65,.28);
+  }
+  70% { transform: translateX(0) rotate(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile.idle-clue { animation-name: idleClueReduced; }
+  @keyframes idleClueReduced {
+    0%, 100% { box-shadow: 1px 3px 0 var(--tile-edge), 0 0 0 0 rgba(217,164,65,0); }
+    25%, 60% { box-shadow: 1px 3px 0 var(--tile-edge), 0 0 0 4px rgba(232,200,135,.95), inset 0 0 0 999px rgba(217,164,65,.28); }
+  }
+}
 .match-flight-scale { position: absolute; left: 0; top: 0; transform-origin: top left; perspective: 500px; }
 .match-flight .tile { left: 0; top: 0; pointer-events: none; cursor: default; transition: none; will-change: transform; }
 .match-flight.is-flying { animation: matchFlightPath .76s cubic-bezier(.22,.72,.24,1) both; }

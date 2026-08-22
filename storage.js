@@ -78,11 +78,14 @@ export const LOCAL_KEYS = {
   dailyStreak: "matched-daily-streak",
   lastDailyCompleted: "matched-last-daily-completed",
   activeRoom: "matched-active-room",
+  activeRooms: "matched-active-rooms-by-player",
 };
 
 export const DEFAULT_SETTINGS = {
-  freeTilesGlow: true,
+  freeTilesGlow: false,
   hintsAllowed: true,
+  provideClues: true,
   sound: true,
   haptic: true,
+  feltAcrossApp: true,
 };

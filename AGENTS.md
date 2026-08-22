@@ -8,6 +8,7 @@ of the game engine and was ported into `game/mahjong.js`).
 
 - **Minimize dialogue.** Keep responses terse — critical messages and summaries only, no play-by-play narration.
 - **Worker deployment:** no wrangler (Windows ARM64 has no `workerd` build) and no Cloudflare API token in this environment. `worker/index.js` is deployed manually by pasting into the Cloudflare dashboard's Quick Edit — it deliberately has no imports outside itself. Run `npm run validate-worker` before pasting. See `scripts/deploy-worker.cjs` for the full manual checklist (create D1 database, apply `migrations/0001_initial.sql`, bind `DB`/`ROOM`, set `APP_KEY`/`ALLOWED_ORIGIN`).
+- **Deployment ownership:** Unless the user explicitly asks for local-only work, complete Worker releases end to end: validate, update Quick Edit through the signed-in dashboard, deploy, and verify the live endpoint. Do not hand the paste/deploy step back to the user.
 - Before any preview check: unregister service workers + clear caches, then reload.
 - Bump `sw.js`'s `CACHE_NAME` on every shipped change.
 - Root scripts are ESM (`package.json` has `"type": "module"`); the CommonJS scripts are `.cjs`.

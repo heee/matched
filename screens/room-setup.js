@@ -47,7 +47,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
     mode: "shared",
     layoutId: params.layoutId || defaultLayoutForDifficulty("medium", ctx.state.points).id,
     difficulty: params.layoutId ? LAYOUTS[params.layoutId].difficulty === "hard" ? "hard" : LAYOUTS[params.layoutId].difficulty : "medium",
-    freeTilesGlow: true,
+    freeTilesGlow: ctx.state.settings.freeTilesGlow,
     hintsAllowed: true,
     openLink: true,
     bots: new Array(BOT_SEAT_COUNT).fill(null), // each slot: null (open) or { name, difficulty }

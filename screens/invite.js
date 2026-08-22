@@ -38,7 +38,7 @@ export function renderInvite(root, ctx, params = {}) {
       const sheet = el("div", { class: "sheet", style: "margin-top:auto" });
       sheet.appendChild(el("div", { class: "sheet-handle" }));
       sheet.appendChild(el("div", { class: "title-serif", style: "font-size:26px", text: "Bring your people" }));
-      sheet.appendChild(el("div", { style: "font:13.5px/1.5 Figtree,sans-serif;color:rgba(246,241,228,.6);margin-top:7px", text: "Anyone with the link joins instantly. No account, no download prompt until they finish a board." }));
+      sheet.appendChild(el("div", { style: "font:13.5px/1.5 Figtree,sans-serif;color:rgba(246,241,228,.6);margin-top:7px", text: "Anyone with the link can jump in. Their seat is claimed when they clear their first pair." }));
 
       const copyRow = el("div", { class: "link-copy", style: "margin-top:16px" });
       copyRow.appendChild(el("code", { text: link }));

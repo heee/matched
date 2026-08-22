@@ -8,6 +8,8 @@ import {
   clearPair,
   restorePair,
   findHintPair,
+  findHintPairs,
+  findRandomHintPair,
   hasMovesRemaining,
   shuffleRemaining,
   boardCompletion,
@@ -133,6 +135,20 @@ test("findHintPair finds a real matching pair among free tiles only", () => {
   assert.equal(a.face.id, b.face.id);
   assert.equal(isFree(a, board.tiles), true);
   assert.equal(isFree(b, board.tiles), true);
+});
+
+test("findRandomHintPair chooses among all available free matches", () => {
+  const faces = buildFaceSet();
+  const tiles = [
+    { id: "a1", x: 0, y: 0, z: 0, face: faces[0] },
+    { id: "a2", x: 2, y: 0, z: 0, face: faces[0] },
+    { id: "b1", x: 4, y: 0, z: 0, face: faces[1] },
+    { id: "b2", x: 6, y: 0, z: 0, face: faces[1] },
+  ];
+  assert.deepEqual(findHintPairs(tiles), [["a1", "a2"], ["b1", "b2"]]);
+  assert.deepEqual(findRandomHintPair(tiles, () => 0), ["a1", "a2"]);
+  assert.deepEqual(findRandomHintPair(tiles, () => 0.99), ["b1", "b2"]);
+  assert.equal(findRandomHintPair([], () => 0), null);
 });
 
 test("hasMovesRemaining is false once no free pair exists", () => {

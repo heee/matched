@@ -6,7 +6,7 @@ import { boardCompletion } from "../game/mahjong.js";
 import { dailyLayoutFor, dailySeedFor, todayDateStr, msUntilNextReset } from "../game/daily.js";
 import { LAYOUTS, layoutSilhouette } from "../game/layouts.js";
 import { PLAYER_COLORS } from "../game/scoring.js";
-import { continuePlayingRooms, openRoomsForUser } from "../game/room-lists.js";
+import { continuePlayingRooms, hasStartedRoom, openRoomsForUser, randomRoomSample } from "../game/room-lists.js";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
 
 // Randomized invite lines for the Live now card's share button — same
@@ -180,7 +180,7 @@ export function continueRow(ctx, room) {
   return row;
 }
 
-function openRow(ctx, room) {
+export function openRow(ctx, room) {
   const row = el("div", { style: "display:flex;align-items:center;gap:13px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08)" });
   row.appendChild(el("div", { style: "flex:none;width:40px;height:40px;border-radius:11px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font:700 13px Figtree,sans-serif;color:#e8c887", text: String(room.tileCount) }));
   const info = el("div", { style: "flex:1;min-width:0" });
@@ -196,10 +196,6 @@ function openRow(ctx, room) {
       room.streaks[ctx.state.currentUser] = room.streaks[ctx.state.currentUser] || 0;
       ctx.state.store.rooms[room.id] = room;
       ctx.persist();
-      if (ctx.api.configured()) {
-        ctx.api.joinRoom(room.id, ctx.state.currentUser)
-          .catch(() => ctx.mutationQueue.enqueue("join-room", { roomId: room.id, user: ctx.state.currentUser }));
-      }
       ctx.navigate(room.mode === "race" ? "race-board" : "board", { roomId: room.id });
     },
   }));
@@ -238,9 +234,11 @@ async function showInviteNotice(ctx, invite) {
 
 export function renderHome(root, ctx) {
   const rooms = Object.values(ctx.state.store.rooms || {});
-  const activeRoom = ctx.state.activeRoomId ? ctx.state.store.rooms[ctx.state.activeRoomId] : null;
+  const activeCandidate = ctx.state.activeRoomId ? ctx.state.store.rooms[ctx.state.activeRoomId] : null;
+  const activeRoom = hasStartedRoom(activeCandidate, ctx.state.currentUser) ? activeCandidate : null;
   const continuePlaying = continuePlayingRooms(rooms, ctx.state.currentUser, ctx.state.activeRoomId);
   const openRooms = openRoomsForUser(rooms, ctx.state.store.users, ctx.state.currentUser);
+  const featuredOpenRooms = randomRoomSample(openRooms, 3);
 
   const header = el("div", { class: "screen-header" });
   const headLeft = el("div", { style: "flex:1;min-width:0;padding-right:12px" });
@@ -341,11 +339,21 @@ export function renderHome(root, ctx) {
   continuePlaying.slice(0, 3).forEach((r) => continueList.appendChild(continueRow(ctx, r)));
   root.appendChild(continueList);
 
-  root.appendChild(el("div", { class: "section-label", style: "padding-top:20px", text: "Open rooms" }));
+  const openLabel = el("div", { class: "section-label section-label-row", style: "padding-top:20px" });
+  openLabel.appendChild(el("span", { text: "Open rooms" }));
+  if (openRooms.length > 3) {
+    openLabel.appendChild(el("button", {
+      class: "pill section-more",
+      text: "More",
+      "aria-label": "See all open rooms",
+      onClick: () => ctx.navigate("open-rooms"),
+    }));
+  }
+  root.appendChild(openLabel);
   root.appendChild(el("div", { class: "section-helper", text: "Started by other players and open for you to join." }));
   const openList = el("div", { class: "row-list" });
   if (openRooms.length === 0) openList.appendChild(el("div", { class: "empty-note", style: "padding:0 4px", text: "No open rooms yet — create one from the + tab." }));
-  openRooms.forEach((r) => openList.appendChild(openRow(ctx, r)));
+  featuredOpenRooms.forEach((r) => openList.appendChild(openRow(ctx, r)));
   root.appendChild(openList);
 
   root.appendChild(el("div", { style: "flex:1" }));

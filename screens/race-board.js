@@ -2,13 +2,16 @@
 // live progress bars ordered by position; standings surface in a bottom
 // strip instead of a toast; no tray. See docs/design-reference.html #1h.
 
-import { el, avatarDot, renderTileFace, formatClock, haptic } from "./shared-ui.js";
+import { el, avatarDot, renderTileFace, formatClock, haptic, playMatchSound } from "./shared-ui.js?v=41";
 import { freeTiles, findHintPair, clearPair, hasMovesRemaining } from "../game/mahjong.js";
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
 import { PLAYER_COLORS, BOT_ACT_CHANCE, pointsForSession } from "../game/scoring.js";
 import { equippedMaterialName, materialCssVars } from "../game/materials.js";
 import { ensureRacer } from "../game/room.js";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
+import { hasStartedRoom } from "../game/room-lists.js";
+import { equippedFeltName, feltCssVars } from "../game/felts.js";
+import { createIdleClueController } from "./idle-clues.js";
 
 const BOT_INTERVAL_MS = 4200;
 
@@ -21,11 +24,13 @@ export function renderRaceBoard(root, ctx, params = {}) {
   // never wrote a `racers` field at all — without this, opening one of
   // those silently bounced back to home with no error.
   if (!room.racers || !room.racers[you]) { ensureRacer(room, you); ctx.persist(); }
-  ctx.state.activeRoomId = room.id;
+  if (hasStartedRoom(room, ctx.state.currentUser)) ctx.state.activeRoomId = room.id;
   const totalPairs = room.tileCount / 2;
 
   const local = { selectedId: null, lastStandingLeader: null, tileEls: new Map() };
-  root.classList.add("bg-slate");
+  let clueController = null;
+  root.classList.add("bg-felt");
+  root.style.cssText += feltCssVars(equippedFeltName(ctx.state.points, ctx.state.equipped));
 
   const header = el("div", { class: "screen-header", style: "padding-top:6px" });
   header.appendChild(el("button", { class: "icon-btn", text: "⌂", onClick: () => ctx.navigate("home") }));
@@ -127,11 +132,12 @@ export function renderRaceBoard(root, ctx, params = {}) {
       const cls = ["tile"];
       if (t.z > 0) cls.push("upper");
       if (!isF) cls.push("blocked");
+      else if (room.freeTilesGlow && ctx.state.settings.freeTilesGlow) cls.push("free", "glow");
       const tileEl = el("div", { class: cls.join(" "), style: `left:${px}px;top:${py}px;width:${TILE_W}px;height:${TILE_H}px;z-index:${t.z * 100 + t.y}` });
       const face = el("div", { class: "tile-face" });
       renderTileFace(face, t.face, material);
       tileEl.appendChild(face);
-      tileEl.addEventListener("click", () => tap(t.id));
+      tileEl.addEventListener("click", () => { clueController?.reset(); tap(t.id); });
       boardWrap.appendChild(tileEl);
       local.tileEls.set(t.id, tileEl);
     }
@@ -168,10 +174,15 @@ export function renderRaceBoard(root, ctx, params = {}) {
     const result = clearPair(mine.tiles, firstId, id);
     if (result) {
       haptic(ctx.state.settings.haptic);
+      playMatchSound(ctx.state.settings.sound, material);
       mine.tiles = result.tiles;
       room.pairsCleared[you] = (room.pairsCleared[you] || 0) + 1;
+      if (room.createdBy !== you && room.pairsCleared[you] === 1) {
+        ctx.commitRoomMembership(room);
+      }
+      room.state.matchLog = [...(room.state.matchLog || []), { user: you, at: Date.now() }];
       local.selectedId = null;
-      ctx.persist();
+      ctx.reportRoomProgress(room);
       renderRacers();
       renderMyBoard();
       if (mine.tiles.length === 0) finishRace();
@@ -185,6 +196,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
     room.completedAt = room.completedAt || new Date().toISOString();
     room.state.state = "completed";
     const elapsedMs = Date.now() - (room.startedAt || Date.now());
+    room.elapsedMs = elapsedMs;
     const myPairs = room.pairsCleared[you] || 0;
     const assistsUsed = room.assistsUsed[you] || 0;
     const earned = pointsForSession({ pairsCleared: myPairs, assistsUsed, elapsedMs, tileCount: room.tileCount });
@@ -209,6 +221,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
       if (result) {
         racer.tiles = result.tiles;
         room.pairsCleared[bot] = (room.pairsCleared[bot] || 0) + 1;
+        room.state.matchLog = [...(room.state.matchLog || []), { user: bot, at: Date.now() }];
       }
     }
     renderRacers();
@@ -218,9 +231,15 @@ export function renderRaceBoard(root, ctx, params = {}) {
   window.addEventListener("resize", applyBoardScale);
   window.__matchedCleanup = () => {
     stopBots();
+    clueController?.stop();
     window.removeEventListener("resize", applyBoardScale);
   };
 
   renderRacers();
   renderMyBoard();
+  clueController = createIdleClueController({
+    enabled: ctx.state.settings.provideClues && room.hintsAllowed,
+    getTiles: () => room.racers[you].tiles,
+    getTileElement: (id) => local.tileEls.get(id),
+  });
 }

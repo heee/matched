@@ -82,8 +82,8 @@ One scrollable screen, never a wizard. Target: under a minute from tap to invite
 
 - Avatar, display name, tier line ("Jade tier · 9,140 points").
 - **Tier bar sits above stats** — progression is the reason to come back. Shows current tier, points to the next tier, and the two next unlocks by name.
-- **Your table** — the currently applied tile material and felt; this is where a new unlock gets equipped.
 - **This month** — 2×2 stat grid using the same metrics Ranking sorts by, so the two screens never disagree.
+- **Your table** — the currently applied tile material and felt; this is where a new unlock gets equipped.
 - Settings flattened onto this screen: direct toggle rows only. No sub-pages, no email field, no sign-out row.
 
 ### Board (the game)

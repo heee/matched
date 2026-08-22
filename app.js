@@ -2,29 +2,42 @@
 // screens/ and game/; this file wires navigation, the bottom tab bar, and
 // the local-first store, then hands each screen its render call.
 
-import { createWorkerApi } from "./api.js?v=38";
-import { createJsonStorage, normalizeSharedData, mergeSharedData, LOCAL_KEYS, DEFAULT_SETTINGS } from "./storage.js?v=38";
-import { createMutationQueue } from "./sync.js?v=38";
-import { el, TAB_DEFS } from "./screens/shared-ui.js?v=38";
+import { createWorkerApi } from "./api.js?v=40";
+import { createJsonStorage, normalizeSharedData, mergeSharedData, LOCAL_KEYS, DEFAULT_SETTINGS } from "./storage.js?v=41";
+import { createMutationQueue } from "./sync.js?v=39";
+import { el, TAB_DEFS } from "./screens/shared-ui.js?v=41";
 import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.js?v=38";
+import { equippedFeltName, feltCssVars } from "./game/felts.js?v=39";
 
 import { renderNameEntry } from "./screens/name-entry.js?v=38";
-import { renderHome } from "./screens/home.js?v=38";
+import { renderHome } from "./screens/home.js?v=44";
 import { renderPlayCatalog } from "./screens/play-catalog.js?v=38";
-import { renderRoomSetup } from "./screens/room-setup.js?v=38";
-import { renderRanking } from "./screens/ranking.js?v=38";
-import { renderProfile } from "./screens/profile.js?v=38";
+import { renderRoomSetup } from "./screens/room-setup.js?v=40";
+import { renderRanking } from "./screens/ranking.js?v=42";
+import { renderProfile } from "./screens/profile.js?v=42";
 import { renderManagePlayers } from "./screens/manage-players.js?v=38";
-import { renderBoard } from "./screens/board.js?v=38";
-import { renderRaceBoard } from "./screens/race-board.js?v=38";
+import { renderBoard } from "./screens/board.js?v=45";
+import { renderRaceBoard } from "./screens/race-board.js?v=44";
 import { renderResults } from "./screens/results.js?v=38";
-import { renderInvite } from "./screens/invite.js?v=38";
+import { renderInvite } from "./screens/invite.js?v=39";
 import { renderDaily } from "./screens/daily.js?v=38";
 import { renderContinuePlaying } from "./screens/continue-playing.js?v=38";
+import { renderOpenRooms } from "./screens/open-rooms.js?v=44";
 
 const jsonStorage = createJsonStorage(localStorage);
 const workerApi = createWorkerApi({ baseUrl: window.WORKER_URL || "", appKey: window.APP_KEY || "" });
 const mutationQueue = createMutationQueue({ jsonStorage, key: LOCAL_KEYS.pendingQueue });
+
+const savedCurrentUser = (() => {
+  const saved = jsonStorage.read(LOCAL_KEYS.currentUser, "");
+  return isActualPlayerName(saved) ? saved : "";
+})();
+const savedActiveRoomIds = jsonStorage.read(LOCAL_KEYS.activeRooms, {});
+const activeRoomIds = savedActiveRoomIds && typeof savedActiveRoomIds === "object" ? savedActiveRoomIds : {};
+const legacyActiveRoomId = jsonStorage.read(LOCAL_KEYS.activeRoom, null);
+if (savedCurrentUser && legacyActiveRoomId && !activeRoomIds[savedCurrentUser]) {
+  activeRoomIds[savedCurrentUser] = legacyActiveRoomId;
+}
 
 function loadStore() {
   const raw = jsonStorage.read(LOCAL_KEYS.cacheData, {});
@@ -35,16 +48,14 @@ function saveStore(store) {
 }
 
 const state = {
-  currentUser: (() => {
-    const saved = jsonStorage.read(LOCAL_KEYS.currentUser, "");
-    return isActualPlayerName(saved) ? saved : "";
-  })(),
+  currentUser: savedCurrentUser,
   settings: { ...DEFAULT_SETTINGS, ...jsonStorage.read(LOCAL_KEYS.settings, {}) },
   points: jsonStorage.read(LOCAL_KEYS.points, 0),
   equipped: jsonStorage.read(LOCAL_KEYS.equipped, {}),
   dailyStreak: jsonStorage.read(LOCAL_KEYS.dailyStreak, 0),
   lastDailyCompleted: jsonStorage.read(LOCAL_KEYS.lastDailyCompleted, null),
-  activeRoomId: jsonStorage.read(LOCAL_KEYS.activeRoom, null),
+  activeRoomId: activeRoomIds[savedCurrentUser] || null,
+  activeRoomIds,
   store: loadStore(),
   screen: "home",
   screenParams: {},
@@ -52,6 +63,10 @@ const state = {
 };
 
 function persist() {
+  if (isActualPlayerName(state.currentUser)) {
+    if (state.activeRoomId) state.activeRoomIds[state.currentUser] = state.activeRoomId;
+    else delete state.activeRoomIds[state.currentUser];
+  }
   jsonStorage.write(LOCAL_KEYS.currentUser, state.currentUser);
   jsonStorage.write(LOCAL_KEYS.settings, state.settings);
   jsonStorage.write(LOCAL_KEYS.points, state.points);
@@ -59,6 +74,7 @@ function persist() {
   jsonStorage.write(LOCAL_KEYS.dailyStreak, state.dailyStreak);
   jsonStorage.write(LOCAL_KEYS.lastDailyCompleted, state.lastDailyCompleted);
   jsonStorage.write(LOCAL_KEYS.activeRoom, state.activeRoomId);
+  jsonStorage.write(LOCAL_KEYS.activeRooms, state.activeRoomIds);
   saveStore(state.store);
 }
 
@@ -87,6 +103,7 @@ const SCREENS = {
   invite: renderInvite,
   daily: renderDaily,
   "continue-playing": renderContinuePlaying,
+  "open-rooms": renderOpenRooms,
 };
 
 // Screens not directly reachable from a tab keep whichever tab was active
@@ -105,6 +122,7 @@ const TAB_FOR_SCREEN = {
   invite: "home",
   daily: "home",
   "continue-playing": "home",
+  "open-rooms": "home",
 };
 
 const ctx = {
@@ -116,15 +134,55 @@ const ctx = {
   announce,
   navigate,
   selectUser,
+  reportRoomProgress,
+  commitRoomMembership,
   reportCompletedRoom,
 };
+
+function commitRoomMembership(room) {
+  const user = state.currentUser;
+  if (!room.players.includes(user)) room.players.push(user);
+  room.startedPlayers = room.startedPlayers || [];
+  if (!room.startedPlayers.includes(user)) room.startedPlayers.push(user);
+  state.activeRoomId = room.id;
+  persist();
+  if (!workerApi.configured()) return;
+  workerApi.joinRoom(room.id, user)
+    .catch(() => mutationQueue.enqueue("join-room", { roomId: room.id, user }));
+}
+
+function roomProgressPayload(room) {
+  return {
+    startedAt: room.startedAt,
+    state: room.state,
+    players: room.players,
+    startedPlayers: room.startedPlayers || [],
+    botNames: room.botNames || [],
+    pairsCleared: room.pairsCleared,
+    streaks: room.streaks,
+    peakStreaks: room.peakStreaks || {},
+    assistsUsed: room.assistsUsed || {},
+    racers: room.racers,
+  };
+}
+
+function reportRoomProgress(room) {
+  persist();
+  if (!workerApi.configured()) return;
+  const mutation = { roomId: room.id, payload: roomProgressPayload(room) };
+  workerApi.updateRoom(mutation).catch(() => {
+    mutationQueue.enqueue("update-room", mutation, { id: `update-room:${room.id}` });
+  });
+}
 
 function completedRoomPayload(room) {
   return {
     completedAt: room.completedAt,
     startedAt: room.startedAt,
+    elapsedMs: room.elapsedMs,
     state: room.state,
     players: room.players,
+    startedPlayers: room.startedPlayers || [],
     botNames: room.botNames || [],
     botDifficulty: room.botDifficulty || {},
     pairsCleared: room.pairsCleared,
@@ -149,6 +207,7 @@ async function flushPendingMutations() {
   if (!workerApi.configured()) return;
   await mutationQueue.flush(({ type, payload }) => {
     if (type === "join-room") return workerApi.joinRoom(payload.roomId, payload.user);
+    if (type === "update-room") return workerApi.updateRoom(payload);
     if (type === "create-room") return workerApi.createRoom(payload);
     if (type === "complete-room") return workerApi.completeRoom(payload);
     if (type === "register-user") return workerApi.registerUser(payload.user);
@@ -229,9 +288,6 @@ async function joinRoomFromInvite(roomId) {
     room.streaks[state.currentUser] = room.streaks[state.currentUser] || 0;
     state.store.rooms[roomId] = room;
     persist();
-    if (workerApi.configured()) {
-      workerApi.joinRoom(roomId, state.currentUser).catch(() => mutationQueue.enqueue("join-room", { roomId, user: state.currentUser }));
-    }
   }
   navigate(room.mode === "race" ? "race-board" : "board", { roomId });
 }
@@ -256,7 +312,12 @@ function selectUser(name) {
     toast("Choose your actual name — ‘You’ is only used as a label.");
     return;
   }
+  if (isActualPlayerName(state.currentUser)) {
+    if (state.activeRoomId) state.activeRoomIds[state.currentUser] = state.activeRoomId;
+    else delete state.activeRoomIds[state.currentUser];
+  }
   state.currentUser = name;
+  state.activeRoomId = state.activeRoomIds[name] || null;
   // Write the profile locally right away — previously this only happened
   // via workerApi.registerUser()'s server round-trip, so switching to (or
   // creating) a player while offline, or before that fetch resolved, left
@@ -275,6 +336,10 @@ function selectUser(name) {
 }
 
 function render() {
+  const app = document.getElementById("app");
+  app.style.cssText = state.settings.feltAcrossApp
+    ? feltCssVars(equippedFeltName(state.points, state.equipped))
+    : "";
   const root = document.getElementById("screen-root");
   root.innerHTML = "";
   const screenEl = el("div", { class: "screen active", id: `screen-${state.screen}` });

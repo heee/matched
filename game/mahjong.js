@@ -126,6 +126,32 @@ export function findHintPair(tiles) {
   return null;
 }
 
+// Every currently-valid free matching pair. Keeping this pure lets visual
+// clue features choose randomly without changing the deterministic Hint and
+// bot behavior that relies on findHintPair's first match.
+export function findHintPairs(tiles) {
+  const free = freeTiles(tiles);
+  const byFace = new Map();
+  for (const tile of free) {
+    const group = byFace.get(tile.face.id) || [];
+    group.push(tile);
+    byFace.set(tile.face.id, group);
+  }
+  const pairs = [];
+  for (const group of byFace.values()) {
+    for (let i = 0; i < group.length - 1; i++) {
+      for (let j = i + 1; j < group.length; j++) pairs.push([group[i].id, group[j].id]);
+    }
+  }
+  return pairs;
+}
+
+export function findRandomHintPair(tiles, rng = Math.random) {
+  const pairs = findHintPairs(tiles);
+  if (pairs.length === 0) return null;
+  return pairs[Math.floor(rng() * pairs.length)];
+}
+
 export function hasMovesRemaining(tiles) {
   return !!findHintPair(tiles);
 }

@@ -2,7 +2,7 @@
 // tap-match-to-clear, tray attribution, hint/shuffle/undo, simulated
 // opponents, toasts, reactions. See docs/design-reference.html #1f.
 
-import { el, avatarDot, renderTileFace, trayFaceGlyph, formatClock, haptic } from "./shared-ui.js";
+import { el, avatarDot, renderTileFace, trayFaceGlyph, formatClock, haptic, playMatchSound } from "./shared-ui.js?v=41";
 import {
   isFree, freeTiles, findHintPair, clearPair, restorePair, shuffleRemaining,
   hasMovesRemaining, boardCompletion,
@@ -11,6 +11,9 @@ import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js
 import { PLAYER_COLORS, pointsForSession, highlightsFromLog, BOT_ACT_CHANCE, COMBO_WINDOW_MS, COMBO_BONUS_POINTS } from "../game/scoring.js";
 import { equippedMaterialName, materialCssVars } from "../game/materials.js";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
+import { hasStartedRoom } from "../game/room-lists.js";
+import { equippedFeltName, feltCssVars } from "../game/felts.js";
+import { createIdleClueController } from "./idle-clues.js";
 
 const BOT_INTERVAL_MS = 5200;
 const REACTIONS = ["🔥", "😮", "👏", "😂", "😍", "🎉", "💪", "😱", "👍"];
@@ -29,7 +32,7 @@ export function renderBoard(root, ctx, params = {}) {
   const room = ctx.state.store.rooms[params.roomId];
   if (!room) { ctx.navigate("home"); return; }
   if (repairCurrentPlayerAliases(room, ctx.state.currentUser)) ctx.persist();
-  ctx.state.activeRoomId = room.id;
+  if (hasStartedRoom(room, ctx.state.currentUser)) ctx.state.activeRoomId = room.id;
   const you = ctx.state.currentUser;
   const isShared = room.mode === "shared";
 
@@ -45,8 +48,10 @@ export function renderBoard(root, ctx, params = {}) {
     comboCount: 0,
     persistTimer: null,
   };
+  let clueController = null;
 
   root.classList.add("bg-felt");
+  root.style.cssText += feltCssVars(equippedFeltName(ctx.state.points, ctx.state.equipped));
 
   // ---- header ----
   const header = el("div", { class: "screen-header", style: "padding-top:6px" });
@@ -239,7 +244,7 @@ export function renderBoard(root, ctx, params = {}) {
       const py = t.y * STEP_Y - t.z * LAYER_OFFSET + box.padTop;
       const cls = ["tile"];
       if (t.z > 0) cls.push("upper");
-      if (!isF) cls.push("blocked"); else if (room.freeTilesGlow) cls.push("free", "glow");
+      if (!isF) cls.push("blocked"); else if (room.freeTilesGlow && ctx.state.settings.freeTilesGlow) cls.push("free", "glow");
       const tileEl = el("div", {
         class: cls.join(" "),
         style: `left:${px}px;top:${py}px;width:${TILE_W}px;height:${TILE_H}px;z-index:${t.z * 100 + t.y}`,
@@ -247,7 +252,7 @@ export function renderBoard(root, ctx, params = {}) {
       const face = el("div", { class: "tile-face" });
       renderTileFace(face, t.face, material);
       tileEl.appendChild(face);
-      tileEl.addEventListener("click", () => tap(t.id));
+      tileEl.addEventListener("click", () => { clueController?.reset(); tap(t.id); });
       boardWrap.appendChild(tileEl);
       local.tileEls.set(t.id, tileEl);
     }
@@ -277,8 +282,9 @@ export function renderBoard(root, ctx, params = {}) {
       if (!tileEl) continue;
       const isF = free.has(t.id);
       tileEl.classList.toggle("blocked", !isF);
-      tileEl.classList.toggle("free", isF && room.freeTilesGlow);
-      tileEl.classList.toggle("glow", isF && room.freeTilesGlow);
+      const glow = isF && room.freeTilesGlow && ctx.state.settings.freeTilesGlow;
+      tileEl.classList.toggle("free", glow);
+      tileEl.classList.toggle("glow", glow);
       tileEl.classList.remove("selected");
     }
   }
@@ -379,7 +385,7 @@ export function renderBoard(root, ctx, params = {}) {
     clearTimeout(local.persistTimer);
     local.persistTimer = setTimeout(() => {
       local.persistTimer = null;
-      ctx.persist();
+      ctx.reportRoomProgress(room);
     }, 120);
   }
 
@@ -388,6 +394,9 @@ export function renderBoard(root, ctx, params = {}) {
     if (!result) return false;
     room.state.tiles = result.tiles;
     room.pairsCleared[user] = (room.pairsCleared[user] || 0) + 1;
+    if (user === you && room.createdBy !== you && room.pairsCleared[user] === 1) {
+      ctx.commitRoomMembership(room);
+    }
     for (const name of Object.keys(room.streaks)) room.streaks[name] = name === user ? (room.streaks[name] || 0) + 1 : 0;
     // Peak streak (for the profile's "longest streak" stat) is tracked
     // separately from the live streak, which resets whenever anyone else
@@ -422,6 +431,7 @@ export function renderBoard(root, ctx, params = {}) {
 
   function finishRoom() {
     const elapsedMs = Date.now() - (room.startedAt || Date.now());
+    room.elapsedMs = elapsedMs;
     const myPairs = room.pairsCleared[you] || 0;
     const assistsUsed = room.assistsUsed[you] || 0;
     const comboBonus = (room.comboBonus && room.comboBonus[you]) || 0;
@@ -481,10 +491,28 @@ export function renderBoard(root, ctx, params = {}) {
       scaled.appendChild(clone);
       stage.appendChild(scaled);
       document.body.appendChild(stage);
-      stage.addEventListener("animationend", (event) => {
-        if (event.target === stage) stage.remove();
-      });
-      requestAnimationFrame(() => stage.classList.add("is-flying"));
+
+      // Start the compositor animations directly. The previous class toggle
+      // happened in the first requestAnimationFrame after insertion; Safari
+      // can coalesce that with the insertion and never observe a pre-animation
+      // style, leaving the clone with no visible flight at all.
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches && typeof stage.animate === "function") {
+        const timing = { duration: 760, easing: "cubic-bezier(.22,.72,.24,1)", fill: "both" };
+        stage.animate([
+          { transform: "translate3d(0,0,0) scale(1)", opacity: 1, offset: 0 },
+          { transform: `translate3d(${dx * 0.04}px,-28px,0) scale(1.06)`, opacity: 1, offset: 0.24 },
+          { transform: `translate3d(${dx * 0.42}px,${dy * 0.24 - 24}px,0) scale(.9)`, opacity: 1, offset: 0.62 },
+          { transform: `translate3d(${dx}px,${dy}px,0) scale(.25)`, opacity: 0, offset: 1 },
+        ], timing);
+        clone.animate([
+          { transform: "rotateY(0deg)" },
+          { transform: "rotateY(720deg)" },
+        ], { duration: 760, easing: "linear", fill: "both" });
+      } else if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        // Older browsers without Web Animations still get the CSS version;
+        // two frames keep insertion and animation start in separate paints.
+        requestAnimationFrame(() => requestAnimationFrame(() => stage.classList.add("is-flying")));
+      }
       setTimeout(() => stage.remove(), 900);
     });
   }
@@ -542,6 +570,7 @@ export function renderBoard(root, ctx, params = {}) {
     const result = clearPair(room.state.tiles, firstId, id);
     if (result) {
       haptic(ctx.state.settings.haptic);
+      playMatchSound(ctx.state.settings.sound, material);
 
       // Combo: your own clears landing within COMBO_WINDOW_MS of each
       // other. The first clear in a chain never qualifies (nothing before
@@ -623,13 +652,17 @@ export function renderBoard(root, ctx, params = {}) {
     room.state.tiles = restorePair(room.state.tiles, last.removed);
     room.pairsCleared[last.user] = Math.max(0, (room.pairsCleared[last.user] || 0) - 1);
     room.state.tray = room.state.tray.slice(1);
-    ctx.persist();
+    const matchLog = room.state.matchLog || [];
+    const matchIndex = matchLog.map((match) => match.user).lastIndexOf(last.user);
+    if (matchIndex >= 0) matchLog.splice(matchIndex, 1);
+    room.state.matchLog = matchLog;
+    ctx.reportRoomProgress(room);
     fullRender();
   }
 
-  hintBtn.addEventListener("click", useHint);
-  shuffleBtn.addEventListener("click", useShuffle);
-  undoBtn.addEventListener("click", useUndo);
+  hintBtn.addEventListener("click", () => { clueController?.reset(); useHint(); });
+  shuffleBtn.addEventListener("click", () => { clueController?.reset(); useShuffle(); });
+  undoBtn.addEventListener("click", () => { clueController?.reset(); useUndo(); });
 
   // ===================== simulated opponents =====================
 
@@ -666,14 +699,20 @@ export function renderBoard(root, ctx, params = {}) {
 
   window.__matchedCleanup = () => {
     stopBots();
+    clueController?.stop();
     clearInterval(clockTimer);
     if (local.persistTimer) {
       clearTimeout(local.persistTimer);
       local.persistTimer = null;
-      ctx.persist();
+      ctx.reportRoomProgress(room);
     }
     window.removeEventListener("resize", applyBoardScale);
   };
 
   fullRender();
+  clueController = createIdleClueController({
+    enabled: ctx.state.settings.provideClues && room.hintsAllowed,
+    getTiles: () => room.state.tiles,
+    getTileElement: (id) => local.tileEls.get(id),
+  });
 }

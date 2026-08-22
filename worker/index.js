@@ -10,13 +10,14 @@
 //   POST /register-user   { user }                      -> creates the user if new, assigns a stable color hue
 //   POST /create-room     { title, mode, layoutId, tileCount, difficulty, visibility, createdBy }
 //                                                          -> generates a solvable board server-side and seeds the room's DO
-//   POST /join-room       { roomId, user }                -> adds user to the room's player list
+//   POST /join-room       { roomId, user, started:true }   -> commits membership after the first cleared pair
 //   POST /list-rooms      -> see GET /data?scope=... (kept as GET for simple client caching)
 //   POST /delete-room     { roomId }                      -> removes the room from D1, wipes its RoomDO state
 //   POST /delete-user     { user }                        -> removes the user from D1 (local-only bots are never
 //                                                             registered here, so this only ever affects real profiles)
 //   POST /complete-room   { roomId, payload }              -> manual/fallback snapshot commit; the RoomDO normally
 //                                                             commits snapshots directly (see commitSnapshot below)
+//   POST /update-room     { roomId, payload }              -> persists in-progress pair credit for Ranking
 //   GET/Upgrade /room/:id/connect                          -> WebSocket, routed to that room's RoomDO
 //
 // Required Worker secrets/variables (Settings -> Variables and Secrets):
@@ -33,6 +34,12 @@ const RESERVED_PLAYER_NAMES = new Set(["you", "anonymous"]);
 
 function isActualPlayerName(name) {
   return typeof name === "string" && !!name.trim() && !RESERVED_PLAYER_NAMES.has(name.trim().toLowerCase());
+}
+
+function hasStartedRoom(room, user) {
+  return room?.createdBy === user
+    || room?.startedPlayers?.includes(user)
+    || Number(room?.pairsCleared?.[user] || 0) > 0;
 }
 
 export default {
@@ -106,7 +113,7 @@ export default {
       const body = await safeJson(request);
       const roomId = typeof body?.roomId === "string" ? body.roomId.slice(0, 64) : "";
       const user = typeof body?.user === "string" ? body.user.trim().slice(0, 40) : "";
-      if (!roomId || !isActualPlayerName(user)) return json({ error: "invalid payload" }, 400, cors);
+      if (!roomId || !isActualPlayerName(user) || body?.started !== true) return json({ error: "first pair required" }, 409, cors);
       try {
         await joinRoom(env.DB, roomId, user);
         return json({ ok: true }, 200, cors);
@@ -156,6 +163,27 @@ export default {
         if (!room) throw new Error("room not found");
         Object.assign(room, payload);
         await upsertRoom(env.DB, room);
+        return json({ ok: true }, 200, cors);
+      } catch (e) {
+        return json({ error: e.message }, 502, cors);
+      }
+    }
+
+    if (url.pathname === "/update-room" && request.method === "POST") {
+      if (!checkAppKey(request, env)) return json({ error: "unauthorized" }, 401, cors);
+      const body = await safeJson(request);
+      const { roomId, payload } = body || {};
+      if (!roomId || !payload) return json({ error: "invalid payload" }, 400, cors);
+      try {
+        const room = await getRoom(env.DB, roomId);
+        if (!room) throw new Error("room not found");
+        // Never let a late progress write reopen or replace a completed room.
+        if (!room.completedAt) {
+          for (const key of ["startedAt", "state", "players", "startedPlayers", "botNames", "pairsCleared", "streaks", "peakStreaks", "assistsUsed", "racers"]) {
+            if (payload[key] !== undefined) room[key] = payload[key];
+          }
+          await upsertRoom(env.DB, room);
+        }
         return json({ ok: true }, 200, cors);
       } catch (e) {
         return json({ error: e.message }, 502, cors);
@@ -238,13 +266,6 @@ export class RoomDO {
     const [client, server] = Object.values(pair);
     server.accept();
 
-    if (!spectator && this.room && !this.room.players.includes(user)) {
-      this.room.players.push(user);
-      if (!this.room.pairsCleared[user]) this.room.pairsCleared[user] = 0;
-      if (!this.room.streaks[user]) this.room.streaks[user] = 0;
-      await this.state.storage.put("room", this.room);
-    }
-
     this.sockets.set(server, { user, spectator });
     this.sendTo(server, { type: "init", room: this.room, presence: this.presenceList() });
     this.broadcastPresence();
@@ -293,6 +314,11 @@ export class RoomDO {
       // the first clear-pair to reach this DO instance wins, same rule as
       // Across's per-cell first-write-wins.
       if (!a || !b || a.face.id !== b.face.id) return;
+      if (!this.room.players.includes(user)) this.room.players.push(user);
+      this.room.startedPlayers = this.room.startedPlayers || [];
+      if (!this.room.startedPlayers.includes(user)) this.room.startedPlayers.push(user);
+      this.room.pairsCleared[user] = this.room.pairsCleared[user] || 0;
+      this.room.streaks[user] = this.room.streaks[user] || 0;
       this.room.state.tiles = tiles.filter((t) => t.id !== idA && t.id !== idB);
       this.room.pairsCleared[user] = (this.room.pairsCleared[user] || 0) + 1;
       for (const name of Object.keys(this.room.streaks)) {
@@ -343,6 +369,7 @@ export class RoomDO {
     if (!room) return;
     room.state = this.room.state;
     room.players = this.room.players;
+    room.startedPlayers = this.room.startedPlayers || [];
     room.pairsCleared = this.room.pairsCleared;
     room.streaks = this.room.streaks;
     room.assistsUsed = this.room.assistsUsed;
@@ -638,7 +665,7 @@ async function loadData(db, scope, user) {
     && !!users[r.createdBy]
     && (r.players || []).includes(r.createdBy)
   );
-  else if (scope === "mine" && user) rooms = rooms.filter((r) => (r.players || []).includes(user));
+  else if (scope === "mine" && user) rooms = rooms.filter((r) => (r.players || []).includes(user) && hasStartedRoom(r, user));
   const roomsById = {};
   for (const r of rooms) roomsById[r.id] = r;
   return { users, rooms: roomsById };
@@ -693,6 +720,8 @@ async function joinRoom(db, roomId, user) {
   if (!room) throw new Error("room not found");
   if (!Array.isArray(room.players)) room.players = [];
   if (!room.players.includes(user)) room.players.push(user);
+  room.startedPlayers = room.startedPlayers || [];
+  if (!room.startedPlayers.includes(user)) room.startedPlayers.push(user);
   room.pairsCleared[user] = room.pairsCleared[user] || 0;
   room.streaks[user] = room.streaks[user] || 0;
   if (room.mode === "race") {
