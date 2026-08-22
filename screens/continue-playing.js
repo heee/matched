@@ -2,7 +2,7 @@
 
 import { el } from "./shared-ui.js";
 import { continuePlayingRooms } from "../game/room-lists.js";
-import { continueRow } from "./home.js";
+import { continueRow } from "./home.js?v=38";
 
 export function renderContinuePlaying(root, ctx) {
   const rooms = continuePlayingRooms(

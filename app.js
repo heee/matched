@@ -2,25 +2,25 @@
 // screens/ and game/; this file wires navigation, the bottom tab bar, and
 // the local-first store, then hands each screen its render call.
 
-import { createWorkerApi } from "./api.js";
-import { createJsonStorage, normalizeSharedData, mergeSharedData, LOCAL_KEYS, DEFAULT_SETTINGS } from "./storage.js";
-import { createMutationQueue } from "./sync.js";
-import { el, TAB_DEFS } from "./screens/shared-ui.js";
-import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.js";
+import { createWorkerApi } from "./api.js?v=38";
+import { createJsonStorage, normalizeSharedData, mergeSharedData, LOCAL_KEYS, DEFAULT_SETTINGS } from "./storage.js?v=38";
+import { createMutationQueue } from "./sync.js?v=38";
+import { el, TAB_DEFS } from "./screens/shared-ui.js?v=38";
+import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.js?v=38";
 
-import { renderNameEntry } from "./screens/name-entry.js";
-import { renderHome } from "./screens/home.js";
-import { renderPlayCatalog } from "./screens/play-catalog.js";
-import { renderRoomSetup } from "./screens/room-setup.js";
-import { renderRanking } from "./screens/ranking.js";
-import { renderProfile } from "./screens/profile.js";
-import { renderManagePlayers } from "./screens/manage-players.js";
-import { renderBoard } from "./screens/board.js";
-import { renderRaceBoard } from "./screens/race-board.js";
-import { renderResults } from "./screens/results.js";
-import { renderInvite } from "./screens/invite.js";
-import { renderDaily } from "./screens/daily.js";
-import { renderContinuePlaying } from "./screens/continue-playing.js";
+import { renderNameEntry } from "./screens/name-entry.js?v=38";
+import { renderHome } from "./screens/home.js?v=38";
+import { renderPlayCatalog } from "./screens/play-catalog.js?v=38";
+import { renderRoomSetup } from "./screens/room-setup.js?v=38";
+import { renderRanking } from "./screens/ranking.js?v=38";
+import { renderProfile } from "./screens/profile.js?v=38";
+import { renderManagePlayers } from "./screens/manage-players.js?v=38";
+import { renderBoard } from "./screens/board.js?v=38";
+import { renderRaceBoard } from "./screens/race-board.js?v=38";
+import { renderResults } from "./screens/results.js?v=38";
+import { renderInvite } from "./screens/invite.js?v=38";
+import { renderDaily } from "./screens/daily.js?v=38";
+import { renderContinuePlaying } from "./screens/continue-playing.js?v=38";
 
 const jsonStorage = createJsonStorage(localStorage);
 const workerApi = createWorkerApi({ baseUrl: window.WORKER_URL || "", appKey: window.APP_KEY || "" });
