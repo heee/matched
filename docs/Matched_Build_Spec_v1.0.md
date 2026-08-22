@@ -55,9 +55,11 @@ Sentence case for all headers and labels ("Continue playing", not "Continue Play
 ### Play — Layout catalog
 
 - Layouts are **curated, not generated**. Mahjong geometry does not benefit from generation the way crossword fill does.
-- One full-width card per row. Each card draws the actual tile silhouette and shows the active player's completed-board and matched-pair totals for that layout.
-- Filter chips: All · Easy · Medium · Hard, matching room creation.
-- Locked layouts stay visible with a lock badge and the tier that unlocks them, so progression always has a named target.
+- One full-width card per row. Fixed anatomy: actual tile silhouette · name · tile count and difficulty · level badge. No third statistics line.
+- A single difficulty dropdown is pinned to the title row: All difficulties · Easy · Medium · Hard.
+- Every layout levels independently from completed games only. Failed or abandoned games do not count; a completed multiplayer game counts once for every human participant. Progress starts fresh at launch and syncs from server-backed completed rooms across devices.
+- Untouched layouts show `NEW`; the first completion changes the badge to `LV 0`. The circular gold arc shows progress to the next level. The smooth accelerating curve begins at Level 1 after 5 completions and reaches Level 100 at exactly 1,000 completions.
+- Locked layouts stay visible using the existing overall-score thresholds, with a lock over the thumbnail and a muted level badge.
 
 ### + — Room setup
 

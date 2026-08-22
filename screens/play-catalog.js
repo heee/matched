@@ -1,97 +1,123 @@
 // Matched — Play: layout catalog. Curated, not generated. See
-// docs/design-reference.html #1j.
+// docs/design-reference.html #1j and the layout-level design extension.
 
 import { el, isTabletViewport } from "./shared-ui.js";
-import { LAYOUTS, layoutSilhouette } from "../game/layouts.js";
-import { tierForPoints, TIERS } from "../game/scoring.js";
+import { LAYOUTS, layoutSilhouette, isLayoutUnlocked } from "../game/layouts.js";
 import { completedLayoutStats } from "../game/layout-stats.js";
+import { layoutLevelProgress } from "../game/layout-levels.js";
 
-const FILTERS = ["All", "Easy", "Medium", "Hard"];
-
-function tierIndex(name) {
-  return TIERS.findIndex((t) => t.name === name);
-}
-
-function isUnlocked(layout, points) {
-  if (!layout.tier) return true;
-  return tierIndex(tierForPoints(points).name) >= tierIndex(layout.tier);
-}
+const FILTERS = ["All difficulties", "Easy", "Medium", "Hard"];
 
 function blockPattern(layout) {
-  // True-shape silhouette from the layout's actual bounding box (see
-  // layoutSilhouette) — the old version took the first 9 z0 tiles and
-  // wrapped x/y with modulo, which made almost every layout's thumbnail
-  // collapse into the same generic block of squares regardless of its
-  // real footprint. z is kept (not just x/y) because several layouts
-  // share the exact same base rectangle — it's the upper layers that
-  // actually tell them apart, so those need their own look, not just a
-  // flat set of identical squares.
-  return layoutSilhouette(layout, 9, 5).map((p) => ({ left: 12 + (p.xPct / 100) * 76, top: 15 + (p.yPct / 100) * 70, z: p.z }));
+  return layoutSilhouette(layout, 9, 5).map((p) => ({
+    left: 12 + (p.xPct / 100) * 76,
+    top: 15 + (p.yPct / 100) * 70,
+    z: p.z,
+  }));
+}
+
+function levelBadge(completedGames, { locked = false } = {}) {
+  if (locked) {
+    return el("div", {
+      "aria-label": "Locked",
+      style: "width:50px;height:50px;flex:none;border-radius:50%;border:3px solid rgba(246,241,228,.09);display:flex;align-items:center;justify-content:center;font:700 20px Figtree,sans-serif;color:rgba(246,241,228,.16)",
+      text: "—",
+    });
+  }
+
+  if (completedGames === 0) {
+    return el("div", {
+      "aria-label": "Never completed",
+      style: "width:50px;height:50px;flex:none;border-radius:50%;border:1.5px dashed rgba(246,241,228,.34);display:flex;align-items:center;justify-content:center;font:700 10px Figtree,sans-serif;letter-spacing:.08em;color:rgba(246,241,228,.6)",
+      text: "NEW",
+    });
+  }
+
+  const { level, progress, remaining } = layoutLevelProgress(completedGames);
+  const sweep = Math.round(progress * 360);
+  const levelLabel = remaining === 0
+    ? `Level ${level}, maximum level reached`
+    : `Level ${level}, ${remaining} completed game${remaining === 1 ? "" : "s"} to next level`;
+  const badge = el("div", {
+    "aria-label": levelLabel,
+    style: `width:50px;height:50px;flex:none;border-radius:50%;padding:3px;background:conic-gradient(from -90deg,#d9a441 0deg ${sweep}deg,rgba(246,241,228,.13) ${sweep}deg 360deg)`,
+  });
+  const inner = el("div", { style: "width:100%;height:100%;border-radius:50%;background:#173c2d;display:flex;flex-direction:column;align-items:center;justify-content:center" });
+  inner.appendChild(el("div", { style: "font:700 8px/1 Figtree,sans-serif;letter-spacing:.12em;color:rgba(246,241,228,.52)", text: "LV" }));
+  inner.appendChild(el("div", { style: "font:700 21px/1 Figtree,sans-serif;color:#f6f1e4;margin-top:2px", text: String(level) }));
+  badge.appendChild(inner);
+  return badge;
 }
 
 function layoutCard(ctx, layout, stats) {
-  const unlocked = isUnlocked(layout, ctx.state.points);
-  const card = el("div", {
-    style: `display:flex;min-height:104px;border-radius:15px;overflow:hidden;background:rgba(255,255,255,.06);border:1px solid ${unlocked ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.07)"};${unlocked ? "" : "opacity:.72"};cursor:pointer`,
+  const unlocked = isLayoutUnlocked(layout, ctx.state.points);
+  const card = el("button", {
+    type: "button",
+    style: `width:100%;padding:0;text-align:left;display:flex;align-items:stretch;min-height:88px;border-radius:15px;overflow:hidden;background:rgba(255,255,255,.06);border:1px solid ${unlocked ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.07)"};${unlocked ? "cursor:pointer" : "opacity:.62;cursor:default"}`,
   });
-  const thumb = el("div", { style: "width:112px;flex:none;position:relative;background:radial-gradient(120% 120% at 50% 30%,#1d6349,#0e3527)" });
+
+  const thumb = el("div", { style: "width:102px;flex:none;position:relative;background:radial-gradient(120% 120% at 50% 30%,#1d6349,#0e3527)" });
   blockPattern(layout).forEach(({ left, top, z }) => {
-    const upper = z > 0;
-    thumb.appendChild(el("div", { style: `position:absolute;left:${left}%;top:${top}%;width:9px;height:12px;margin:-6px 0 0 -4.5px;border-radius:2px;background:${upper ? "#d9a441" : "#f2ecdc"};box-shadow:1px 1px 0 ${upper ? "rgba(0,0,0,.45)" : "rgba(0,0,0,.3)"};z-index:${z}` }));
+    thumb.appendChild(el("div", {
+      style: `position:absolute;left:${left}%;top:${top}%;width:9px;height:12px;margin:-6px 0 0 -4.5px;border-radius:2px;background:#f2ecdc;box-shadow:1px 1px 0 rgba(0,0,0,.32);z-index:${z}`,
+    }));
   });
   if (!unlocked) {
     thumb.appendChild(el("div", { style: "position:absolute;inset:0;background:rgba(8,26,20,.72);display:flex;align-items:center;justify-content:center;font-size:19px", text: "🔒" }));
   }
   card.appendChild(thumb);
-  const body = el("div", { style: "padding:13px 14px;flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center" });
-  body.appendChild(el("div", { style: "font:600 15px Figtree,sans-serif;color:#f6f1e4", text: layout.name }));
-  const sub = unlocked
-    ? `${layout.tileCount} tiles · ${layout.difficulty[0].toUpperCase()}${layout.difficulty.slice(1)}`
-    : `${layout.tileCount} tiles · Unlocks at ${layout.tier}`;
-  body.appendChild(el("div", { style: `font:11.5px Figtree,sans-serif;color:${unlocked ? "rgba(246,241,228,.5)" : "#e08a6a"};margin-top:3px`, text: sub }));
-  const boardLabel = `${stats.boards} board${stats.boards === 1 ? "" : "s"} completed`;
-  const pairLabel = `${stats.pairs} pair${stats.pairs === 1 ? "" : "s"} matched`;
-  body.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.7);margin-top:9px", text: `${boardLabel} · ${pairLabel}` }));
+
+  const body = el("div", { style: "padding:13px 12px 13px 16px;flex:1;min-width:0;display:flex;align-items:center;gap:10px" });
+  const copy = el("div", { style: "flex:1;min-width:0" });
+  copy.appendChild(el("div", { style: `overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 16px Figtree,sans-serif;color:${unlocked ? "#f6f1e4" : "rgba(246,241,228,.55)"}`, text: layout.name }));
+  const difficulty = layout.difficulty[0].toUpperCase() + layout.difficulty.slice(1);
+  copy.appendChild(el("div", {
+    style: `overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:12px Figtree,sans-serif;color:${unlocked ? "rgba(246,241,228,.52)" : "rgba(224,138,106,.7)"};margin-top:4px`,
+    text: `${layout.tileCount} tiles · ${unlocked ? difficulty : layout.tier}`,
+  }));
+  body.appendChild(copy);
+  body.appendChild(levelBadge(stats.boards, { locked: !unlocked }));
   card.appendChild(body);
 
   card.addEventListener("click", () => {
-    if (!unlocked) { ctx.toast(`${layout.name} unlocks at ${layout.tier} tier.`); return; }
+    if (!unlocked) {
+      ctx.toast(`${layout.name} unlocks at ${layout.tier} tier.`);
+      return;
+    }
     ctx.navigate("room-setup", { layoutId: layout.id });
   });
   return card;
 }
 
 export function renderPlayCatalog(root, ctx) {
-  let filter = "All";
+  let filter = FILTERS[0];
   const layoutStats = completedLayoutStats(ctx.state.store.rooms, ctx.state.currentUser);
-  root.appendChild(el("div", { class: "title-serif", style: "padding:6px 20px 12px" }, "Layouts"));
 
-  const chips = el("div", { style: "padding:0 16px 12px;display:flex;gap:7px" });
+  const header = el("div", { style: "padding:8px 20px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px" });
+  header.appendChild(el("div", { class: "title-serif", text: "Play" }));
+  const selectWrap = el("div", { style: "position:relative;flex:none" });
+  const select = el("select", {
+    "aria-label": "Filter layouts by difficulty",
+    style: "appearance:none;-webkit-appearance:none;height:40px;max-width:150px;padding:0 35px 0 14px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);font:600 13px Figtree,sans-serif;color:#f6f1e4;cursor:pointer",
+  });
+  FILTERS.forEach((name) => select.appendChild(el("option", { value: name, text: name, style: "background:#173c2d;color:#f6f1e4" })));
+  selectWrap.appendChild(select);
+  selectWrap.appendChild(el("span", { style: "position:absolute;right:14px;top:50%;transform:translateY(-52%);font:700 10px Figtree,sans-serif;color:rgba(246,241,228,.65);pointer-events:none", text: "▾" }));
+  header.appendChild(selectWrap);
+  root.appendChild(header);
+
   const grid = el("div", { class: "catalog-list", style: "padding:0 16px" });
-
   function renderGrid() {
     grid.innerHTML = "";
-    const all = Object.values(LAYOUTS).filter((l) => !l.tabletOnly || isTabletViewport());
-    const filtered = all.filter((l) => {
-      if (filter === "All") return true;
-      if (filter === "Easy") return l.difficulty === "easy";
-      if (filter === "Medium") return l.difficulty === "medium";
-      if (filter === "Hard") return l.difficulty === "hard";
-      return true;
-    });
-    filtered.forEach((l) => grid.appendChild(layoutCard(ctx, l, layoutStats[l.id] || { boards: 0, pairs: 0 })));
+    Object.values(LAYOUTS)
+      .filter((layout) => !layout.tabletOnly || isTabletViewport())
+      .filter((layout) => filter === FILTERS[0] || layout.difficulty === filter.toLowerCase())
+      .forEach((layout) => grid.appendChild(layoutCard(ctx, layout, layoutStats[layout.id] || { boards: 0, pairs: 0 })));
   }
-
-  FILTERS.forEach((name) => {
-    const chip = el("button", { class: `pill${name === filter ? " active" : ""}`, text: name });
-    chip.addEventListener("click", () => {
-      filter = name;
-      [...chips.children].forEach((c) => c.classList.toggle("active", c.textContent === name));
-      renderGrid();
-    });
-    chips.appendChild(chip);
+  select.addEventListener("change", () => {
+    filter = select.value;
+    renderGrid();
   });
-  root.appendChild(chips);
   root.appendChild(grid);
   renderGrid();
   root.appendChild(el("div", { style: "flex:1" }));
