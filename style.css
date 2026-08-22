@@ -350,7 +350,7 @@ a { color: var(--gold); }
 .level-badge-face {
   width: 100%; height: 100%; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center;
   background: linear-gradient(155deg, var(--level-face-a), var(--level-face-b));
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.35), 2px 3px 0 var(--level-edge);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.35), 0 4px 0 var(--level-edge);
   color: #173d2f;
 }
 .level-badge-face span { font: 800 9px var(--font-ui); letter-spacing: .16em; text-transform: uppercase; }
@@ -360,11 +360,11 @@ a { color: var(--gold); }
 .level-next { margin-top: 6px; font: 13px var(--font-ui); color: rgba(246,241,228,.65); }
 .level-tier-progress { height: 8px; margin-top: 12px; border-radius: 4px; overflow: hidden; background: rgba(0,0,0,.28); }
 .level-tier-progress > div { height: 100%; border-radius: inherit; background: linear-gradient(90deg,#5fbf9b,#d9a441); }
-.level-unlock { display: flex; align-items: center; gap: 9px; margin-top: 11px; font: 11.5px/1.25 var(--font-ui); color: rgba(246,241,228,.68); }
+.level-unlock { display: flex; align-items: center; gap: 7px; margin-top: 11px; font: 10.5px/1.25 var(--font-ui); color: rgba(246,241,228,.68); white-space: nowrap; }
 .level-material-swatch {
-  width: 26px; height: 34px; flex: none; border-radius: 6px;
+  width: 18px; height: 24px; flex: none; border-radius: 4px;
   background: linear-gradient(155deg, var(--level-face-a), var(--level-face-b));
-  box-shadow: 2px 3px 0 var(--level-edge), inset 0 0 0 1px rgba(255,255,255,.25);
+  box-shadow: 1px 2px 0 var(--level-edge), inset 0 0 0 1px rgba(255,255,255,.25);
 }
 
 .daily-overview-card { display: flex; flex-direction: column; padding: 16px; }
@@ -421,10 +421,17 @@ a { color: var(--gold); }
 .group-card-footer > div { flex: 1; min-width: 0; font: 12px/1.35 var(--font-ui); color: rgba(246,241,228,.70); }
 .group-card-footer .btn { flex: none; width: 62px; height: 40px; border-radius: 999px; }
 
-@media (max-width: 380px) {
+@media (max-width: 420px) {
   .level-card-body { gap: 12px; }
   .level-badge { width: 94px; height: 94px; }
   .level-points { font-size: 24px; }
+}
+@media (max-width: 380px) {
+  .level-card-body { gap: 8px; }
+  .level-badge { width: 76px; height: 76px; padding: 6px; }
+  .level-badge-face strong { font-size: 34px; }
+  .level-unlock { gap: 4px; font-size: 8px; }
+  .level-material-swatch { width: 12px; height: 16px; border-radius: 3px; }
   .daily-support-metrics { gap: 10px; }
   .group-rank-row { gap: 8px; }
   .group-card-footer { gap: 8px; }
