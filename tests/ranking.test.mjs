@@ -111,6 +111,13 @@ test("home group ranking includes registered non-players and limits to three", (
   assert.deepEqual(rows.map((row) => [row.name, row.value]), [["A", 7], ["B", 3], ["C", 0]]);
 });
 
+test("home group ranking includes registered humans known through ranking history", () => {
+  const rooms = {
+    one: { completedAt: NOW, tileCount: 4, players: ["Remote"], pairsCleared: { Remote: 2 } },
+  };
+  assert.deepEqual(topRegisteredRankings(rooms, { Local: {} }, "Today", "pairs", 3, NOW).map((row) => row.name), ["Remote", "Local"]);
+});
+
 test("home speed ranking puts players without a timed board last", () => {
   const users = { A: {}, B: {}, C: {} };
   const rooms = {

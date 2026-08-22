@@ -98,7 +98,10 @@ export function rankingMetricValue(row, metric) {
 // player remains visible even before they record a result in the window.
 export function topRegisteredRankings(rooms, users, period, metric, limit = 3, now = Date.now()) {
   const aggregates = new Map(aggregateRankings(rooms, period, now).map((row) => [row.name, row]));
-  const rows = Object.keys(users || {}).map((name) => {
+  // Ranking history can know a registered human before this device has
+  // received that player's profile, so use both sources for the roster.
+  const registeredNames = new Set([...Object.keys(users || {}), ...aggregates.keys()]);
+  const rows = [...registeredNames].map((name) => {
     const aggregate = aggregates.get(name) || { name, boards: 0, timedBoards: 0, pairs: 0, timeS: 0, share: 0 };
     return { ...aggregate, value: rankingMetricValue(aggregate, metric) };
   });

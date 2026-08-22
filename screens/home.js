@@ -100,7 +100,7 @@ function groupGapCopy(rows, currentUser, metric) {
 function groupRankingCard(ctx, metric, onChangeMetric) {
   const allRows = topRegisteredRankings(ctx.state.store.rooms, ctx.state.store.users, "Today", metric, Number.MAX_SAFE_INTEGER);
   const rows = allRows.slice(0, 3);
-  const userOrder = Object.keys(ctx.state.store.users || {});
+  const userOrder = [...new Set([...Object.keys(ctx.state.store.users || {}), ...allRows.map((row) => row.name)])];
   const leaderValue = rows[0]?.value || 0;
   const card = el("div", { class: "glass-card group-card", style: `height:${HERO_CARD_HEIGHT}px` });
   const head = el("div", { class: "group-card-head" });
