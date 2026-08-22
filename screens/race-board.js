@@ -12,6 +12,7 @@ import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { hasStartedRoom } from "../game/room-lists.js";
 import { equippedFeltName, feltCssVars } from "../game/felts.js";
 import { createIdleClueController } from "./idle-clues.js";
+import { elapsedMsSince, timestampMs } from "../game/time.js";
 
 const BOT_INTERVAL_MS = 4200;
 
@@ -26,6 +27,12 @@ export function renderRaceBoard(root, ctx, params = {}) {
   if (!room.racers || !room.racers[you]) { ensureRacer(room, you); ctx.persist(); }
   if (hasStartedRoom(room, ctx.state.currentUser)) ctx.state.activeRoomId = room.id;
   const totalPairs = room.tileCount / 2;
+  let startedAtMs = timestampMs(room.startedAt);
+  if (startedAtMs == null) {
+    startedAtMs = Date.now();
+    room.startedAt = startedAtMs;
+    ctx.persist();
+  }
 
   const local = { selectedId: null, lastStandingLeader: null, tileEls: new Map() };
   let clueController = null;
@@ -195,7 +202,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
     stopBots();
     room.completedAt = room.completedAt || new Date().toISOString();
     room.state.state = "completed";
-    const elapsedMs = Date.now() - (room.startedAt || Date.now());
+    const elapsedMs = elapsedMsSince(startedAtMs, Date.now());
     room.elapsedMs = elapsedMs;
     const myPairs = room.pairsCleared[you] || 0;
     const assistsUsed = room.assistsUsed[you] || 0;

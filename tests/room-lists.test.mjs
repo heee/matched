@@ -15,14 +15,14 @@ function room(overrides = {}) {
   };
 }
 
-test("continue playing excludes the active and completed rooms", () => {
+test("continue playing includes the current room and excludes completed rooms", () => {
   const rooms = [
-    room({ id: "active", players: ["Sam"] }),
+    room({ id: "active", players: ["Sam"], startedPlayers: ["Sam"] }),
     room({ id: "waiting", players: ["Sam"], pairsCleared: { Sam: 1 } }),
     room({ id: "done", players: ["Sam"], state: { state: "completed" } }),
     room({ id: "someone-else" }),
   ];
-  assert.deepEqual(continuePlayingRooms(rooms, "Sam", "active").map((r) => r.id), ["waiting"]);
+  assert.deepEqual(continuePlayingRooms(rooms, "Sam").map((r) => r.id), ["active", "waiting"]);
 });
 
 test("continue playing requires the current user to have created or played the room", () => {
@@ -33,7 +33,7 @@ test("continue playing requires the current user to have created or played the r
   ];
 
   assert.equal(hasStartedRoom(rooms[0], "Sam"), true);
-  assert.deepEqual(continuePlayingRooms(rooms, "Sam", null).map((r) => r.id), ["created", "played"]);
+  assert.deepEqual(continuePlayingRooms(rooms, "Sam").map((r) => r.id), ["created", "played"]);
 });
 
 test("a committed first-pair membership stays started even if the pair is later undone", () => {
@@ -45,7 +45,7 @@ test("a committed first-pair membership stays started even if the pair is later 
   });
 
   assert.equal(hasStartedRoom(committed, "Sam"), true);
-  assert.deepEqual(continuePlayingRooms([committed], "Sam", null).map((r) => r.id), ["committed"]);
+  assert.deepEqual(continuePlayingRooms([committed], "Sam").map((r) => r.id), ["committed"]);
 });
 
 test("open rooms require another registered human creator and a joinable mode", () => {

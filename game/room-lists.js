@@ -8,10 +8,9 @@ export function hasStartedRoom(room, currentUser) {
     || Number(room?.pairsCleared?.[currentUser] || 0) > 0;
 }
 
-export function continuePlayingRooms(rooms, currentUser, activeRoomId) {
+export function continuePlayingRooms(rooms, currentUser) {
   return rooms.filter((room) =>
-    room.id !== activeRoomId
-    && room.players?.includes(currentUser)
+    room.players?.includes(currentUser)
     && hasStartedRoom(room, currentUser)
     && room.state?.state !== "completed"
   );

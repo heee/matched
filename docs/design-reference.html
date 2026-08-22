@@ -81,30 +81,6 @@ a{color:#d9a441}a:hover{color:#f0c069}
 <div style="display:flex;align-items:center;gap:3px;margin:4px 10px 0">
 <div style="{{ heroPrevStyle }}" onClick="{{ heroPrev }}">‹</div>
 <div style="flex:1;min-width:0" onPointerDown="{{ heroDown }}" onPointerUp="{{ heroUp }}">
-<sc-if value="{{ heroLive }}" hint-placeholder-val="{{ true }}">
-<div style="padding:16px;border-radius:18px;background:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.05));border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(8px);animation:popIn .22s ease both">
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#e8c887">Live now</span><span style="font:12px Figtree,sans-serif;color:rgba(246,241,228,.6)">14:22</span></div>
-<div style="display:flex;gap:14px;align-items:center">
-<div style="width:74px;height:60px;position:relative;flex:none">
-<div style="position:absolute;left:0;top:8px;width:16px;height:21px;border-radius:3px;background:#f2ecdc;box-shadow:2px 2px 0 #a89a78"></div>
-<div style="position:absolute;left:20px;top:2px;width:16px;height:21px;border-radius:3px;background:#f2ecdc;box-shadow:2px 2px 0 #a89a78"></div>
-<div style="position:absolute;left:40px;top:8px;width:16px;height:21px;border-radius:3px;background:#f2ecdc;box-shadow:2px 2px 0 #a89a78"></div>
-<div style="position:absolute;left:10px;top:30px;width:16px;height:21px;border-radius:3px;background:#f2ecdc;box-shadow:2px 2px 0 #a89a78"></div>
-<div style="position:absolute;left:30px;top:30px;width:16px;height:21px;border-radius:3px;background:#f2ecdc;box-shadow:2px 2px 0 #a89a78"></div>
-</div>
-<div style="flex:1;min-width:0">
-<div style="font:700 17px Figtree,sans-serif;color:#f6f1e4">Dragon's Nest</div>
-<div style="font:12.5px Figtree,sans-serif;color:rgba(246,241,228,.62);margin-top:3px">Shared board · 72 tiles · 61% cleared</div>
-<div style="height:5px;border-radius:3px;background:rgba(0,0,0,.3);margin-top:9px;overflow:hidden;display:flex"><div style="width:26%;background:#d9a441"></div><div style="width:18%;background:#5fbf9b"></div><div style="width:11%;background:#e08a6a"></div><div style="width:6%;background:#7aa8e0"></div></div>
-</div>
-</div>
-<div style="display:flex;gap:10px;margin-top:14px">
-<div style="flex:1;height:44px;border-radius:12px;background:#d9a441;display:flex;align-items:center;justify-content:center;font:700 15px Figtree,sans-serif;color:#33230a">Jump back in</div>
-<div style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:17px">💬</div>
-</div>
-</div>
-</sc-if>
-<sc-if value="{{ heroDaily }}">
 <div style="padding:16px;border-radius:18px;background:linear-gradient(155deg,rgba(217,164,65,.24),rgba(255,255,255,.05));border:1px solid rgba(217,164,65,.34);backdrop-filter:blur(8px);animation:popIn .22s ease both">
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><span style="font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#e8c887">Today's board</span><span style="font:12px Figtree,sans-serif;color:rgba(246,241,228,.6)">Resets in 6h</span></div>
 <div style="font:400 24px/1.2 'Instrument Serif',serif;color:#f6f1e4">Eight Winds</div>
@@ -114,12 +90,11 @@ a{color:#d9a441}a:hover{color:#f0c069}
 <div style="padding:0 16px;height:44px;border-radius:12px;border:1px solid rgba(246,241,228,.28);display:flex;align-items:center;font:600 14px Figtree,sans-serif;color:#f6f1e4">Results</div>
 </div>
 </div>
-</sc-if>
 </div>
 <div style="{{ heroNextStyle }}" onClick="{{ heroNext }}">›</div>
 </div>
 <div style="display:flex;justify-content:center;gap:6px;margin-top:10px">
-<sc-for list="{{ heroDots }}" as="d" hint-placeholder-count="2"><div style="{{ d.style }}" onClick="{{ d.onTap }}"></div></sc-for>
+<sc-for list="{{ heroDots }}" as="d" hint-placeholder-count="4"><div style="{{ d.style }}" onClick="{{ d.onTap }}"></div></sc-for>
 </div>
 <div style="padding:20px 20px 8px;font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:rgba(246,241,228,.5)">Continue playing</div>
 <div style="padding:0 16px;display:flex;flex-direction:column;gap:8px">
@@ -157,16 +132,15 @@ a{color:#d9a441}a:hover{color:#f0c069}
 <div style="width:300px;flex:none;padding:18px 20px;background:#18201b;border:1px solid rgba(255,255,255,.09);border-radius:12px;color:#cfd6ce;font:12.5px/1.55 Figtree,sans-serif;box-sizing:border-box">
 <div style="font:700 10.5px Figtree,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#e8c887;margin-bottom:12px">Home</div>
 <ul style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:9px">
-<li>Entry point. The hero card swipes between the room you are currently in and today’s board — chevrons outside both edges, dots below, pointer-drag also works.</li>
-<li>Split progress bar breaks the room’s 61% into each player’s share, colored by player identity.</li>
-<li><b>Continue playing</b> holds rooms you have joined but are not in right now; the thin bar is that board’s completion.</li>
+<li>Entry point. The four-card hero covers overall level, today’s board, your day, and today in your group — chevrons outside both edges, dots below, pointer-drag also works.</li>
+<li><b>Continue playing</b> holds every unfinished room you have started, including the current/most-recent room; the thin bar is that board’s completion.</li>
 <li><b>Open rooms</b> are joinable in one tap. Joining only commits when you clear your first pair.</li>
 <li>Tabs are fixed at five: Home · Play · + · Ranking · You.</li>
-<li>Copy is sentence case, action-led: “Jump back in”, not “Resume Game”.</li>
+<li>Copy is sentence case and action-led.</li>
 </ul>
 </div>
 </div>
-<div style="font:11px/1.5 Figtree,sans-serif;color:rgba(232,226,212,.45);max-width:402px">The live room is the hero, now swipeable: card two is today's board. Chevrons and dots sit outside the card; drag works too.</div>
+<div style="font:11px/1.5 Figtree,sans-serif;color:rgba(232,226,212,.45);max-width:402px">The hero has four overview cards. Unfinished rooms always live in Continue playing; there is no Live now or empty placeholder hero card.</div>
 </div>
 
 <div class="dv-opt" id="1f"><div class="dv-olabel"><a class="dv-oid" href="#1f">1f</a>Board — HUD + tray · live, tap two matching tiles</div>
@@ -893,9 +867,9 @@ class Component extends DCLogic {
     ].map((r, i) => ({ ...r, id: i, chipStyle: 'flex:none;width:40px;height:40px;border-radius:11px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font:700 13px Figtree,sans-serif;color:#e8c887' }));
 
     const hero = s.hero || 0;
-    const setHero = (n) => this.setState({ hero: (n + 2) % 2 });
+    const setHero = (n) => this.setState({ hero: (n + 4) % 4 });
     const chev = (en) => 'flex:none;width:18px;height:56px;display:flex;align-items:center;justify-content:center;font:300 22px Figtree,sans-serif;color:rgba(246,241,228,' + (en ? '.55' : '.18') + ');cursor:pointer;user-select:none';
-    const heroDots = [0, 1].map(i => ({
+    const heroDots = [0, 1, 2, 3].map(i => ({
       id: i, onTap: () => setHero(i),
       style: 'width:' + (i === hero ? 18 : 6) + 'px;height:6px;border-radius:3px;background:' + (i === hero ? '#d9a441' : 'rgba(246,241,228,.25)') + ';transition:width .2s;cursor:pointer'
     }));

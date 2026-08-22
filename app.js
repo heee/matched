@@ -10,19 +10,19 @@ import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.
 import { equippedFeltName, feltCssVars } from "./game/felts.js?v=39";
 
 import { renderNameEntry } from "./screens/name-entry.js?v=38";
-import { renderHome } from "./screens/home.js?v=51";
+import { renderHome } from "./screens/home.js?v=52";
 import { renderPlayCatalog } from "./screens/play-catalog.js?v=40";
 import { renderRoomSetup } from "./screens/room-setup.js?v=40";
 import { renderRanking } from "./screens/ranking.js?v=43";
 import { renderHeadToHead } from "./screens/head-to-head.js?v=1";
 import { renderProfile } from "./screens/profile.js?v=44";
 import { renderManagePlayers } from "./screens/manage-players.js?v=38";
-import { renderBoard } from "./screens/board.js?v=49";
-import { renderRaceBoard } from "./screens/race-board.js?v=44";
-import { renderResults } from "./screens/results.js?v=38";
+import { renderBoard } from "./screens/board.js?v=50";
+import { renderRaceBoard } from "./screens/race-board.js?v=45";
+import { renderResults } from "./screens/results.js?v=39";
 import { renderInvite } from "./screens/invite.js?v=39";
 import { renderDaily } from "./screens/daily.js?v=41";
-import { renderContinuePlaying } from "./screens/continue-playing.js?v=38";
+import { renderContinuePlaying } from "./screens/continue-playing.js?v=39";
 import { renderOpenRooms } from "./screens/open-rooms.js?v=44";
 
 const jsonStorage = createJsonStorage(localStorage);

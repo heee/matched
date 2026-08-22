@@ -5,10 +5,11 @@ import { el, avatarDot, formatDuration, roomInviteUrl } from "./shared-ui.js";
 import { PLAYER_COLORS, highlightsFromLog, pointsToNextTier, nextTier, tierForPoints } from "../game/scoring.js";
 import { buildLocalRoom } from "../game/room.js";
 import { resultShareMessage } from "../game/share-messages.js";
+import { elapsedMsSince } from "../game/time.js";
 
 // Stroke-only action icons for the Board Cleared action row, same Lucide
 // convention as the board's control-row icons (currentColor, no fill).
-const ICON_SHARE = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>`;
+const ICON_SHARE = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>`;
 const ICON_REMATCH = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>`;
 const ICON_DONE = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-4-4"/></svg>`;
 
@@ -24,7 +25,7 @@ export function renderResults(root, ctx, params = {}) {
   const top = el("div", { style: "padding:0 24px" });
   top.appendChild(el("div", { style: "font:700 11px Figtree,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#e8c887", text: "Board cleared" }));
   top.appendChild(el("div", { class: "title-serif", style: "font-size:38px;margin-top:8px", text: room.title }));
-  const elapsedS = Math.floor((lastResult?.elapsedMs ?? (Date.now() - room.startedAt)) / 1000);
+  const elapsedS = Math.floor((lastResult?.elapsedMs ?? elapsedMsSince(room.startedAt, Date.now()) ?? 0) / 1000);
   top.appendChild(el("div", { style: "font:14px Figtree,sans-serif;color:rgba(246,241,228,.6);margin-top:8px", text: `${formatDuration(elapsedS)} · ${room.players.length} players · ${room.tileCount} tiles` }));
   root.appendChild(top);
 
@@ -86,7 +87,8 @@ export function renderResults(root, ctx, params = {}) {
     if (navigator.share) { try { await navigator.share(shareData); } catch (e) {} }
     else { navigator.clipboard?.writeText(`${message} ${url}`).catch(() => {}); ctx.toast("Result copied"); }
   });
-  const rematchBtn = el("button", { class: "btn btn-ghost", style: "flex:1;height:50px;border-radius:14px;gap:7px", html: `${ICON_REMATCH}<span>Rematch</span>` });
+  const replayLabel = room.mode === "solo" ? "Replay" : "Rematch";
+  const rematchBtn = el("button", { class: "btn btn-ghost", style: "flex:1;height:50px;border-radius:14px;gap:7px", html: `${ICON_REMATCH}<span>${replayLabel}</span>` });
   rematchBtn.addEventListener("click", () => {
     const fresh = buildLocalRoom({
       title: room.title, mode: room.mode, layoutId: room.layoutId, difficulty: room.difficulty,

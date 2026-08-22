@@ -5,46 +5,12 @@ import { el, avatarDot, formatClock, roomInviteUrl, modeIcon, bellButton, invite
 import { boardCompletion } from "../game/mahjong.js";
 import { dailyLayoutFor, dailySeedFor, todayDateStr, msUntilNextReset } from "../game/daily.js";
 import { LAYOUTS, layoutSilhouette } from "../game/layouts.js";
-import { PLAYER_COLORS, TIERS, colorForSeat, levelProgress, nextCosmeticUnlock, nextTier, tierForPoints } from "../game/scoring.js";
+import { TIERS, colorForSeat, levelProgress, nextCosmeticUnlock, nextTier, tierForPoints } from "../game/scoring.js";
 import { materialFor } from "../game/materials.js";
-import { continuePlayingRooms, hasStartedRoom, openRoomsForUser, randomRoomSample } from "../game/room-lists.js";
+import { continuePlayingRooms, openRoomsForUser, randomRoomSample } from "../game/room-lists.js";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { completedWeekStats } from "../game/daily-stats.js";
 import { topRegisteredRankings } from "../game/ranking.js";
-import { liveBoardShareMessage } from "../game/share-messages.js";
-
-// Lucide's "send" icon — stroke-only paper plane, matches the icon-btn
-// glyphs elsewhere on this screen but as an SVG since no emoji reads as a
-// plain outline paper airplane.
-const PAPER_PLANE_SVG = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>`;
-
-async function shareLiveRoom(ctx, room) {
-  const remaining = room.state.tiles.length;
-  const cleared = room.tileCount - remaining;
-  const pct = boardCompletion(room.tileCount, remaining);
-  const message = liveBoardShareMessage({ title: room.title, cleared, total: room.tileCount, left: remaining, pct });
-  const url = roomInviteUrl(room.id);
-  const text = `${message} ${url}`;
-
-  // Jump straight to the SMS/Messages compose window on phones — iOS and
-  // Android disagree on the query separator for a bodyless sms: link.
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  if (isMobile) {
-    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-    window.location.href = `sms:${isIOS ? "&" : "?"}body=${encodeURIComponent(text)}`;
-    return;
-  }
-  if (navigator.share) {
-    try { await navigator.share({ title: room.title, text: message, url }); } catch (e) { /* user cancelled */ }
-    return;
-  }
-  try {
-    await navigator.clipboard.writeText(text);
-    ctx.toast("Copied to clipboard — paste it in your message!");
-  } catch (e) {
-    ctx.toast("Couldn't share automatically — copy the link manually.");
-  }
-}
 
 function miniSilhouette(layoutId) {
   const layout = LAYOUTS[layoutId];
@@ -65,7 +31,7 @@ function miniSilhouette(layoutId) {
 }
 
 // All four hero card variants share this height so swiping between them
-// (e.g. no live room <-> today's board) doesn't visibly jump. Each card is
+// doesn't visibly jump. Each card is
 // a flex column with its non-action content in a flex:1 wrapper, so the
 // bottom row (button/actions) always lands at the same height regardless
 // of how much the card above it has to say.
@@ -207,57 +173,6 @@ function overallLevelCard(ctx) {
   info.appendChild(unlockRow);
   body.appendChild(info);
   card.appendChild(body);
-  return card;
-}
-
-function liveNowCard(ctx, room) {
-  const elapsedS = Math.floor((Date.now() - (room.startedAt || Date.now())) / 1000);
-  const remaining = room.state.tiles.length;
-  const cleared = room.tileCount - remaining;
-  const pct = boardCompletion(room.tileCount, remaining);
-  const card = el("div", { class: "gold-card", style: `background:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.05));border-color:rgba(255,255,255,.14);display:flex;flex-direction:column;height:${HERO_CARD_HEIGHT}px` });
-  const top = el("div", { style: "flex:1" });
-  const head = el("div", { style: "display:flex;align-items:center;justify-content:space-between;margin-bottom:12px" });
-  head.appendChild(el("span", { style: "font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#e8c887", text: "Live now" }));
-  head.appendChild(el("span", { style: "font:12px Figtree,sans-serif;color:rgba(246,241,228,.6)", text: formatClock(elapsedS) }));
-  top.appendChild(head);
-
-  const body = el("div", { style: "display:flex;gap:14px;align-items:center" });
-  body.appendChild(miniSilhouette(room.layoutId));
-  const info = el("div", { style: "flex:1;min-width:0" });
-  info.appendChild(el("div", { style: "font:700 17px Figtree,sans-serif;color:#f6f1e4", text: room.title }));
-  info.appendChild(el("div", { style: "font:12.5px Figtree,sans-serif;color:rgba(246,241,228,.62);margin-top:3px", text: `${room.mode === "shared" ? "Shared board" : room.mode === "race" ? "Race" : "Solo"} · ${room.tileCount} tiles · ${pct}% cleared` }));
-  const split = el("div", { class: "progress-split" });
-  room.players.forEach((p, i) => {
-    const share = cleared > 0 ? Math.round(((room.pairsCleared[p] || 0) / (room.tileCount / 2)) * 100) : 0;
-    split.appendChild(el("div", { style: `width:${share}%;background:${PLAYER_COLORS[i % PLAYER_COLORS.length]}` }));
-  });
-  info.appendChild(split);
-  body.appendChild(info);
-  top.appendChild(body);
-  card.appendChild(top);
-
-  const actions = el("div", { style: "display:flex;gap:10px;margin-top:14px" });
-  actions.appendChild(el("button", {
-    class: "btn btn-primary", style: "flex:1", text: "Jump back in",
-    onClick: () => ctx.navigate(room.mode === "race" ? "race-board" : "board", { roomId: room.id }),
-  }));
-  actions.appendChild(el("button", {
-    class: "icon-btn", style: "width:44px;height:44px", html: PAPER_PLANE_SVG,
-    "aria-label": "Share an invite by text",
-    onClick: () => shareLiveRoom(ctx, room),
-  }));
-  card.appendChild(actions);
-  return card;
-}
-
-function noLiveCard(ctx) {
-  const card = el("div", { class: "glass-card", style: `text-align:center;display:flex;flex-direction:column;height:${HERO_CARD_HEIGHT}px` });
-  const top = el("div", { style: "flex:1;display:flex;flex-direction:column;justify-content:center" });
-  top.appendChild(el("div", { style: "font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#e8c887;margin-bottom:8px", text: "No board in progress" }));
-  top.appendChild(el("div", { style: "font:13.5px/1.5 Figtree,sans-serif;color:rgba(246,241,228,.65)", text: "Start a room and clear it with friends, or go solo." }));
-  card.appendChild(top);
-  card.appendChild(el("button", { class: "btn btn-primary", style: "width:100%", text: "Start a room", onClick: () => ctx.navigate("room-setup") }));
   return card;
 }
 
@@ -417,9 +332,7 @@ async function showInviteNotice(ctx, invite) {
 
 export function renderHome(root, ctx) {
   const rooms = Object.values(ctx.state.store.rooms || {});
-  const activeCandidate = ctx.state.activeRoomId ? ctx.state.store.rooms[ctx.state.activeRoomId] : null;
-  const activeRoom = hasStartedRoom(activeCandidate, ctx.state.currentUser) ? activeCandidate : null;
-  const continuePlaying = continuePlayingRooms(rooms, ctx.state.currentUser, ctx.state.activeRoomId);
+  const continuePlaying = continuePlayingRooms(rooms, ctx.state.currentUser);
   const openRooms = openRoomsForUser(rooms, ctx.state.store.users, ctx.state.currentUser);
   const featuredOpenRooms = randomRoomSample(openRooms, 3);
 
@@ -453,7 +366,7 @@ export function renderHome(root, ctx) {
   // ---- swipeable hero ----
   let heroIndex = 0;
   let groupMetric = "pairs";
-  const heroCount = 5;
+  const heroCount = 4;
   const heroWrap = el("div", { class: "hero-wrap", style: "display:flex;align-items:center;gap:3px;margin:4px 10px 0" });
   const prevBtn = el("div", { text: "‹", style: "flex:none;width:18px;height:56px;display:flex;align-items:center;justify-content:center;font:300 22px Figtree,sans-serif;color:rgba(246,241,228,.55);cursor:pointer;user-select:none" });
   const nextBtn = el("div", { text: "›", style: "flex:none;width:18px;height:56px;display:flex;align-items:center;justify-content:center;font:300 22px Figtree,sans-serif;color:rgba(246,241,228,.55);cursor:pointer;user-select:none" });
@@ -465,7 +378,6 @@ export function renderHome(root, ctx) {
     cardSlot.innerHTML = "";
     const cards = [
       overallLevelCard(ctx),
-      activeRoom ? liveNowCard(ctx, activeRoom) : noLiveCard(ctx),
       dailyCard(ctx),
       dailyOverviewCard(ctx),
       groupRankingCard(ctx, groupMetric, (nextMetric) => { groupMetric = nextMetric; setHero(heroIndex); }),
@@ -527,7 +439,7 @@ export function renderHome(root, ctx) {
   }
   root.appendChild(continueLabel);
   const continueList = el("div", { class: "row-list" });
-  if (continuePlaying.length === 0) continueList.appendChild(el("div", { class: "empty-note", style: "padding:0 4px", text: "Rooms you've joined but aren't in right now will show up here." }));
+  if (continuePlaying.length === 0) continueList.appendChild(el("div", { class: "empty-note", style: "padding:0 4px", text: "Your unfinished rooms will show up here." }));
   continuePlaying.slice(0, 3).forEach((r) => continueList.appendChild(continueRow(ctx, r)));
   root.appendChild(continueList);
 

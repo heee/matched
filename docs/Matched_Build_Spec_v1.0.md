@@ -45,13 +45,12 @@ Sentence case for all headers and labels ("Continue playing", not "Continue Play
 
 ### Home
 
-- **Swipeable hero card.** Five fixed-height states, swiped horizontally with chevron controls outside both edges of the card, dot indicators below, and pointer/touch drag:
+- **Swipeable hero card.** Four fixed-height states, swiped horizontally with chevron controls outside both edges of the card, dot indicators below, and pointer/touch drag:
   1. **Overall level** — account-wide, points-based progression across every mode and layout. Players begin at Level 0; Level 1 requires 1,800 points (roughly 5–10 games). The points required for each new level rise on a mildly convex curve from 1,800 to 4,500 by Level 100, then continue unbounded. Existing players are always recalculated from lifetime points. Shows the level on a current-tier-material badge, arc progress to the next level, points progress through the current tier, and the next named cosmetic unlock. Tapping opens the profile.
-  2. **Live now** — the room you are currently in. Elapsed clock, mini board silhouette, title, "Shared board · 72 tiles · 61% cleared", a split progress bar breaking that 61% into each player's share colored by player identity, primary action "Jump back in", plus a chat shortcut.
-  3. **Today's board** — the daily puzzle. Countdown to reset, title, and actions "Play daily" and "Results" before completion. After the active user finishes, the card exposes only "View results"; the Daily screen likewise omits disabled play controls.
-  4. **Your day** — the active player's local-calendar-day overview, counting completed boards only. Pairs matched is the 46px hero metric with a worded comparison to yesterday and a seven-day bar sparkline; boards, average time, and best run share one compact supporting row.
-  5. **Today in your group** — the top three registered players for today. A compact control cycles Pairs, Speed, and Board share using Ranking's ordering rules; bars normalize to the leader, the active player is emphasized in gold, and the footer names the gap with a Play action.
-- **Continue playing** — vertical list (never a horizontal carousel) of rooms you have joined but are not currently in. Each row: mini board thumbnail (the layout's real tile silhouette, not a generic icon), title, status line, thin completion bar, one avatar.
+  2. **Today's board** — the daily puzzle. Countdown to reset, title, and actions "Play daily" and "Results" before completion. After the active user finishes, the card exposes only "View results"; the Daily screen likewise omits disabled play controls.
+  3. **Your day** — the active player's local-calendar-day overview, counting completed boards only. Pairs matched is the 46px hero metric with a worded comparison to yesterday and a seven-day bar sparkline; boards, average time, and best run share one compact supporting row.
+  4. **Today in your group** — the top three registered players for today. A compact control cycles Pairs, Speed, and Board share using Ranking's ordering rules; bars normalize to the leader, the active player is emphasized in gold, and the footer names the gap with a Play action.
+- **Continue playing** — vertical list (never a horizontal carousel) of every unfinished room the active player has started, including their current/most-recent room. Each row: mini board thumbnail (the layout's real tile silhouette, not a generic icon), title, status line, thin completion bar, one avatar. There is no separate Live now hero card or empty “No board in progress” placeholder.
 - **Open rooms** — vertical list of joinable rooms. Row: tile-count chip, title, "Shared · 60 tiles · 1 joined", "Join".
 
 ### Play — Layout catalog
@@ -124,7 +123,7 @@ Tile geometry: 40 × 52pt face, 40pt column step, 40pt row step, 5pt up-left off
 
 **Assists (behind ✦)**
 
-Hint (multi-spark icon; highlights one valid pair) · Shuffle when stuck · Undo last match · Toggle showing the current number of playable free matching pairs · Auto-flag when no moves remain · Free-tile glow toggle. Assist usage is tracked and reduces leaderboard credit.
+Hint (multi-spark icon; highlights one valid pair) · Shuffle when stuck · Undo last match · Magnifying-glass toggle showing the current number of playable free matching pairs · Auto-flag when no moves remain · Free-tile glow toggle. Assist usage is tracked and reduces leaderboard credit. Emoji reactions appear only when another player is present.
 
 ### Daily puzzle
 
@@ -140,7 +139,7 @@ Hint (multi-spark icon; highlights one valid pair) · Shuffle when stuck · Undo
 - **A real 1–4 ranking** by pairs cleared, each row with the player's share as a bar. Not soft MVP callouts.
 - **Worth mentioning** — three highlight lines generated from the match log, written competitively rather than congratulatory (e.g. "Dana ran a 7-pair streak in the last minute and took it from you").
 - Points earned and distance to the next tier, closing the loop back into progression.
-- Three actions in one row: **Share · Rematch · Done**.
+- Three actions in one row: **Share · Rematch · Done**; Solo uses **Replay** instead of Rematch. Share uses a paper-plane icon.
 - Share hands off to the **OS-native share sheet** with a state-aware, playfully competitive message and deep link. Each share surface has 80 curated message combinations, selected without immediately repeating. No in-app share screen.
 
 ### Invite and join by link

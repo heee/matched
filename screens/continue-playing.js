@@ -8,7 +8,6 @@ export function renderContinuePlaying(root, ctx) {
   const rooms = continuePlayingRooms(
     Object.values(ctx.state.store.rooms || {}),
     ctx.state.currentUser,
-    ctx.state.activeRoomId,
   );
 
   const header = el("div", { class: "screen-header", style: "padding-top:6px" });
@@ -26,7 +25,7 @@ export function renderContinuePlaying(root, ctx) {
     list.appendChild(el("div", {
       class: "empty-note",
       style: "padding:0 4px",
-      text: "Rooms you've joined but aren't in right now will show up here.",
+      text: "Your unfinished rooms will show up here.",
     }));
   }
   rooms.forEach((room) => list.appendChild(continueRow(ctx, room)));

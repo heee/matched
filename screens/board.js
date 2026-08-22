@@ -14,6 +14,7 @@ import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { hasStartedRoom } from "../game/room-lists.js";
 import { equippedFeltName, feltCssVars } from "../game/felts.js";
 import { createIdleClueController } from "./idle-clues.js";
+import { elapsedMsSince, timestampMs } from "../game/time.js";
 
 const BOT_INTERVAL_MS = 5200;
 const REACTIONS = ["🔥", "😮", "👏", "😂", "😍", "🎉", "💪", "😱", "👍"];
@@ -27,7 +28,7 @@ const REACTION_BTN_W = 40;
 const ICON_SHUFFLE = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.8-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.4c1.3 0 2.5.6 3.3 1.7l.8 1.1"/><path d="M22 18h-1.4c-1.3 0-2.5-.6-3.3-1.7l-.8-1.1"/><path d="m18 14 4 4-4 4"/></svg>`;
 const ICON_UNDO = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>`;
 const ICON_HINT = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.8 1.9a2 2 0 0 1 1.288 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.288L21 12l-5.8-1.9a2 2 0 0 1-1.288-1.287Z"/><path d="m5 2-.45 1.55L3 4l1.55.45L5 6l.45-1.55L7 4l-1.55-.45Z"/><path d="m19 17-.7 2.3L16 20l2.3.7L19 23l.7-2.3L22 20l-2.3-.7Z"/></svg>`;
-const ICON_MOVES = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="2"/><circle cx="17" cy="7" r="2"/><path d="M9 7h6"/><path d="M12 9v5"/><path d="m9 17 3-3 3 3"/></svg>`;
+const ICON_MOVES = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>`;
 
 export function renderBoard(root, ctx, params = {}) {
   const room = ctx.state.store.rooms[params.roomId];
@@ -36,6 +37,12 @@ export function renderBoard(root, ctx, params = {}) {
   if (hasStartedRoom(room, ctx.state.currentUser)) ctx.state.activeRoomId = room.id;
   const you = ctx.state.currentUser;
   const isShared = room.mode === "shared";
+  let startedAtMs = timestampMs(room.startedAt);
+  if (startedAtMs == null) {
+    startedAtMs = Date.now();
+    room.startedAt = startedAtMs;
+    ctx.persist();
+  }
 
   const local = {
     selectedId: null,
@@ -126,12 +133,12 @@ export function renderBoard(root, ctx, params = {}) {
   controls.appendChild(el("div", { style: "flex:1" }));
 
   // Reactions don't make sense with nobody else on the board to see them.
-  if (room.mode !== "solo") {
+  if (room.players.some((name) => name !== you)) {
     const pageWidth = REACTIONS_PER_PAGE * REACTION_BTN_W;
     const pageCount = Math.ceil(REACTIONS.length / REACTIONS_PER_PAGE);
     let reactionPage = 0;
-    const reactionViewport = el("div", { style: `width:${pageWidth}px;height:36px;overflow:hidden;position:relative;touch-action:pan-y` });
-    const reactionStrip = el("div", { style: "display:flex;position:absolute;left:0;top:0" });
+    const reactionViewport = el("div", { style: `width:${pageWidth}px;height:42px;overflow:hidden;position:relative;touch-action:pan-y` });
+    const reactionStrip = el("div", { style: "display:flex;align-items:center;height:42px;position:absolute;left:0;top:0" });
     let dragging = false, dragStartX = null, dragDX = 0;
 
     function positionStrip(animate) {
@@ -336,7 +343,7 @@ export function renderBoard(root, ctx, params = {}) {
   function renderSub() {
     const remaining = room.state.tiles.length;
     const cleared = room.tileCount - remaining;
-    const elapsedS = Math.floor((Date.now() - (room.startedAt || Date.now())) / 1000);
+    const elapsedS = Math.floor(elapsedMsSince(startedAtMs, Date.now()) / 1000);
     subLine.textContent = `${cleared} of ${room.tileCount} cleared · ${formatClock(elapsedS)}`;
   }
 
@@ -439,7 +446,7 @@ export function renderBoard(root, ctx, params = {}) {
   }
 
   function finishRoom() {
-    const elapsedMs = Date.now() - (room.startedAt || Date.now());
+    const elapsedMs = elapsedMsSince(startedAtMs, Date.now());
     room.elapsedMs = elapsedMs;
     const myPairs = room.pairsCleared[you] || 0;
     const assistsUsed = room.assistsUsed[you] || 0;
