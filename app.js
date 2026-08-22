@@ -9,7 +9,7 @@ import { el, TAB_DEFS } from "./screens/shared-ui.js?v=41";
 import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.js?v=38";
 import { equippedFeltName, feltCssVars } from "./game/felts.js?v=39";
 
-import { renderNameEntry } from "./screens/name-entry.js?v=38";
+import { renderNameEntry } from "./screens/name-entry.js?v=39";
 import { renderHome } from "./screens/home.js?v=53";
 import { renderPlayCatalog } from "./screens/play-catalog.js?v=40";
 import { renderRoomSetup } from "./screens/room-setup.js?v=41";

@@ -610,11 +610,9 @@ a { color: var(--gold); }
 }
 .app-mark {
   width: 76px; height: 76px; border-radius: 20px;
-  background: linear-gradient(160deg, var(--bone-a), var(--bone-b));
-  box-shadow: 2px 5px 0 var(--bone-edge), 0 8px 20px rgba(0,0,0,.35);
-  display: flex; align-items: center; justify-content: center; margin-bottom: 4px;
+  display: block; object-fit: cover; margin-bottom: 4px;
+  box-shadow: 0 8px 20px rgba(0,0,0,.25);
 }
-.app-mark-tile { font: 700 34px var(--font-tile); color: var(--red); }
 .name-entry .wordmark { font-size: 30px; }
 
 .profile-picker-grid {
@@ -636,6 +634,9 @@ a { color: var(--gold); }
 }
 .profile-card.new-player .profile-card-avatar { background: rgba(255,255,255,.08); color: var(--text-dim); font-size: 18px; }
 .profile-card.new-player .profile-card-name { color: var(--text-dim); font-weight: 500; }
+.profile-picker-grid.single-user .profile-card.new-player {
+  grid-column: auto; justify-self: stretch; width: auto;
+}
 
 .new-player-form { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 4px; width: 100%; max-width: 280px; }
 .new-player-form input {

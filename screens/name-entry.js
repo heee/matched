@@ -9,9 +9,13 @@ export function renderNameEntry(root, ctx) {
   root.classList.add("bg-felt");
   const wrap = el("div", { class: "name-entry" });
 
-  const mark = el("div", { class: "app-mark" });
-  mark.appendChild(el("div", { class: "app-mark-tile", text: "中" }));
-  wrap.appendChild(mark);
+  wrap.appendChild(el("img", {
+    class: "app-mark",
+    src: "./icons/icon-192.png",
+    alt: "",
+    width: "76",
+    height: "76",
+  }));
 
   wrap.appendChild(el("div", { class: "wordmark", text: "Matched" }));
   wrap.appendChild(el("div", { class: "title-serif", style: "font-size:22px;margin-top:2px", text: "Who's playing?" }));
@@ -30,6 +34,7 @@ export function renderNameEntry(root, ctx) {
   const users = ctx.state.store.users || {};
   const recentName = ctx.state.currentUser;
   const entries = Object.entries(users).sort(([a], [b]) => (a === recentName ? -1 : b === recentName ? 1 : a.localeCompare(b)));
+  if (entries.length === 1) grid.classList.add("single-user");
 
   function choose(name) {
     if (!name) return;
