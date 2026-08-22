@@ -93,3 +93,22 @@ export function rankingMetricValue(row, metric) {
   if (metric === "share") return row.boards ? Math.round(row.share / row.boards) : 0;
   return 0;
 }
+
+// Home-card ranking: unlike the full Ranking screen, every registered
+// player remains visible even before they record a result in the window.
+export function topRegisteredRankings(rooms, users, period, metric, limit = 3, now = Date.now()) {
+  const aggregates = new Map(aggregateRankings(rooms, period, now).map((row) => [row.name, row]));
+  const rows = Object.keys(users || {}).map((name) => {
+    const aggregate = aggregates.get(name) || { name, boards: 0, timedBoards: 0, pairs: 0, timeS: 0, share: 0 };
+    return { ...aggregate, value: rankingMetricValue(aggregate, metric) };
+  });
+  rows.sort((a, b) => {
+    if (metric === "speed") {
+      const aValue = a.value || Infinity;
+      const bValue = b.value || Infinity;
+      return aValue - bValue || a.name.localeCompare(b.name);
+    }
+    return b.value - a.value || a.name.localeCompare(b.name);
+  });
+  return rows.slice(0, Math.max(0, limit));
+}

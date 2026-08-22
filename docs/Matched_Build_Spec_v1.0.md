@@ -45,11 +45,12 @@ Sentence case for all headers and labels ("Continue playing", not "Continue Play
 
 ### Home
 
-- **Swipeable hero card.** Four states, swiped horizontally with chevron controls outside both edges of the card, dot indicators below, and pointer/touch drag:
+- **Swipeable hero card.** Five fixed-height states, swiped horizontally with chevron controls outside both edges of the card, dot indicators below, and pointer/touch drag:
   1. **Overall level** — account-wide progression across every mode and layout. Shows an unbounded level on a current-tier-material badge, arc progress to the next level, points progress through the current tier, and the next named cosmetic unlock. Tapping opens the profile.
   2. **Live now** — the room you are currently in. Elapsed clock, mini board silhouette, title, "Shared board · 72 tiles · 61% cleared", a split progress bar breaking that 61% into each player's share colored by player identity, primary action "Jump back in", plus a chat shortcut.
   3. **Today's board** — the daily puzzle. Countdown to reset, title, and actions "Play daily" and "Results" before completion. After the active user finishes, the card exposes only "View results"; the Daily screen likewise omits disabled play controls.
   4. **Your day** — the active player's local-calendar-day overview, counting completed boards only. Pairs matched is the 46px hero metric with a worded comparison to yesterday and a seven-day bar sparkline; boards, average time, and best run share one compact supporting row.
+  5. **Today in your group** — the top three registered players for today. A compact control cycles Pairs, Speed, and Board share using Ranking's ordering rules; bars normalize to the leader, the active player is emphasized in gold, and the footer names the gap with a Play action.
 - **Continue playing** — vertical list (never a horizontal carousel) of rooms you have joined but are not currently in. Each row: mini board thumbnail (the layout's real tile silhouette, not a generic icon), title, status line, thin completion bar, one avatar.
 - **Open rooms** — vertical list of joinable rooms. Row: tile-count chip, title, "Shared · 60 tiles · 1 joined", "Join".
 

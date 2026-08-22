@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { aggregateRankings, rankingMetricValue, roomElapsedSeconds } from "../game/ranking.js";
+import { aggregateRankings, rankingMetricValue, roomElapsedSeconds, topRegisteredRankings } from "../game/ranking.js";
 
 const NOW = Date.parse("2026-08-22T18:00:00.000Z");
 
@@ -94,4 +94,28 @@ test("legacy completed rooms without a real start remain untimed", () => {
     createdAt: "2026-08-22T17:57:26.000Z",
     completedAt: "2026-08-22T18:00:00.000Z",
   }), null);
+});
+
+test("home group ranking includes registered non-players and limits to three", () => {
+  const users = { A: {}, B: {}, C: {}, D: {} };
+  const rooms = {
+    one: {
+      completedAt: "2026-08-22T18:00:00.000Z",
+      startedAt: "2026-08-22T17:58:00.000Z",
+      tileCount: 20,
+      players: ["A", "B"],
+      pairsCleared: { A: 7, B: 3 },
+    },
+  };
+  const rows = topRegisteredRankings(rooms, users, "Today", "pairs", 3, NOW);
+  assert.deepEqual(rows.map((row) => [row.name, row.value]), [["A", 7], ["B", 3], ["C", 0]]);
+});
+
+test("home speed ranking puts players without a timed board last", () => {
+  const users = { A: {}, B: {}, C: {} };
+  const rooms = {
+    slower: { completedAt: NOW, elapsedMs: 180000, tileCount: 4, players: ["A"], pairsCleared: { A: 2 } },
+    faster: { completedAt: NOW, elapsedMs: 90000, tileCount: 4, players: ["B"], pairsCleared: { B: 2 } },
+  };
+  assert.deepEqual(topRegisteredRankings(rooms, users, "Today", "speed", 3, NOW).map((row) => row.name), ["B", "A", "C"]);
 });

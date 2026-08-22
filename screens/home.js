@@ -5,11 +5,12 @@ import { el, avatarDot, formatClock, roomInviteUrl, modeIcon, bellButton, invite
 import { boardCompletion } from "../game/mahjong.js";
 import { dailyLayoutFor, dailySeedFor, todayDateStr, msUntilNextReset } from "../game/daily.js";
 import { LAYOUTS, layoutSilhouette } from "../game/layouts.js";
-import { PLAYER_COLORS, TIERS, levelProgress, nextCosmeticUnlock, nextTier, tierForPoints } from "../game/scoring.js";
+import { PLAYER_COLORS, TIERS, colorForSeat, levelProgress, nextCosmeticUnlock, nextTier, tierForPoints } from "../game/scoring.js";
 import { materialFor } from "../game/materials.js";
 import { continuePlayingRooms, hasStartedRoom, openRoomsForUser, randomRoomSample } from "../game/room-lists.js";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { completedWeekStats } from "../game/daily-stats.js";
+import { topRegisteredRankings } from "../game/ranking.js";
 import { liveBoardShareMessage } from "../game/share-messages.js";
 
 // Lucide's "send" icon — stroke-only paper plane, matches the icon-btn
@@ -68,7 +69,78 @@ function miniSilhouette(layoutId) {
 // a flex column with its non-action content in a flex:1 wrapper, so the
 // bottom row (button/actions) always lands at the same height regardless
 // of how much the card above it has to say.
-const HERO_CARD_HEIGHT = 190;
+const HERO_CARD_HEIGHT = 252;
+const GROUP_METRICS = [
+  { id: "pairs", label: "Pairs" },
+  { id: "speed", label: "Speed" },
+  { id: "share", label: "Board share" },
+];
+
+function formatGroupMetric(value, metric) {
+  if (metric === "speed") return value > 0 ? formatClock(value) : "—";
+  if (metric === "share") return `${value}%`;
+  return String(value);
+}
+
+function groupGapCopy(rows, currentUser, metric) {
+  const leader = rows[0];
+  const me = rows.find((row) => row.name === currentUser);
+  if (!leader || leader.value === 0) return "No group results yet today. Set the pace.";
+  if (!me || me.value === 0) return metric === "speed"
+    ? `No timed board yet. ${leader.name} set the pace.`
+    : `${leader.name} leads today. Play to close the gap.`;
+  if (leader.name === currentUser) return "You lead today. Keep it going.";
+  if (metric === "speed") return `${formatClock(Math.max(0, me.value - leader.value))} behind ${leader.name}. Play to close it.`;
+  const gap = Math.max(0, leader.value - me.value);
+  return metric === "share"
+    ? `${gap} point${gap === 1 ? "" : "s"} behind ${leader.name}. Play to close it.`
+    : `${gap} pair${gap === 1 ? "" : "s"} behind ${leader.name}. Play to close it.`;
+}
+
+function groupRankingCard(ctx, metric, onChangeMetric) {
+  const allRows = topRegisteredRankings(ctx.state.store.rooms, ctx.state.store.users, "Today", metric, Number.MAX_SAFE_INTEGER);
+  const rows = allRows.slice(0, 3);
+  const userOrder = Object.keys(ctx.state.store.users || {});
+  const leaderValue = rows[0]?.value || 0;
+  const card = el("div", { class: "glass-card group-card", style: `height:${HERO_CARD_HEIGHT}px` });
+  const head = el("div", { class: "group-card-head" });
+  head.appendChild(el("span", { text: "Today in your group" }));
+  const metricIndex = GROUP_METRICS.findIndex((candidate) => candidate.id === metric);
+  head.appendChild(el("button", {
+    class: "group-metric-button",
+    text: GROUP_METRICS[metricIndex].label,
+    "aria-label": `Showing ${GROUP_METRICS[metricIndex].label.toLowerCase()}. Change group metric`,
+    onClick: () => onChangeMetric(GROUP_METRICS[(metricIndex + 1) % GROUP_METRICS.length].id),
+  }));
+  card.appendChild(head);
+
+  const list = el("div", { class: "group-rank-list" });
+  rows.forEach((row) => {
+    const isMe = row.name === ctx.state.currentUser;
+    const seat = Math.max(0, userOrder.indexOf(row.name));
+    const color = colorForSeat(seat);
+    const width = row.value <= 0 || leaderValue <= 0
+      ? 0
+      : metric === "speed" ? Math.min(100, (leaderValue / row.value) * 100) : Math.min(100, (row.value / leaderValue) * 100);
+    const rankRow = el("div", { class: `group-rank-row${isMe ? " me" : ""}` });
+    rankRow.appendChild(avatarDot(row.name, seat, 30));
+    const body = el("div", { class: "group-rank-body" });
+    const line = el("div", { class: "group-rank-line" });
+    line.appendChild(el("span", { text: isMe ? "You" : row.name }));
+    line.appendChild(el("strong", { text: formatGroupMetric(row.value, metric) }));
+    body.appendChild(line);
+    body.appendChild(el("div", { class: "group-rank-bar", html: `<div style="width:${width}%;background:${color}"></div>` }));
+    rankRow.appendChild(body);
+    list.appendChild(rankRow);
+  });
+  card.appendChild(list);
+
+  const footer = el("div", { class: "group-card-footer" });
+  footer.appendChild(el("div", { text: groupGapCopy(allRows, ctx.state.currentUser, metric) }));
+  footer.appendChild(el("button", { class: "btn btn-primary", text: "Play", onClick: () => ctx.navigate("room-setup") }));
+  card.appendChild(footer);
+  return card;
+}
 
 function overallLevelCard(ctx) {
   const points = Math.max(0, Number(ctx.state.points) || 0);
@@ -94,7 +166,7 @@ function overallLevelCard(ctx) {
     "aria-label": `Overall level ${progress.level}. Open profile`,
     onClick: () => ctx.navigate("profile"),
   });
-  card.style.minHeight = `${HERO_CARD_HEIGHT}px`;
+  card.style.height = `${HERO_CARD_HEIGHT}px`;
   card.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -143,7 +215,7 @@ function liveNowCard(ctx, room) {
   const remaining = room.state.tiles.length;
   const cleared = room.tileCount - remaining;
   const pct = boardCompletion(room.tileCount, remaining);
-  const card = el("div", { class: "gold-card", style: `background:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.05));border-color:rgba(255,255,255,.14);display:flex;flex-direction:column;min-height:${HERO_CARD_HEIGHT}px` });
+  const card = el("div", { class: "gold-card", style: `background:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.05));border-color:rgba(255,255,255,.14);display:flex;flex-direction:column;height:${HERO_CARD_HEIGHT}px` });
   const top = el("div", { style: "flex:1" });
   const head = el("div", { style: "display:flex;align-items:center;justify-content:space-between;margin-bottom:12px" });
   head.appendChild(el("span", { style: "font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#e8c887", text: "Live now" }));
@@ -180,7 +252,7 @@ function liveNowCard(ctx, room) {
 }
 
 function noLiveCard(ctx) {
-  const card = el("div", { class: "glass-card", style: `text-align:center;display:flex;flex-direction:column;min-height:${HERO_CARD_HEIGHT}px` });
+  const card = el("div", { class: "glass-card", style: `text-align:center;display:flex;flex-direction:column;height:${HERO_CARD_HEIGHT}px` });
   const top = el("div", { style: "flex:1;display:flex;flex-direction:column;justify-content:center" });
   top.appendChild(el("div", { style: "font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#e8c887;margin-bottom:8px", text: "No board in progress" }));
   top.appendChild(el("div", { style: "font:13.5px/1.5 Figtree,sans-serif;color:rgba(246,241,228,.65)", text: "Start a room and clear it with friends, or go solo." }));
@@ -196,7 +268,7 @@ function dailyCard(ctx) {
   const ms = msUntilNextReset();
   const hours = Math.floor(ms / 3600000);
   const mins = Math.floor((ms % 3600000) / 60000);
-  const card = el("div", { class: "gold-card", style: `display:flex;flex-direction:column;min-height:${HERO_CARD_HEIGHT}px` });
+  const card = el("div", { class: "gold-card", style: `display:flex;flex-direction:column;height:${HERO_CARD_HEIGHT}px` });
   const top = el("div", { style: "flex:1" });
   const head = el("div", { style: "display:flex;align-items:center;justify-content:space-between;margin-bottom:10px" });
   head.appendChild(el("span", { style: "font:700 11px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#e8c887", text: "Today's board" }));
@@ -225,7 +297,7 @@ function dailyOverviewCard(ctx) {
   const avgTime = stats.avgTimeS == null ? "—" : formatClock(stats.avgTimeS);
   const todayLabel = `${stats.date.toLocaleDateString("en-US", { weekday: "short" })} ${stats.date.getDate()} ${stats.date.toLocaleDateString("en-US", { month: "short" })}`;
   const firstDayLabel = week[0].date.toLocaleDateString("en-US", { weekday: "short" });
-  const card = el("div", { class: "glass-card daily-overview-card", style: `min-height:${HERO_CARD_HEIGHT}px` });
+  const card = el("div", { class: "glass-card daily-overview-card", style: `height:${HERO_CARD_HEIGHT}px` });
   const head = el("div", { class: "daily-overview-head" });
   head.appendChild(el("span", { text: "Your day" }));
   head.appendChild(el("span", { text: todayLabel }));
@@ -380,7 +452,8 @@ export function renderHome(root, ctx) {
 
   // ---- swipeable hero ----
   let heroIndex = 0;
-  const heroCount = 4;
+  let groupMetric = "pairs";
+  const heroCount = 5;
   const heroWrap = el("div", { class: "hero-wrap", style: "display:flex;align-items:center;gap:3px;margin:4px 10px 0" });
   const prevBtn = el("div", { text: "‹", style: "flex:none;width:18px;height:56px;display:flex;align-items:center;justify-content:center;font:300 22px Figtree,sans-serif;color:rgba(246,241,228,.55);cursor:pointer;user-select:none" });
   const nextBtn = el("div", { text: "›", style: "flex:none;width:18px;height:56px;display:flex;align-items:center;justify-content:center;font:300 22px Figtree,sans-serif;color:rgba(246,241,228,.55);cursor:pointer;user-select:none" });
@@ -390,7 +463,13 @@ export function renderHome(root, ctx) {
   function setHero(i) {
     heroIndex = (i + heroCount) % heroCount;
     cardSlot.innerHTML = "";
-    const cards = [overallLevelCard(ctx), activeRoom ? liveNowCard(ctx, activeRoom) : noLiveCard(ctx), dailyCard(ctx), dailyOverviewCard(ctx)];
+    const cards = [
+      overallLevelCard(ctx),
+      activeRoom ? liveNowCard(ctx, activeRoom) : noLiveCard(ctx),
+      dailyCard(ctx),
+      dailyOverviewCard(ctx),
+      groupRankingCard(ctx, groupMetric, (nextMetric) => { groupMetric = nextMetric; setHero(heroIndex); }),
+    ];
     cardSlot.appendChild(cards[heroIndex]);
     [...dots.children].forEach((d, i2) => {
       d.style.width = i2 === heroIndex ? "18px" : "6px";

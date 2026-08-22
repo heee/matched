@@ -59,7 +59,10 @@ html, body {
   display: flex;
   flex-direction: column;
   background: radial-gradient(130% 90% at 50% 0%, var(--felt-a) 0%, var(--felt-b) 60%, var(--felt-c) 100%);
-  overflow-x: hidden;
+  /* clip keeps wide animated content out of view without turning #app into
+     a scroll container. overflow-x:hidden coerces overflow-y to auto, which
+     makes fixed descendants drift with the page in mobile Safari. */
+  overflow-x: clip;
 }
 
 .bg-felt { background: radial-gradient(130% 90% at 50% 0%, var(--felt-a) 0%, var(--felt-b) 60%, var(--felt-c) 100%); }
@@ -338,7 +341,7 @@ a { color: var(--gold); }
 .level-card-head span:last-child {
   font-weight: 500; letter-spacing: 0; text-transform: none; color: rgba(246,241,228,.60);
 }
-.level-card-body { display: flex; align-items: center; gap: 16px; }
+.level-card-body { display: flex; align-items: center; gap: 16px; flex: 1; }
 .level-badge {
   width: 104px; height: 104px; flex: none; border-radius: 50%; padding: 7px;
   background: conic-gradient(from 0deg, var(--gold) 0 var(--level-progress), rgba(4,24,17,.38) var(--level-progress) 360deg);
@@ -391,11 +394,41 @@ a { color: var(--gold); }
 .daily-support-metrics strong { font: 700 16px var(--font-ui); color: #f6f1e4; white-space: nowrap; }
 .daily-support-metrics span { font: 11px var(--font-ui); color: rgba(246,241,228,.52); white-space: nowrap; }
 
+.group-card { display: flex; flex-direction: column; padding: 16px; }
+.group-card-head { display: flex; align-items: center; justify-content: space-between; }
+.group-card-head > span {
+  font: 700 11px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: #e8c887;
+}
+.group-metric-button {
+  padding: 3px 0 3px 10px; border: 0; background: none; cursor: pointer;
+  font: 600 12px var(--font-ui); color: rgba(246,241,228,.60);
+}
+.group-metric-button::after { content: " ›"; color: rgba(246,241,228,.38); }
+.group-rank-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.group-rank-row { display: flex; align-items: center; gap: 10px; min-height: 34px; }
+.group-rank-body { flex: 1; min-width: 0; }
+.group-rank-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.group-rank-line span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 13px var(--font-ui); color: #f6f1e4; }
+.group-rank-line strong { flex: none; font: 700 12px var(--font-ui); color: rgba(246,241,228,.62); }
+.group-rank-row.me .group-rank-line span,
+.group-rank-row.me .group-rank-line strong { font-weight: 800; color: #e8c887; }
+.group-rank-bar { height: 5px; margin-top: 5px; overflow: hidden; border-radius: 3px; background: rgba(0,0,0,.24); }
+.group-rank-bar > div { height: 100%; border-radius: inherit; }
+.group-card-footer {
+  display: flex; align-items: center; gap: 12px; margin-top: auto; padding-top: 11px;
+  border-top: 1px solid rgba(255,255,255,.09);
+}
+.group-card-footer > div { flex: 1; min-width: 0; font: 12px/1.35 var(--font-ui); color: rgba(246,241,228,.70); }
+.group-card-footer .btn { flex: none; width: 62px; height: 40px; border-radius: 999px; }
+
 @media (max-width: 380px) {
   .level-card-body { gap: 12px; }
   .level-badge { width: 94px; height: 94px; }
   .level-points { font-size: 24px; }
   .daily-support-metrics { gap: 10px; }
+  .group-rank-row { gap: 8px; }
+  .group-card-footer { gap: 8px; }
+  .group-card-footer > div { font-size: 11px; }
 }
 .tile.idle-clue {
   animation: idleClue 1.8s ease-in-out;
