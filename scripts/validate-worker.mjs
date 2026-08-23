@@ -5,6 +5,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
+import { LAYOUTS } from "../game/layouts.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const workerPath = path.join(__dirname, "..", "worker", "index.js");
@@ -36,6 +37,11 @@ if (missing.length) {
 const layoutIdMatches = [...source.matchAll(/^\s*"([a-z0-9-]+)":\s*\(\)\s*=>/gm)].map((m) => m[1]);
 if (layoutIdMatches.length === 0) {
   console.error("Could not find any LAYOUT_POSITIONS entries to test — regex may be stale.");
+  process.exit(1);
+}
+const clientLayoutIds = Object.keys(LAYOUTS);
+if (layoutIdMatches.slice().sort().join("\n") !== clientLayoutIds.slice().sort().join("\n")) {
+  console.error("Worker layout IDs do not match game/layouts.js");
   process.exit(1);
 }
 for (const layoutId of layoutIdMatches) {

@@ -56,16 +56,18 @@ function layoutCard(ctx, layout, stats) {
     style: `width:100%;padding:0;text-align:left;display:flex;align-items:stretch;min-height:80px;border-radius:15px;overflow:hidden;background:rgba(255,255,255,.06);border:1px solid ${unlocked ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.07)"};${unlocked ? "cursor:pointer" : "opacity:.62;cursor:default"}`,
   });
 
-  const thumb = el("div", { style: "width:94px;flex:none;position:relative;background:radial-gradient(120% 120% at 50% 30%,#1d6349,#0e3527)" });
+  const thumbSlot = el("div", { style: "width:90px;flex:none;padding:9px 6px 9px 10px;display:flex;align-items:center;justify-content:center" });
+  const thumb = el("div", { style: "width:74px;height:60px;position:relative;border-radius:12px;background:radial-gradient(120% 120% at 50% 30%,#1d6349,#0e3527);overflow:hidden" });
   blockPattern(layout).forEach(({ left, top, z }) => {
     thumb.appendChild(el("div", {
       style: `position:absolute;left:${left}%;top:${top}%;width:9px;height:12px;margin:-6px 0 0 -4.5px;border-radius:2px;background:#f2ecdc;box-shadow:1px 1px 0 rgba(0,0,0,.32);z-index:${z}`,
     }));
   });
   if (!unlocked) {
-    thumb.appendChild(el("div", { style: "position:absolute;inset:0;background:rgba(8,26,20,.72);display:flex;align-items:center;justify-content:center;font-size:19px", text: "🔒" }));
+    thumb.appendChild(el("div", { style: "position:absolute;inset:0;background:rgba(8,26,20,.72);display:flex;align-items:center;justify-content:center;font-size:17px", text: "🔒" }));
   }
-  card.appendChild(thumb);
+  thumbSlot.appendChild(thumb);
+  card.appendChild(thumbSlot);
 
   const body = el("div", { style: "padding:9px 12px 9px 14px;flex:1;min-width:0;display:flex;align-items:center;gap:10px" });
   const copy = el("div", { style: "flex:1;min-width:0" });

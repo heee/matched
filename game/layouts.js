@@ -43,10 +43,18 @@ export const LAYOUTS = {
     // Matches the working prototype in docs/design-reference.html exactly.
     positions: () => [...rect(0, 7, 0, 4, 0), ...rect(2, 5, 1, 3, 1)],
   },
+  "open-book": {
+    id: "open-book", name: "Open Book", tileCount: 28, difficulty: "easy", layers: 2, tier: null,
+    positions: () => [...rect(0, 2, 0, 3, 0), ...rect(4, 6, 0, 3, 0), ...rect(1, 1, 1, 2, 1), ...rect(5, 5, 1, 2, 1)],
+  },
+  "sun-court": {
+    id: "sun-court", name: "Sun Court", tileCount: 30, difficulty: "easy", layers: 2, tier: null,
+    positions: () => [...rect(0, 6, 0, 4, 0).filter((p) => (p.x >= 2 && p.x <= 4) || (p.y >= 1 && p.y <= 3)), ...rect(2, 4, 2, 2, 1)],
+  },
   "eight-winds": {
     id: "eight-winds",
     name: "Eight Winds",
-    tileCount: 48,
+    tileCount: 52,
     difficulty: "medium",
     layers: 2,
     tier: "Stone",
@@ -61,10 +69,18 @@ export const LAYOUTS = {
     tier: "Stone",
     positions: () => [...rect(0, 7, 0, 2, 0), ...rect(2, 5, 0, 1, 1)],
   },
+  "lantern-row": {
+    id: "lantern-row", name: "Lantern Row", tileCount: 36, difficulty: "easy", layers: 2, tier: "Stone",
+    positions: () => [...rect(0, 7, 0, 2, 0), ...rect(1, 2, 0, 2, 1), ...rect(5, 6, 0, 2, 1)],
+  },
+  "stone-stair": {
+    id: "stone-stair", name: "Stone Stair", tileCount: 32, difficulty: "easy", layers: 2, tier: "Stone",
+    positions: () => [...rect(0, 7, 0, 3, 0).filter((p) => p.x >= p.y && p.x <= p.y + 4), ...rect(0, 7, 0, 3, 1).filter((p) => p.x >= p.y + 1 && p.x <= p.y + 3)],
+  },
   "garden-gate": {
     id: "garden-gate",
     name: "Garden Gate",
-    tileCount: 60,
+    tileCount: 68,
     difficulty: "hard",
     layers: 3,
     tier: "Resin",
@@ -78,6 +94,14 @@ export const LAYOUTS = {
     layers: 2,
     tier: "Resin",
     positions: () => [...rect(0, 8, 0, 3, 0), ...rect(3, 6, 1, 2, 1)],
+  },
+  "rain-window": {
+    id: "rain-window", name: "Rain Window", tileCount: 36, difficulty: "medium", layers: 2, tier: "Resin",
+    positions: () => [...rect(0, 7, 0, 4, 0).filter((p) => p.x === 0 || p.x === 7 || p.y === 0 || p.y === 4), ...rect(1, 6, 1, 3, 1).filter((p) => p.x === 1 || p.x === 6 || p.y === 1 || p.y === 3)],
+  },
+  "crescent-bay": {
+    id: "crescent-bay", name: "Crescent Bay", tileCount: 36, difficulty: "medium", layers: 2, tier: "Resin",
+    positions: () => [...rect(0, 8, 0, 4, 0).filter((p) => p.x <= 2 || p.y === 0 || p.y === 4), ...rect(0, 1, 1, 3, 1), ...rect(6, 8, 2, 2, 1)],
   },
   "twin-peaks": {
     id: "twin-peaks",
@@ -97,6 +121,14 @@ export const LAYOUTS = {
     tier: "Bamboo",
     positions: () => [...rect(0, 7, 0, 4, 0), ...rect(1, 6, 2, 2, 1)],
   },
+  "pagoda-steps": {
+    id: "pagoda-steps", name: "Pagoda Steps", tileCount: 60, difficulty: "hard", layers: 4, tier: "Bamboo",
+    positions: () => [...rect(0, 7, 0, 3, 0), ...rect(1, 6, 0, 2, 1), ...rect(2, 5, 1, 2, 2), ...rect(3, 4, 1, 1, 3)],
+  },
+  "bamboo-grove": {
+    id: "bamboo-grove", name: "Bamboo Grove", tileCount: 42, difficulty: "medium", layers: 2, tier: "Bamboo",
+    positions: () => [...rect(0, 7, 0, 4, 0).filter((p) => p.x <= 1 || (p.x >= 3 && p.x <= 4) || p.x >= 6), ...rect(0, 7, 1, 2, 1).filter((p) => p.x <= 1 || (p.x >= 3 && p.x <= 4) || p.x >= 6)],
+  },
   "nine-gates": {
     id: "nine-gates",
     name: "Nine Gates",
@@ -114,6 +146,14 @@ export const LAYOUTS = {
     layers: 3,
     tier: "Bone",
     positions: () => [...rect(0, 7, 0, 3, 0), ...rect(1, 6, 0, 3, 1), ...rect(3, 4, 1, 2, 2)],
+  },
+  "crown-keep": {
+    id: "crown-keep", name: "Crown Keep", tileCount: 52, difficulty: "hard", layers: 2, tier: "Bone",
+    positions: () => [...rect(0, 7, 0, 3, 0), ...rect(0, 1, 0, 3, 1), ...rect(6, 7, 0, 3, 1), ...rect(3, 4, 1, 2, 1)],
+  },
+  "arrowhead": {
+    id: "arrowhead", name: "Arrowhead", tileCount: 44, difficulty: "medium", layers: 2, tier: "Bone",
+    positions: () => [...rect(0, 8, 0, 4, 0).filter((p) => Math.abs(p.x - 4) + Math.abs(p.y - 2) <= 4), ...rect(1, 7, 1, 3, 1).filter((p) => Math.abs(p.x - 4) + Math.abs(p.y - 2) <= 2)],
   },
   "cross-gate": {
     id: "cross-gate",
@@ -133,10 +173,18 @@ export const LAYOUTS = {
     tier: "Porcelain",
     positions: () => [...rect(0, 7, 0, 3, 0), ...rect(1, 6, 0, 3, 1), ...rect(2, 5, 0, 3, 2), ...rect(3, 4, 0, 3, 3)],
   },
+  "lotus-fan": {
+    id: "lotus-fan", name: "Lotus Fan", tileCount: 40, difficulty: "medium", layers: 2, tier: "Porcelain",
+    positions: () => [...rect(0, 8, 0, 4, 0).filter((p) => Math.abs(p.x - 4) <= p.y), ...rect(0, 8, 2, 4, 1).filter((p) => Math.abs(p.x - 4) <= p.y - 1)],
+  },
+  "porcelain-arch": {
+    id: "porcelain-arch", name: "Porcelain Arch", tileCount: 32, difficulty: "medium", layers: 2, tier: "Porcelain",
+    positions: () => [...rect(0, 8, 0, 4, 0).filter((p) => p.y === 0 || p.x <= 1 || p.x >= 7), ...rect(1, 7, 0, 0, 1)],
+  },
   "long-table": {
     id: "long-table",
     name: "Long Table",
-    tileCount: 64,
+    tileCount: 58,
     difficulty: "hard",
     layers: 2,
     tier: "Rosewood",
@@ -145,11 +193,19 @@ export const LAYOUTS = {
   "four-corners": {
     id: "four-corners",
     name: "Four Corners",
-    tileCount: 52,
+    tileCount: 48,
     difficulty: "hard",
     layers: 2,
     tier: "Rosewood",
     positions: () => [...rect(0, 7, 0, 4, 0), ...rect(0, 1, 0, 1, 1), ...rect(6, 7, 3, 4, 1)],
+  },
+  "cedar-terrace": {
+    id: "cedar-terrace", name: "Cedar Terrace", tileCount: 76, difficulty: "hard", layers: 3, tier: "Rosewood",
+    positions: () => [...rect(0, 9, 0, 3, 0), ...rect(1, 8, 0, 2, 1), ...rect(2, 7, 1, 2, 2)],
+  },
+  "compass-rose": {
+    id: "compass-rose", name: "Compass Rose", tileCount: 44, difficulty: "medium", layers: 2, tier: "Rosewood",
+    positions: () => [...rect(0, 8, 0, 4, 0).filter((p) => p.y === 2 || (p.x >= 3 && p.x <= 5) || ((p.x <= 1 || p.x >= 7) && (p.y <= 1 || p.y >= 3))), ...rect(2, 6, 1, 3, 1).filter((p) => p.y === 2 || p.x === 4)],
   },
   "serpents-coil": {
     id: "serpents-coil",
@@ -169,6 +225,14 @@ export const LAYOUTS = {
     tier: "Jade",
     positions: () => [...rect(0, 9, 0, 3, 0), ...rect(1, 3, 0, 3, 1), ...rect(6, 8, 0, 3, 1), { x: 4, y: 1, z: 2 }, { x: 5, y: 1, z: 2 }, { x: 4, y: 2, z: 2 }, { x: 5, y: 2, z: 2 }],
   },
+  "jade-pavilion": {
+    id: "jade-pavilion", name: "Jade Pavilion", tileCount: 66, difficulty: "hard", layers: 2, tier: "Jade",
+    positions: () => [...rect(0, 8, 0, 4, 0), ...rect(1, 7, 1, 3, 1)],
+  },
+  "scholars-garden": {
+    id: "scholars-garden", name: "Scholar's Garden", tileCount: 52, difficulty: "hard", layers: 2, tier: "Jade",
+    positions: () => [...rect(0, 8, 0, 4, 0).filter((p) => p.x === 0 || p.x === 8 || p.y === 0 || p.y === 4 || (p.x >= 3 && p.x <= 5 && p.y >= 1 && p.y <= 3)), ...rect(1, 7, 1, 3, 1).filter((p) => p.x === 1 || p.x === 7 || p.y === 1 || p.y === 3), ...rect(3, 5, 2, 2, 1)],
+  },
   "imperial-seal": {
     id: "imperial-seal",
     name: "Imperial Seal",
@@ -187,6 +251,14 @@ export const LAYOUTS = {
     tier: "Cloisonné",
     positions: () => [...rect(0, 8, 0, 3, 0), ...rect(2, 6, 0, 3, 1), ...rect(3, 5, 1, 2, 2)],
   },
+  "azure-temple": {
+    id: "azure-temple", name: "Azure Temple", tileCount: 80, difficulty: "hard", layers: 4, tier: "Cloisonné",
+    positions: () => [...rect(0, 8, 0, 3, 0), ...rect(1, 7, 0, 3, 1), ...rect(2, 6, 1, 2, 2), ...rect(3, 5, 1, 2, 3)],
+  },
+  "enamel-wings": {
+    id: "enamel-wings", name: "Enamel Wings", tileCount: 62, difficulty: "hard", layers: 3, tier: "Cloisonné",
+    positions: () => [...rect(0, 3, 0, 4, 0), ...rect(5, 8, 0, 4, 0), ...rect(1, 3, 1, 3, 1), ...rect(5, 7, 1, 3, 1), ...rect(3, 5, 2, 2, 2), { x: 4, y: 1, z: 2 }],
+  },
   "jade-labyrinth": {
     id: "jade-labyrinth",
     name: "Jade Labyrinth",
@@ -195,6 +267,14 @@ export const LAYOUTS = {
     layers: 4,
     tier: "Lacquer",
     positions: () => [...rect(0, 8, 0, 3, 0), ...rect(1, 7, 0, 3, 1), ...rect(2, 6, 1, 2, 2), ...rect(3, 4, 1, 2, 3)],
+  },
+  "moon-palace": {
+    id: "moon-palace", name: "Moon Palace", tileCount: 98, difficulty: "hard", layers: 4, tier: "Lacquer",
+    positions: () => [...rect(0, 9, 0, 4, 0), ...rect(1, 8, 0, 3, 1), ...rect(2, 7, 1, 2, 2), ...rect(4, 5, 1, 2, 3)],
+  },
+  "black-pagoda": {
+    id: "black-pagoda", name: "Black Pagoda", tileCount: 102, difficulty: "hard", layers: 5, tier: "Lacquer",
+    positions: () => [...rect(0, 8, 0, 4, 0), ...rect(1, 7, 0, 4, 1), ...rect(2, 6, 1, 3, 2), ...rect(3, 5, 1, 2, 3), { x: 4, y: 2, z: 4 }],
   },
   // Classic 144-tile "turtle" — a tablet layout. The whole-board-always-
   // fits rule caps a phone layer at roughly 8x5, so this is unreachable on
@@ -206,16 +286,9 @@ export const LAYOUTS = {
     tileCount: 144,
     difficulty: "turtle",
     layers: 5,
-    tier: null,
+    tier: "Lacquer",
     tabletOnly: true,
-    positions: () => [
-      ...rect(0, 13, 0, 7, 0),
-      ...rect(1, 12, 1, 6, 1),
-      ...rect(3, 10, 2, 5, 2),
-      ...rect(5, 8, 3, 4, 3),
-      { x: 6, y: 3, z: 4 },
-      { x: 7, y: 3, z: 4 },
-    ],
+    positions: () => [...rect(0, 11, 0, 7, 0), ...rect(1, 8, 1, 4, 1), ...rect(3, 7, 2, 3, 2), ...rect(4, 5, 2, 3, 3), { x: 4, y: 2, z: 4 }, { x: 5, y: 2, z: 4 }],
   },
 };
 

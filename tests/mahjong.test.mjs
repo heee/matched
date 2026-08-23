@@ -17,6 +17,7 @@ import {
   hashSeed,
 } from "../game/mahjong.js";
 import { LAYOUTS, DIFFICULTY_TILE_COUNTS } from "../game/layouts.js";
+import { TIERS } from "../game/scoring.js";
 import { buildFaceSet } from "../game/tiles.js";
 
 test("isFree: a tile with nothing above and an open side is free", () => {
@@ -69,6 +70,25 @@ for (const layoutId of Object.keys(LAYOUTS)) {
     for (const [, count] of counts) assert.equal(count % 2, 0, "every face must appear an even number of times");
   });
 }
+
+test("catalog has four stable layouts per material tier", () => {
+  assert.equal(Object.keys(LAYOUTS).length, 40);
+  const names = new Set();
+  const tierCounts = new Map(TIERS.map((tier) => [tier.name, 0]));
+  for (const layout of Object.values(LAYOUTS)) {
+    assert.equal(names.has(layout.name), false, `duplicate layout name: ${layout.name}`);
+    names.add(layout.name);
+    const tierName = layout.tier || TIERS[0].name;
+    assert.equal(tierCounts.has(tierName), true, `unknown tier: ${tierName}`);
+    tierCounts.set(tierName, tierCounts.get(tierName) + 1);
+
+    const positions = layout.positions();
+    assert.equal(positions.length, layout.tileCount, `${layout.id} tileCount matches its geometry`);
+    assert.equal(new Set(positions.map((p) => `${p.x},${p.y},${p.z}`)).size, positions.length, `${layout.id} has unique positions`);
+    assert.equal(Math.max(...positions.map((p) => p.z)) + 1, layout.layers, `${layout.id} layer count matches its geometry`);
+  }
+  for (const tier of TIERS) assert.equal(tierCounts.get(tier.name), 4, `${tier.name} has four layouts`);
+});
 
 test("generated boards are solvable in at least one order (reverse of construction)", () => {
   // Repeatedly clear any available free matching pair until nothing remains.
