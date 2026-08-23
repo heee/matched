@@ -11,6 +11,7 @@ const path = require("path");
 const ROOT = path.join(__dirname, "..");
 const ICONS_DIR = path.join(ROOT, "icons");
 const SOURCE_PATH = path.join(ICONS_DIR, "icon-source.png");
+const TILES_SOURCE_PATH = path.join(ICONS_DIR, "matched-tiles.svg");
 
 function sourceSvg(size, sourceDataUri) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
@@ -52,6 +53,18 @@ function main() {
     });
     fs.writeFileSync(path.join(ICONS_DIR, name), resvg.render().asPng());
     console.log(`wrote ${name} (${size}x${size})`);
+  }
+
+  if (fs.existsSync(TILES_SOURCE_PATH)) {
+    const tilesSvg = fs.readFileSync(TILES_SOURCE_PATH, "utf8").replace(
+      "icon-source.png",
+      sourceDataUri,
+    );
+    const resvg = new Resvg(tilesSvg, {
+      fitTo: { mode: "width", value: 352 },
+    });
+    fs.writeFileSync(path.join(ICONS_DIR, "matched-tiles.png"), resvg.render().asPng());
+    console.log("wrote matched-tiles.png (352x225)");
   }
 }
 

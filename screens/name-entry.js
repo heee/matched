@@ -10,11 +10,11 @@ export function renderNameEntry(root, ctx) {
   const wrap = el("div", { class: "name-entry" });
 
   wrap.appendChild(el("img", {
-    class: "app-mark",
-    src: "./icons/icon-192.png",
-    alt: "",
-    width: "76",
-    height: "76",
+    class: "matching-tiles-mark",
+    src: "./icons/matched-tiles.png",
+    alt: "Two matching mahjong tiles",
+    width: "88",
+    height: "56",
   }));
 
   wrap.appendChild(el("div", { class: "wordmark", text: "Matched" }));

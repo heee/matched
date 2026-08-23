@@ -3,12 +3,12 @@
 // hit the network. Screen/game modules not needed at startup are loaded
 // on-demand via import() from app.js and land in the runtime cache after
 // their first request, rather than being dumped into this precache list.
-const CACHE_NAME = "matched-shell-v80";
+const CACHE_NAME = "matched-shell-v81";
 const SHELL_FILES = [
   "./",
   "./index.html",
-  "./style.css?v=48",
-  "./app.js?v=62",
+  "./style.css?v=49",
+  "./app.js?v=63",
   "./config.js",
   "./api.js",
   "./storage.js",
@@ -26,6 +26,7 @@ const SHELL_FILES = [
   "./icons/icon-192-maskable.png",
   "./icons/icon-512-maskable.png",
   "./icons/apple-touch-icon.png",
+  "./icons/matched-tiles.png",
 ];
 
 self.addEventListener("install", (event) => {
