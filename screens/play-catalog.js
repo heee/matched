@@ -93,7 +93,7 @@ export function renderPlayCatalog(root, ctx) {
   let filter = FILTERS[0];
   const layoutStats = completedLayoutStats(ctx.state.store.rooms, ctx.state.currentUser);
 
-  const header = el("div", { style: "position:sticky;top:env(safe-area-inset-top, 0);z-index:20;padding:8px 20px 12px;display:flex;align-items:center;justify-content:space-between;gap:14px;background:rgba(24,74,55,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)" });
+  const header = el("div", { class: "catalog-header", style: "padding:calc(8px + env(safe-area-inset-top, 0px)) 20px 12px;display:flex;align-items:center;justify-content:space-between;gap:14px" });
   header.appendChild(el("div", { class: "title-serif", text: "Play" }));
   const selectWrap = el("div", { style: "position:relative;flex:none" });
   const select = el("select", {

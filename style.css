@@ -187,6 +187,17 @@ a { color: var(--gold); }
 .row-list { display: flex; flex-direction: column; gap: 8px; padding: 0 16px; }
 
 .catalog-list { display: flex; flex-direction: column; gap: 10px; }
+.catalog-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  /* Cancel the screen's safe-area spacer and paint the header through it.
+     Otherwise scrolled cards remain visible above the sticky header on iOS. */
+  margin-top: calc(0px - env(safe-area-inset-top, 0px));
+  background: rgba(24,74,55,.9);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
 .cosmetic-grid { padding: 8px 16px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .stat-grid { padding: 8px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
@@ -237,6 +248,8 @@ a { color: var(--gold); }
    felt like a single slab instead of each tile blurring onto its flush
    neighbor (see .tile's box-shadow comment). */
 .board-wrap { filter: drop-shadow(2px 9px 10px rgba(0, 0, 0, 0.34)); }
+.board-wrap.auto-resize { transition: width .24s ease, height .24s ease, transform .24s ease; }
+.board-wrap.auto-resize > .tile { transition: left .24s ease, top .24s ease, transform .12s ease, box-shadow .12s ease; }
 .tile {
   position: absolute; box-sizing: border-box;
   border-radius: 4px;
