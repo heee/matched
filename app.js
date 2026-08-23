@@ -3,7 +3,7 @@
 // the local-first store, then hands each screen its render call.
 
 import { createWorkerApi } from "./api.js?v=42";
-import { createJsonStorage, normalizeSharedData, mergeSharedData, LOCAL_KEYS, DEFAULT_SETTINGS } from "./storage.js?v=45";
+import { createJsonStorage, normalizeSharedData, mergeSharedData, writeRoomCache, LOCAL_KEYS, DEFAULT_SETTINGS } from "./storage.js?v=46";
 import { createMutationQueue } from "./sync.js?v=41";
 import { el, TAB_DEFS } from "./screens/shared-ui.js?v=41";
 import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.js?v=38";
@@ -13,7 +13,7 @@ import { roomHasProgress, shouldAbandonRoomOnExit } from "./game/room-lists.js?v
 import { renderNameEntry } from "./screens/name-entry.js?v=41";
 import { renderHome } from "./screens/home.js?v=56";
 import { renderPlayCatalog } from "./screens/play-catalog.js?v=43";
-import { renderRoomSetup } from "./screens/room-setup.js?v=43";
+import { renderRoomSetup } from "./screens/room-setup.js?v=44";
 import { renderRanking } from "./screens/ranking.js?v=44";
 import { renderHeadToHead } from "./screens/head-to-head.js?v=1";
 import { renderProfile } from "./screens/profile.js?v=46";
@@ -56,7 +56,10 @@ function loadStore() {
   return normalizeSharedData(raw);
 }
 function saveStore(store) {
-  jsonStorage.write(LOCAL_KEYS.cacheData, store);
+  return writeRoomCache(jsonStorage, LOCAL_KEYS.cacheData, store, {
+    currentUser: state.currentUser,
+    activeRoomId: state.activeRoomId,
+  });
 }
 
 const state = {
@@ -161,6 +164,25 @@ const ctx = {
   refreshUsers,
   refreshRoom,
 };
+
+const ROOM_LIST_SCREENS = new Set(["home", "open-rooms"]);
+let roomListRefresh = null;
+
+function refreshRoomLists() {
+  if (!workerApi.configured()) return Promise.resolve();
+  if (roomListRefresh) return roomListRefresh;
+  roomListRefresh = workerApi.fetchData("open").then((data) => {
+    state.store = mergeSharedData(state.store, data);
+    saveStore(state.store);
+    if (ROOM_LIST_SCREENS.has(state.screen)) render();
+  }).catch(() => {
+    // Keep the local cache usable offline; the next navigation, focus, or
+    // polling tick will try the authoritative open-room list again.
+  }).finally(() => {
+    roomListRefresh = null;
+  });
+  return roomListRefresh;
+}
 
 async function refreshUsers() {
   if (!workerApi.configured()) return state.store.users;
@@ -321,6 +343,7 @@ function navigate(screenId, params = {}) {
   state.screen = screenId;
   state.screenParams = params;
   render();
+  if (ROOM_LIST_SCREENS.has(screenId)) refreshRoomLists();
 }
 
 function renderTabBar() {
@@ -451,6 +474,13 @@ function render() {
 if (workerApi.configured()) {
   flushPendingMutations().catch(() => {});
   window.addEventListener("online", () => flushPendingMutations().catch(() => {}));
+  window.addEventListener("online", () => refreshRoomLists());
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && ROOM_LIST_SCREENS.has(state.screen)) refreshRoomLists();
+  });
+  window.setInterval(() => {
+    if (document.visibilityState === "visible" && ROOM_LIST_SCREENS.has(state.screen)) refreshRoomLists();
+  }, 15000);
   workerApi.fetchData().then((data) => {
     state.store = mergeSharedData(state.store, data);
     saveStore(state.store);

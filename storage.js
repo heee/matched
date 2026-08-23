@@ -73,12 +73,49 @@ export function createJsonStorage(storage) {
       }
     },
     write(key, value) {
-      storage.setItem(key, JSON.stringify(value));
+      try {
+        storage.setItem(key, JSON.stringify(value));
+        return true;
+      } catch {
+        // Safari can throw here when its small per-origin quota is full (and
+        // older private-browsing implementations can throw on every write).
+        // Persistence is a cache: a failed write must never abort gameplay.
+        return false;
+      }
     },
     remove(key) {
-      storage.removeItem(key);
+      try {
+        storage.removeItem(key);
+        return true;
+      } catch {
+        return false;
+      }
     },
   };
+}
+
+// The shared snapshot contains complete tile arrays for every room, so a busy
+// installation can exceed Mobile Safari's localStorage quota. Try the complete
+// cache first; if that fails, retain rooms relevant to this player, then at
+// minimum the active room. Server hydration restores everything else online.
+export function writeRoomCache(jsonStorage, key, store, { currentUser = "", activeRoomId = null } = {}) {
+  if (jsonStorage.write(key, store)) return true;
+
+  const entries = Object.entries(store?.rooms || {});
+  const relevantRooms = Object.fromEntries(entries.filter(([id, room]) =>
+    id === activeRoomId
+    || room?.createdBy === currentUser
+    || (Array.isArray(room?.players) && room.players.includes(currentUser))
+  ));
+  const relevantStore = { ...store, rooms: relevantRooms };
+  if (jsonStorage.write(key, relevantStore)) return true;
+
+  const activeRoom = activeRoomId ? store?.rooms?.[activeRoomId] : null;
+  return jsonStorage.write(key, {
+    users: store?.users || {},
+    invites: Array.isArray(store?.invites) ? store.invites : [],
+    rooms: activeRoom ? { [activeRoomId]: activeRoom } : {},
+  });
 }
 
 export const LOCAL_KEYS = {

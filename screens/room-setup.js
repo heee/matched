@@ -55,6 +55,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
   };
   let openLinkRow = null;
   let primaryButton = null;
+  let creating = false;
 
   function renderModeDependentControls() {
     const solo = local.mode === "solo";
@@ -225,33 +226,49 @@ export function renderRoomSetup(root, ctx, params = {}) {
   primaryButton = el("button", {
     class: "btn btn-primary btn-lg", style: "width:100%", text: "Create & invite",
     onClick: async () => {
-      const layout = LAYOUTS[local.layoutId];
-      const room = buildLocalRoom({
-        title: layout.name,
-        mode: local.mode,
-        layoutId: local.layoutId,
-        difficulty: local.difficulty,
-        visibility: local.mode === "solo" ? "private" : local.openLink ? "open" : "private",
-        createdBy: ctx.state.currentUser,
-        freeTilesGlow: local.freeTilesGlow,
-        hintsAllowed: local.hintsAllowed,
-        bots: local.bots.filter(Boolean),
-      });
-      if (ctx.api.configured()) {
-        try {
-          const result = await ctx.api.createRoom({ title: room.title, mode: room.mode, layoutId: room.layoutId, difficulty: room.difficulty, visibility: room.visibility, createdBy: room.createdBy, freeTilesGlow: room.freeTilesGlow, hintsAllowed: room.hintsAllowed, bots: local.bots.filter(Boolean) });
-          // Keep the local board/bot setup, but use the persisted room id so
-          // the completion snapshot updates the same D1 record.
-          room.id = result.room.id;
-        } catch {
-          // Offline rooms still play and rank locally. Hydration now keeps
-          // their completed snapshots instead of discarding them.
+      if (creating) return;
+      creating = true;
+      primaryButton.disabled = true;
+      primaryButton.setAttribute("aria-busy", "true");
+      primaryButton.textContent = "Creating…";
+      try {
+        const layout = LAYOUTS[local.layoutId];
+        const room = buildLocalRoom({
+          title: layout.name,
+          mode: local.mode,
+          layoutId: local.layoutId,
+          difficulty: local.difficulty,
+          visibility: local.mode === "solo" ? "private" : local.openLink ? "open" : "private",
+          createdBy: ctx.state.currentUser,
+          freeTilesGlow: local.freeTilesGlow,
+          hintsAllowed: local.hintsAllowed,
+          bots: local.bots.filter(Boolean),
+        });
+        if (ctx.api.configured()) {
+          try {
+            const result = await ctx.api.createRoom({ title: room.title, mode: room.mode, layoutId: room.layoutId, difficulty: room.difficulty, visibility: room.visibility, createdBy: room.createdBy, freeTilesGlow: room.freeTilesGlow, hintsAllowed: room.hintsAllowed, bots: local.bots.filter(Boolean) });
+            // Keep the local board/bot setup, but use the persisted room id so
+            // the completion snapshot updates the same D1 record.
+            room.id = result.room.id;
+          } catch {
+            // Offline rooms still play and rank locally. Hydration now keeps
+            // their completed snapshots instead of discarding them.
+          }
+        }
+        ctx.state.store.rooms[room.id] = room;
+        ctx.state.activeRoomId = room.id;
+        ctx.persist();
+        ctx.navigate(room.mode === "solo" ? "board" : "invite", { roomId: room.id });
+      } catch {
+        ctx.toast("Couldn't create that room. Please try again.");
+      } finally {
+        creating = false;
+        if (primaryButton.isConnected) {
+          primaryButton.disabled = false;
+          primaryButton.removeAttribute("aria-busy");
+          renderModeDependentControls();
         }
       }
-      ctx.state.store.rooms[room.id] = room;
-      ctx.state.activeRoomId = room.id;
-      ctx.persist();
-      ctx.navigate(room.mode === "solo" ? "board" : "invite", { roomId: room.id });
     },
   });
   footer.appendChild(primaryButton);

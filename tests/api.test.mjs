@@ -57,6 +57,24 @@ test("invite picker can refresh the registered-user directory without loading ro
   assert.ok(data.users.Christie);
 });
 
+test("open-room discovery uses the focused Worker scope", async () => {
+  let requestUrl;
+  const api = createWorkerApi({
+    baseUrl: "https://example.test",
+    appKey: "test-key",
+    fetchImpl: async (url) => {
+      requestUrl = url;
+      return new Response(JSON.stringify({ users: {}, rooms: {} }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    },
+  });
+
+  await api.fetchData("open");
+  assert.equal(requestUrl, "https://example.test/data?scope=open");
+});
+
 test("invite sheet can refresh one authoritative room", async () => {
   let requestUrl;
   const api = createWorkerApi({

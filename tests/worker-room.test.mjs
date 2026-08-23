@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { RoomDO, buildRoom, repairRoomMetadata, validateCreateRoom } from "../worker/index.js";
+import { RoomDO, buildRoom, loadData, repairRoomMetadata, validateCreateRoom } from "../worker/index.js";
 
 function free(tile, tiles) {
   const above = tiles.some((other) => other.z === tile.z + 1 && other.x === tile.x && other.y === tile.y);
@@ -102,4 +102,34 @@ test("room creation carries configured bots into authoritative state", () => {
   assert.deepEqual(room.players, ["Henning", "Bamboo"]);
   assert.deepEqual(room.botNames, ["Bamboo"]);
   assert.equal(room.botDifficulty.Bamboo, "hard");
+});
+
+test("open-room reads filter in D1 before loading board payloads", async () => {
+  const prepared = [];
+  const db = {
+    prepare(sql) {
+      const statement = {
+        sql,
+        values: [],
+        bind(...values) {
+          this.values = values;
+          return this;
+        },
+      };
+      prepared.push(statement);
+      return statement;
+    },
+    async batch(statements) {
+      assert.match(statements[1].sql, /WHERE visibility = \?/);
+      assert.deepEqual(statements[1].values, ["open", "completed"]);
+      return [
+        { results: [{ name: "Henning", hue: 155, created_at: "2026-08-13T00:00:00Z", settings_json: "{}" }] },
+        { results: [] },
+      ];
+    },
+  };
+
+  const data = await loadData(db, "open", "Christie");
+  assert.ok(data.users.Henning);
+  assert.deepEqual(data.rooms, {});
 });

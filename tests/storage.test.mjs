@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_SETTINGS, mergeSharedData } from "../storage.js";
+import { createJsonStorage, DEFAULT_SETTINGS, mergeSharedData, writeRoomCache } from "../storage.js";
 
 test("automatic board resizing is enabled by default", () => {
   assert.equal(DEFAULT_SETTINGS.autoResizeBoard, true);
@@ -35,4 +35,42 @@ test("authoritative hydration retires stale empty local-only waiting rooms", () 
 
   assert.equal(merged.rooms.stale, undefined);
   assert.equal(merged.rooms.recent.id, "recent");
+});
+
+test("storage quota failures are reported instead of escaping into gameplay", () => {
+  const storage = {
+    getItem: () => null,
+    setItem: () => { throw new DOMException("Quota exceeded", "QuotaExceededError"); },
+    removeItem: () => {},
+  };
+  const jsonStorage = createJsonStorage(storage);
+
+  assert.equal(jsonStorage.write("cache", { rooms: {} }), false);
+  assert.equal(jsonStorage.remove("cache"), true);
+});
+
+test("oversized room caches fall back to rooms relevant to the active player", () => {
+  let saved = null;
+  const storage = {
+    getItem: () => null,
+    setItem: (_key, value) => {
+      if (value.length > 700) throw new DOMException("Quota exceeded", "QuotaExceededError");
+      saved = value;
+    },
+    removeItem: () => {},
+  };
+  const jsonStorage = createJsonStorage(storage);
+  const makeRoom = (id, createdBy, padding) => ({ id, createdBy, players: [createdBy], state: { tiles: padding } });
+  const store = {
+    users: { Christie: {}, Henning: {} },
+    invites: [],
+    rooms: {
+      christie: makeRoom("christie", "Christie", "x".repeat(100)),
+      henning: makeRoom("henning", "Henning", "x".repeat(1000)),
+    },
+  };
+
+  assert.equal(writeRoomCache(jsonStorage, "cache", store, { currentUser: "Christie", activeRoomId: "christie" }), true);
+  const cached = JSON.parse(saved);
+  assert.deepEqual(Object.keys(cached.rooms), ["christie"]);
 });

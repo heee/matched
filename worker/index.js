@@ -782,9 +782,23 @@ function roomFromRow(row) {
 }
 
 async function loadData(db, scope, user) {
+  // Keep list-only reads cheap as room history grows. Previously even the
+  // `users` and `open` scopes selected every board payload from D1 and only
+  // filtered after parsing it in the Worker. That made discovery depend on
+  // the same increasingly large response used by rankings/history.
+  let roomQuery = db.prepare("SELECT payload_json FROM rooms ORDER BY rowid");
+  if (scope === "users") {
+    roomQuery = db.prepare("SELECT payload_json FROM rooms WHERE 1 = 0");
+  } else if (scope === "open") {
+    roomQuery = db.prepare(`
+      SELECT payload_json FROM rooms
+      WHERE visibility = ? AND (state IS NULL OR state <> ?)
+      ORDER BY rowid
+    `).bind("open", "completed");
+  }
   const [userResult, roomResult] = await db.batch([
     db.prepare("SELECT name, hue, created_at, settings_json FROM users ORDER BY rowid"),
-    db.prepare("SELECT payload_json FROM rooms ORDER BY rowid"),
+    roomQuery,
   ]);
   const users = {};
   for (const row of userResult.results || []) users[row.name] = userFromRow(row);
