@@ -39,4 +39,6 @@ test("new rooms begin ready or waiting, not in progress", () => {
   const solo = buildLocalRoom({ ...baseRoom, createdBy: "Alex", mode: "solo" });
   assert.equal(shared.state.state, "waiting");
   assert.equal(solo.state.state, "ready");
+  assert.equal(shared.startedAt, null);
+  assert.equal(solo.startedAt, null);
 });

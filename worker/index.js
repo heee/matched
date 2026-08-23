@@ -81,6 +81,16 @@ export default {
       }
     }
 
+    const roomReadMatch = url.pathname.match(/^\/room\/([a-zA-Z0-9_-]+)$/);
+    if (roomReadMatch && request.method === "GET") {
+      try {
+        const room = await getRoom(env.DB, roomReadMatch[1]);
+        return room ? json({ room }, 200, cors) : json({ error: "room not found" }, 404, cors);
+      } catch (e) {
+        return json({ error: e.message }, 502, cors);
+      }
+    }
+
     if (url.pathname === "/daily-result" && request.method === "POST") {
       if (!checkAppKey(request, env)) return json({ error: "unauthorized" }, 401, cors);
       const body = await safeJson(request);
@@ -236,7 +246,11 @@ export class RoomDO {
     if (this.deleted) return null;
     if (this.room) return this.room;
     this.room = (await this.state.storage.get("room")) || null;
-    if (this.room && repairRoomFaces(this.room)) await this.state.storage.put("room", this.room);
+    if (this.room) {
+      const facesChanged = repairRoomFaces(this.room);
+      const metadataChanged = repairRoomMetadata(this.room);
+      if (facesChanged || metadataChanged) await this.state.storage.put("room", this.room);
+    }
     return this.room;
   }
 
@@ -257,6 +271,7 @@ export class RoomDO {
     if (url.pathname === "/seed" && request.method === "POST") {
       const room = await request.json();
       repairRoomFaces(room);
+      repairRoomMetadata(room);
       this.deleted = false;
       await this.state.storage.put("room", room);
       this.room = room;
@@ -352,6 +367,8 @@ export class RoomDO {
         this.sendTo(socket, { type: "room-sync", room: this.room, presence: this.presenceList() });
         return;
       }
+      const clearedAt = Date.now();
+      if (!(this.room.state.matchLog || []).length) this.room.startedAt = clearedAt;
       if (!this.room.players.includes(user)) this.room.players.push(user);
       this.room.startedPlayers = this.room.startedPlayers || [];
       if (!this.room.startedPlayers.includes(user)) this.room.startedPlayers.push(user);
@@ -365,7 +382,7 @@ export class RoomDO {
       }
       this.room.peakStreaks = this.room.peakStreaks || {};
       this.room.peakStreaks[user] = Math.max(this.room.peakStreaks[user] || 0, this.room.streaks[user]);
-      const trayEntry = { id: `${idA}-${idB}`, face: a.face, user, at: Date.now() };
+      const trayEntry = { id: `${idA}-${idB}`, face: a.face, user, at: clearedAt };
       this.room.state.tray = [trayEntry, ...this.room.state.tray].slice(0, 60);
       this.room.state.matchLog = [...(this.room.state.matchLog || []), { user, at: trayEntry.at, removed: [a, b] }].slice(-200);
 
@@ -376,6 +393,7 @@ export class RoomDO {
       }
       this.broadcast({
         type: "cleared", idA, idB, user, tray: trayEntry, at: trayEntry.at,
+        startedAt: this.room.startedAt,
         players: this.room.players, startedPlayers: this.room.startedPlayers,
         pairsCleared: this.room.pairsCleared, streaks: this.room.streaks,
         peakStreaks: this.room.peakStreaks, completed: isComplete,
@@ -498,6 +516,40 @@ function repairRoomFaces(room) {
   }
   for (const racer of Object.values(room.racers || {})) {
     if (repairTileList(racer?.tiles)) changed = true;
+  }
+  return changed;
+}
+
+function timestampMs(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string" || value.trim() === "") return null;
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) return numeric;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+// Membership is earned by a first match, and the shared-board timer begins
+// at that same authoritative event. Deriving both from the match log repairs
+// older snapshots without a destructive database migration.
+function repairRoomMetadata(room) {
+  if (!room || typeof room !== "object") return false;
+  let changed = false;
+  const log = Array.isArray(room.state?.matchLog) ? room.state.matchLog : [];
+  if (!Array.isArray(room.players)) { room.players = []; changed = true; }
+  if (!Array.isArray(room.startedPlayers)) { room.startedPlayers = []; changed = true; }
+  for (const entry of log) {
+    const name = entry?.user;
+    if (!isActualPlayerName(name)) continue;
+    if (!room.players.includes(name)) { room.players.push(name); changed = true; }
+    if (!room.startedPlayers.includes(name)) { room.startedPlayers.push(name); changed = true; }
+  }
+  if (room.mode === "shared") {
+    const firstMatchAt = log.map((entry) => timestampMs(entry?.at)).find((value) => value != null) ?? null;
+    if (timestampMs(room.startedAt) !== firstMatchAt) {
+      room.startedAt = firstMatchAt;
+      changed = true;
+    }
   }
   return changed;
 }
@@ -654,7 +706,7 @@ function buildRoom(req) {
     visibility: req.visibility,
     createdBy: req.createdBy,
     createdAt: new Date().toISOString(),
-    startedAt: Date.now(),
+    startedAt: null,
     freeTilesGlow: req.freeTilesGlow,
     hintsAllowed: req.hintsAllowed,
     players: [req.createdBy, ...req.bots.map((bot) => bot.name)],
@@ -712,6 +764,7 @@ function userFromRow(row) {
 function roomFromRow(row) {
   const room = parseJson(row.payload_json, null);
   repairRoomFaces(room);
+  repairRoomMetadata(room);
   return room;
 }
 
@@ -831,4 +884,4 @@ async function saveDailyResult(db, { date, user, elapsedMs, pairsMatched }) {
   return { name: row.user_name, elapsedMs: Number(row.elapsed_ms), pairsMatched: Number(row.pairs_matched), completedAt: row.completed_at };
 }
 
-export { loadData, registerUser, upsertRoom, getRoom, joinRoom, deleteRoom, deleteUser, buildRoom, validateCreateRoom, generateBoard, getOrCreateDaily, dailyResults, saveDailyResult };
+export { loadData, registerUser, upsertRoom, getRoom, joinRoom, deleteRoom, deleteUser, buildRoom, validateCreateRoom, generateBoard, getOrCreateDaily, dailyResults, saveDailyResult, repairRoomMetadata };

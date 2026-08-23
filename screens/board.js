@@ -14,7 +14,7 @@ import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { hasStartedRoom } from "../game/room-lists.js?v=2";
 import { equippedFeltName, feltCssVars } from "../game/felts.js";
 import { createIdleClueController } from "./idle-clues.js";
-import { elapsedMsSince, timestampMs } from "../game/time.js";
+import { elapsedMsSince, roomTimerStartMs, timestampMs } from "../game/time.js";
 import { createRoomSocket } from "../sync.js?v=41";
 
 const BOT_INTERVAL_MS = 5200;
@@ -38,8 +38,11 @@ export function renderBoard(root, ctx, params = {}) {
   if (hasStartedRoom(room, ctx.state.currentUser)) ctx.state.activeRoomId = room.id;
   const you = ctx.state.currentUser;
   const isShared = room.mode === "shared";
-  let startedAtMs = timestampMs(room.startedAt);
-  if (startedAtMs == null) {
+  let startedAtMs = roomTimerStartMs(room);
+  if (startedAtMs != null && timestampMs(room.startedAt) !== startedAtMs) {
+    room.startedAt = startedAtMs;
+    ctx.persist();
+  } else if (startedAtMs == null && !isShared) {
     startedAtMs = Date.now();
     room.startedAt = startedAtMs;
     ctx.persist();
@@ -349,7 +352,7 @@ export function renderBoard(root, ctx, params = {}) {
   function renderSub() {
     const remaining = room.state.tiles.length;
     const cleared = room.tileCount - remaining;
-    const elapsedS = Math.floor(elapsedMsSince(startedAtMs, Date.now()) / 1000);
+    const elapsedS = Math.floor((elapsedMsSince(startedAtMs, Date.now()) ?? 0) / 1000);
     subLine.textContent = `${cleared} of ${room.tileCount} cleared · ${formatClock(elapsedS)}`;
   }
 
@@ -419,6 +422,11 @@ export function renderBoard(root, ctx, params = {}) {
   function performClear(idA, idB, user, authoritative = null) {
     const result = clearPair(room.state.tiles, idA, idB);
     if (!result) return false;
+    const clearedAt = authoritative?.at || Date.now();
+    if (startedAtMs == null) {
+      startedAtMs = timestampMs(authoritative?.startedAt) ?? clearedAt;
+      room.startedAt = startedAtMs;
+    }
     if (!room.players.includes(user)) room.players.push(user);
     room.startedPlayers = room.startedPlayers || [];
     if (!room.startedPlayers.includes(user)) room.startedPlayers.push(user);
@@ -444,7 +452,7 @@ export function renderBoard(root, ctx, params = {}) {
     if (authoritative?.startedPlayers) room.startedPlayers = [...authoritative.startedPlayers];
     const trayEntry = authoritative?.tray || { id: `${idA}-${idB}`, face: result.removed[0].face, user };
     room.state.tray = [trayEntry, ...room.state.tray].slice(0, 60);
-    room.state.matchLog = [...(room.state.matchLog || []), { seat: playerList().indexOf(user), user, at: authoritative?.at || Date.now() }];
+    room.state.matchLog = [...(room.state.matchLog || []), { seat: playerList().indexOf(user), user, at: clearedAt }];
     local.history.push({ removed: result.removed, user });
     local.selectedId = null;
 
@@ -787,6 +795,11 @@ export function renderBoard(root, ctx, params = {}) {
           if (message.room) {
             Object.assign(room, message.room);
             repairCurrentPlayerAliases(room, you);
+            const syncedStart = roomTimerStartMs(room);
+            if (syncedStart != null) {
+              startedAtMs = syncedStart;
+              room.startedAt = syncedStart;
+            }
             local.boardBox = null;
           }
           local.presencePlayers = message.presence || local.presencePlayers;

@@ -40,7 +40,9 @@ export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, 
     visibility: visibility || "open",
     createdBy,
     createdAt: new Date().toISOString(),
-    startedAt: Date.now(),
+    // Shared rooms may wait in the invite sheet indefinitely. Board screens
+    // set this when play actually begins (the first match for Shared).
+    startedAt: null,
     freeTilesGlow: freeTilesGlow !== false,
     hintsAllowed: hintsAllowed !== false,
     players,

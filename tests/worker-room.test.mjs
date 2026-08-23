@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { RoomDO, buildRoom, validateCreateRoom } from "../worker/index.js";
+import { RoomDO, buildRoom, repairRoomMetadata, validateCreateRoom } from "../worker/index.js";
 
 function free(tile, tiles) {
   const above = tiles.some((other) => other.z === tile.z + 1 && other.x === tile.x && other.y === tile.y);
@@ -69,6 +69,22 @@ test("RoomDO accepts a shared clear, commits the player, and broadcasts the resu
   assert.equal(room.state.tiles.length, room.tileCount - 2);
   assert.equal(frames.at(-1).type, "cleared");
   assert.equal(frames.at(-1).user, "Christie");
+  assert.equal(room.startedAt, room.state.matchLog[0].at);
+});
+
+test("legacy shared room metadata is repaired from its authoritative match log", () => {
+  const firstMatchAt = Date.parse("2026-08-23T20:44:21.330Z");
+  const room = {
+    mode: "shared",
+    startedAt: Date.parse("2026-08-23T00:39:47.256Z"),
+    players: ["Henning"],
+    startedPlayers: [],
+    state: { matchLog: [{ user: "Christie", at: firstMatchAt }] },
+  };
+  assert.equal(repairRoomMetadata(room), true);
+  assert.equal(room.startedAt, firstMatchAt);
+  assert.deepEqual(room.players, ["Henning", "Christie"]);
+  assert.deepEqual(room.startedPlayers, ["Christie"]);
 });
 
 test("room creation carries configured bots into authoritative state", () => {
@@ -82,6 +98,7 @@ test("room creation carries configured bots into authoritative state", () => {
     bots: [{ name: "Bamboo", difficulty: "hard" }],
   });
   const room = buildRoom(request);
+  assert.equal(room.startedAt, null);
   assert.deepEqual(room.players, ["Henning", "Bamboo"]);
   assert.deepEqual(room.botNames, ["Bamboo"]);
   assert.equal(room.botDifficulty.Bamboo, "hard");

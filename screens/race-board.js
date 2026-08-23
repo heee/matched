@@ -7,7 +7,7 @@ import { freeTiles, findHintPair, clearPair, hasMovesRemaining } from "../game/m
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
 import { PLAYER_COLORS, BOT_ACT_CHANCE, pointsForSession } from "../game/scoring.js";
 import { equippedMaterialName, materialCssVars } from "../game/materials.js";
-import { ensureRacer } from "../game/room.js?v=2";
+import { ensureRacer } from "../game/room.js?v=3";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { hasStartedRoom } from "../game/room-lists.js?v=2";
 import { equippedFeltName, feltCssVars } from "../game/felts.js";

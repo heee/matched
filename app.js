@@ -18,10 +18,10 @@ import { renderRanking } from "./screens/ranking.js?v=43";
 import { renderHeadToHead } from "./screens/head-to-head.js?v=1";
 import { renderProfile } from "./screens/profile.js?v=44";
 import { renderManagePlayers } from "./screens/manage-players.js?v=38";
-import { renderBoard } from "./screens/board.js?v=53";
+import { renderBoard } from "./screens/board.js?v=54";
 import { renderRaceBoard } from "./screens/race-board.js?v=46";
 import { renderResults } from "./screens/results.js?v=40";
-import { renderInvite } from "./screens/invite.js?v=41";
+import { renderInvite } from "./screens/invite.js?v=42";
 import { renderDaily } from "./screens/daily.js?v=42";
 import { renderContinuePlaying } from "./screens/continue-playing.js?v=40";
 import { renderOpenRooms } from "./screens/open-rooms.js?v=45";
@@ -159,6 +159,7 @@ const ctx = {
   abandonRoom,
   refreshAppearance,
   refreshUsers,
+  refreshRoom,
 };
 
 async function refreshUsers() {
@@ -167,6 +168,18 @@ async function refreshUsers() {
   state.store.users = { ...state.store.users, ...(data.users || {}) };
   persist();
   return state.store.users;
+}
+
+async function refreshRoom(roomId) {
+  if (!workerApi.configured()) return state.store.rooms[roomId] || null;
+  const data = await workerApi.fetchRoom(roomId);
+  const normalized = normalizeSharedData({ rooms: data.room ? { [roomId]: data.room } : {} });
+  const room = normalized.rooms[roomId] || null;
+  if (room) {
+    state.store.rooms[roomId] = room;
+    persist();
+  }
+  return room;
 }
 
 function abandonRoom(room) {

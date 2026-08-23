@@ -56,3 +56,22 @@ test("invite picker can refresh the registered-user directory without loading ro
   assert.equal(requestUrl, "https://example.test/data?scope=users");
   assert.ok(data.users.Christie);
 });
+
+test("invite sheet can refresh one authoritative room", async () => {
+  let requestUrl;
+  const api = createWorkerApi({
+    baseUrl: "https://example.test",
+    appKey: "test-key",
+    fetchImpl: async (url) => {
+      requestUrl = url;
+      return new Response(JSON.stringify({ room: { id: "dragon-room", players: ["Henning", "Christie"] } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    },
+  });
+
+  const data = await api.fetchRoom("dragon-room");
+  assert.equal(requestUrl, "https://example.test/room/dragon-room");
+  assert.deepEqual(data.room.players, ["Henning", "Christie"]);
+});
