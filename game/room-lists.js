@@ -49,6 +49,13 @@ export function continuePlayingRooms(rooms, currentUser, activeRoomId) {
   );
 }
 
+export function refreshableRoomsForUser(rooms, currentUser) {
+  return rooms.filter((room) =>
+    room?.state?.state !== "completed"
+    && (room?.createdBy === currentUser || room?.players?.includes(currentUser))
+  );
+}
+
 export function openRoomsForUser(rooms, users, currentUser) {
   return rooms.filter((room) => {
     const creator = room.createdBy;

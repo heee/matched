@@ -8,7 +8,7 @@ import { createMutationQueue } from "./sync.js?v=41";
 import { el, TAB_DEFS } from "./screens/shared-ui.js?v=41";
 import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.js?v=38";
 import { equippedFeltName, feltCssVars } from "./game/felts.js?v=39";
-import { roomHasProgress, shouldAbandonRoomOnExit } from "./game/room-lists.js?v=2";
+import { refreshableRoomsForUser, roomHasProgress, shouldAbandonRoomOnExit } from "./game/room-lists.js?v=3";
 
 import { renderNameEntry } from "./screens/name-entry.js?v=41";
 import { renderHome } from "./screens/home.js?v=56";
@@ -171,8 +171,20 @@ let roomListRefresh = null;
 function refreshRoomLists() {
   if (!workerApi.configured()) return Promise.resolve();
   if (roomListRefresh) return roomListRefresh;
-  roomListRefresh = workerApi.fetchData("open").then((data) => {
-    state.store = mergeSharedData(state.store, data);
+  const trackedRooms = refreshableRoomsForUser(Object.values(state.store.rooms || {}), state.currentUser);
+  roomListRefresh = Promise.allSettled([
+    workerApi.fetchData("open"),
+    ...trackedRooms.map((room) => workerApi.fetchRoom(room.id)),
+  ]).then(([openResult, ...roomResults]) => {
+    const openData = openResult?.status === "fulfilled" ? openResult.value : { users: {}, rooms: {} };
+    const focusedRooms = {};
+    for (const result of roomResults) {
+      if (result.status === "fulfilled" && result.value?.room) focusedRooms[result.value.room.id] = result.value.room;
+    }
+    state.store = mergeSharedData(state.store, {
+      ...openData,
+      rooms: { ...(openData.rooms || {}), ...focusedRooms },
+    });
     saveStore(state.store);
     if (ROOM_LIST_SCREENS.has(state.screen)) render();
   }).catch(() => {

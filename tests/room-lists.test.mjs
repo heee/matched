@@ -5,6 +5,7 @@ import {
   hasStartedRoom,
   openRoomsForUser,
   randomRoomSample,
+  refreshableRoomsForUser,
   shouldAbandonRoomOnExit,
   waitingForPlayersRooms,
 } from "../game/room-lists.js";
@@ -112,4 +113,15 @@ test("open-room sampling shuffles without mutating and limits the home list to t
   assert.equal(new Set(sampled.map((r) => r.id)).size, 3);
   assert.deepEqual(rooms.map((r) => r.id), original);
   assert.notDeepEqual(sampled.map((r) => r.id), original.slice(0, 3));
+});
+
+test("home refresh tracks waiting and active rooms relevant to the current player", () => {
+  const rooms = [
+    room({ id: "created", createdBy: "Sam", players: ["Sam"], state: { state: "waiting" } }),
+    room({ id: "joined", players: ["Alex", "Sam"], state: { state: "in_progress" } }),
+    room({ id: "completed", players: ["Alex", "Sam"], state: { state: "completed" } }),
+    room({ id: "unrelated", createdBy: "Alex", players: ["Alex"] }),
+  ];
+
+  assert.deepEqual(refreshableRoomsForUser(rooms, "Sam").map((item) => item.id), ["created", "joined"]);
 });
