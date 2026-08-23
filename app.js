@@ -172,7 +172,16 @@ async function refreshUsers() {
 
 async function refreshRoom(roomId) {
   if (!workerApi.configured()) return state.store.rooms[roomId] || null;
-  const data = await workerApi.fetchRoom(roomId);
+  let data;
+  try {
+    data = await workerApi.fetchRoom(roomId);
+  } catch {
+    // Older Worker deployments do not have the focused room route yet.
+    // Fall back to the existing all-room read so invite membership still
+    // refreshes during a staggered frontend/Worker release.
+    const shared = await workerApi.fetchData();
+    data = { room: shared.rooms?.[roomId] || null };
+  }
   const normalized = normalizeSharedData({ rooms: data.room ? { [roomId]: data.room } : {} });
   const room = normalized.rooms[roomId] || null;
   if (room) {
