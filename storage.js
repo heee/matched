@@ -31,10 +31,24 @@ export function normalizeSharedData(value) {
 // older open snapshot that was created before play began. Completed remote
 // snapshots still win over local open copies, while other rooms use the
 // latest server view.
-export function mergeSharedData(localValue, remoteValue) {
+export function mergeSharedData(localValue, remoteValue, now = Date.now()) {
   const local = normalizeSharedData(localValue);
   const remote = normalizeSharedData(remoteValue);
   const rooms = { ...local.rooms };
+  // A failed/abandoned local room creation used to leave an empty waiting
+  // card forever, even after a full authoritative fetch showed that room no
+  // longer existed. Keep recent offline work and all played/completed rooms,
+  // but retire empty orphan invitations after an hour.
+  for (const [id, localRoom] of Object.entries(rooms)) {
+    if (remote.rooms[id]) continue;
+    const createdMs = Date.parse(localRoom?.createdAt);
+    const hasProgress = Object.values(localRoom?.pairsCleared || {}).some((count) => Number(count) > 0)
+      || localRoom?.state?.state === "in_progress"
+      || localRoom?.state?.state === "completed";
+    if (!localRoom?.completedAt && !hasProgress && Number.isFinite(createdMs) && now - createdMs > 60 * 60 * 1000) {
+      delete rooms[id];
+    }
+  }
   for (const [id, remoteRoom] of Object.entries(remote.rooms)) {
     const localRoom = rooms[id];
     rooms[id] = localRoom?.completedAt && !remoteRoom?.completedAt ? localRoom : remoteRoom;

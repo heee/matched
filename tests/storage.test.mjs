@@ -18,3 +18,17 @@ test("remote completed rooms replace local open snapshots", () => {
   const merged = mergeSharedData({ rooms: { same: room(null) } }, { rooms: { same: completed } });
   assert.equal(merged.rooms.same.completedAt, completed.completedAt);
 });
+
+test("authoritative hydration retires stale empty local-only waiting rooms", () => {
+  const now = Date.parse("2026-08-23T12:00:00.000Z");
+  const stale = room(null);
+  stale.createdAt = "2026-08-23T08:00:00.000Z";
+  stale.pairsCleared = { A: 0 };
+  stale.state = { state: "waiting" };
+  const recent = { ...stale, id: "recent", createdAt: "2026-08-23T11:30:00.000Z" };
+
+  const merged = mergeSharedData({ rooms: { stale, recent } }, { rooms: {} }, now);
+
+  assert.equal(merged.rooms.stale, undefined);
+  assert.equal(merged.rooms.recent.id, "recent");
+});

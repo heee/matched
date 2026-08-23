@@ -3,7 +3,7 @@
 // the local-first store, then hands each screen its render call.
 
 import { createWorkerApi } from "./api.js?v=42";
-import { createJsonStorage, normalizeSharedData, mergeSharedData, LOCAL_KEYS, DEFAULT_SETTINGS } from "./storage.js?v=43";
+import { createJsonStorage, normalizeSharedData, mergeSharedData, LOCAL_KEYS, DEFAULT_SETTINGS } from "./storage.js?v=44";
 import { createMutationQueue } from "./sync.js?v=41";
 import { el, TAB_DEFS } from "./screens/shared-ui.js?v=41";
 import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.js?v=38";
