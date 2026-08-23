@@ -72,6 +72,49 @@ test("RoomDO accepts a shared clear, commits the player, and broadcasts the resu
   assert.equal(room.startedAt, room.state.matchLog[0].at);
 });
 
+test("RoomDO broadcasts authoritative race progress without touching another racer's board", async () => {
+  const request = validateCreateRoom({
+    title: "Two Bridges",
+    mode: "race",
+    layoutId: "two-bridges",
+    difficulty: "easy",
+    visibility: "open",
+    createdBy: "Henning",
+  });
+  const room = buildRoom(request);
+  const pair = firstFreePair(room.racers.Henning.tiles);
+  assert.ok(pair);
+  const originalSharedTiles = room.state.tiles.length;
+
+  const frames = [];
+  const sender = {
+    send: (frame) => frames.push(JSON.parse(frame)),
+    deserializeAttachment: () => ({ user: "Henning", spectator: false }),
+  };
+  const observer = {
+    send: (frame) => frames.push(JSON.parse(frame)),
+    deserializeAttachment: () => ({ user: "Christie", spectator: false }),
+  };
+  const stored = new Map([["room", room]]);
+  const state = {
+    storage: {
+      get: async (key) => stored.get(key),
+      put: async (key, value) => stored.set(key, value),
+    },
+    getWebSockets: () => [sender, observer],
+  };
+  const instance = new RoomDO(state, { DB: mockDb(room) });
+  instance.room = room;
+
+  await instance.webSocketMessage(sender, JSON.stringify({ type: "race-clear-pair", idA: pair[0].id, idB: pair[1].id }));
+
+  assert.equal(room.racers.Henning.tiles.length, room.tileCount - 2);
+  assert.equal(room.state.tiles.length, originalSharedTiles);
+  assert.equal(room.pairsCleared.Henning, 1);
+  assert.equal(frames.at(-1).type, "race-cleared");
+  assert.equal(frames.at(-1).remaining, room.tileCount - 2);
+});
+
 test("legacy shared room metadata is repaired from its authoritative match log", () => {
   const firstMatchAt = Date.parse("2026-08-23T20:44:21.330Z");
   const room = {

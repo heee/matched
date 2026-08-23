@@ -13,6 +13,7 @@ import { hasStartedRoom } from "../game/room-lists.js?v=2";
 import { equippedFeltName, feltCssVars } from "../game/felts.js";
 import { createIdleClueController } from "./idle-clues.js";
 import { elapsedMsSince, timestampMs } from "../game/time.js";
+import { createRoomSocket } from "../sync.js?v=41";
 
 const BOT_INTERVAL_MS = 4200;
 
@@ -34,7 +35,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
     ctx.persist();
   }
 
-  const local = { selectedId: null, lastStandingLeader: null, tileEls: new Map(), boardBox: null, fixedBoardBox: null };
+  const local = { selectedId: null, lastStandingLeader: null, tileEls: new Map(), boardBox: null, fixedBoardBox: null, roomSocket: null, finished: false };
   let clueController = null;
   root.classList.add("bg-felt");
   root.style.cssText += feltCssVars(equippedFeltName(ctx.state.points, ctx.state.equipped));
@@ -184,6 +185,12 @@ export function renderRaceBoard(root, ctx, params = {}) {
     if (result) {
       haptic(ctx.state.settings.haptic);
       playMatchSound(ctx.state.settings.sound, material);
+      if (local.roomSocket) {
+        local.selectedId = null;
+        updateTileSelection();
+        local.roomSocket.send({ type: "race-clear-pair", idA: firstId, idB: id });
+        return;
+      }
       mine.tiles = result.tiles;
       room.pairsCleared[you] = (room.pairsCleared[you] || 0) + 1;
       room.state.state = "in_progress";
@@ -202,6 +209,8 @@ export function renderRaceBoard(root, ctx, params = {}) {
   }
 
   function finishRace() {
+    if (local.finished) return;
+    local.finished = true;
     stopBots();
     room.completedAt = room.completedAt || new Date().toISOString();
     room.state.state = "completed";
@@ -213,7 +222,8 @@ export function renderRaceBoard(root, ctx, params = {}) {
     ctx.state.points += earned;
     ctx.state.lastResult = { roomId: room.id, earned, highlights: [], elapsedMs };
     ctx.state.activeRoomId = null;
-    ctx.reportCompletedRoom(room);
+    if (local.roomSocket) ctx.persist();
+    else ctx.reportCompletedRoom(room);
     ctx.navigate("results", { roomId: room.id });
   }
 
@@ -227,6 +237,10 @@ export function renderRaceBoard(root, ctx, params = {}) {
       if (!pair) continue;
       const chance = BOT_ACT_CHANCE[difficulty[bot]] ?? BOT_ACT_CHANCE.medium;
       if (Math.random() > chance) continue; // don't clear on every tick, keeps it a real race
+      if (local.roomSocket) {
+        local.roomSocket.send({ type: "race-clear-pair", idA: pair[0], idB: pair[1], user: bot });
+        continue;
+      }
       const result = clearPair(racer.tiles, pair[0], pair[1]);
       if (result) {
         racer.tiles = result.tiles;
@@ -242,11 +256,59 @@ export function renderRaceBoard(root, ctx, params = {}) {
   window.__matchedCleanup = () => {
     stopBots();
     clueController?.stop();
+    local.roomSocket?.close();
     window.removeEventListener("resize", applyBoardScale);
   };
 
   renderRacers();
   renderMyBoard();
+  if (ctx.api.configured()) {
+    local.roomSocket = createRoomSocket({
+      url: ctx.api.wsUrl(room.id, you),
+      onMessage: (message) => {
+        if (message.type === "init" || message.type === "room-sync") {
+          if (message.room) {
+            Object.assign(room, message.room);
+            repairCurrentPlayerAliases(room, you);
+            if (!room.racers?.[you]) ensureRacer(room, you);
+            startedAtMs = timestampMs(room.startedAt) ?? startedAtMs;
+            local.selectedId = null;
+            local.boardBox = null;
+            local.fixedBoardBox = null;
+            ctx.persist();
+            renderRacers();
+            renderMyBoard();
+            if (room.completedAt) finishRace();
+          }
+          return;
+        }
+        if (message.type === "race-cleared") {
+          room.players = message.players || room.players;
+          room.startedPlayers = message.startedPlayers || room.startedPlayers;
+          room.pairsCleared = message.pairsCleared || room.pairsCleared;
+          room.streaks = message.streaks || room.streaks;
+          room.peakStreaks = message.peakStreaks || room.peakStreaks;
+          if (message.startedAt) {
+            room.startedAt = message.startedAt;
+            startedAtMs = timestampMs(message.startedAt) ?? startedAtMs;
+          }
+          if (message.user === you) {
+            const result = clearPair(room.racers[you].tiles, message.idA, message.idB);
+            if (result) room.racers[you].tiles = result.tiles;
+            local.selectedId = null;
+            renderMyBoard();
+          }
+          room.state.state = message.completed ? "completed" : "in_progress";
+          if (message.completedAt) room.completedAt = message.completedAt;
+          ctx.persist();
+          renderRacers();
+          if (message.completed) finishRace();
+          return;
+        }
+        if (message.type === "room-deleted") ctx.navigate("home");
+      },
+    });
+  }
   clueController = createIdleClueController({
     enabled: ctx.state.settings.provideClues && room.hintsAllowed,
     getTiles: () => room.racers[you].tiles,

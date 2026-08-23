@@ -265,6 +265,35 @@ export class RoomDO {
     return room;
   }
 
+  async reconcileRaceSnapshot(roomId) {
+    if (this.room?.mode !== "race" || !roomId) return;
+    const snapshot = await getRoom(this.env.DB, roomId);
+    if (!snapshot) return;
+    this.room.racers = this.room.racers || {};
+    for (const [name, racer] of Object.entries(snapshot.racers || {})) {
+      const current = this.room.racers[name];
+      if (!current || (racer?.tiles?.length ?? Infinity) < (current?.tiles?.length ?? Infinity)) {
+        this.room.racers[name] = racer;
+      }
+    }
+    this.room.players = [...new Set([...(this.room.players || []), ...(snapshot.players || [])])];
+    this.room.startedPlayers = [...new Set([...(this.room.startedPlayers || []), ...(snapshot.startedPlayers || [])])];
+    for (const [name, count] of Object.entries(snapshot.pairsCleared || {})) {
+      this.room.pairsCleared[name] = Math.max(this.room.pairsCleared[name] || 0, Number(count) || 0);
+    }
+    if ((snapshot.state?.matchLog?.length || 0) > (this.room.state?.matchLog?.length || 0)) {
+      this.room.state.matchLog = snapshot.state.matchLog;
+    }
+    this.room.startedAt = this.room.startedAt || snapshot.startedAt;
+    if (snapshot.completedAt) {
+      this.room.completedAt = snapshot.completedAt;
+      this.room.state.state = "completed";
+    } else if (snapshot.state?.state === "in_progress") {
+      this.room.state.state = "in_progress";
+    }
+    await this.state.storage.put("room", this.room);
+  }
+
   async fetch(request) {
     const url = new URL(request.url);
 
@@ -296,6 +325,7 @@ export class RoomDO {
     const roomId = url.pathname.match(/^\/room\/([a-zA-Z0-9_-]+)\/connect$/)?.[1];
     await this.ensureRoom(roomId);
     if (!this.room) return new Response("room not found", { status: 404 });
+    await this.reconcileRaceSnapshot(roomId);
 
     const user = url.searchParams.get("user") || "";
     if (!isActualPlayerName(user)) return new Response("invalid user", { status: 400 });
@@ -355,7 +385,50 @@ export class RoomDO {
     const user = this.room.botNames?.includes(requestedUser) ? requestedUser : metadata?.user || "anonymous";
     if (metadata?.spectator && msg.type !== "reaction") return; // spectators watch only
 
-    if (msg.type === "clear-pair") {
+    if (msg.type === "race-clear-pair") {
+      if (this.room.mode !== "race") return;
+      this.room.racers = this.room.racers || {};
+      if (!this.room.racers[user]) {
+        const seedOffset = Object.keys(this.room.racers).length * 104729;
+        this.room.racers[user] = { tiles: generateBoard(this.room.layoutId, this.room.state.seed + seedOffset) };
+      }
+      const racer = this.room.racers[user];
+      const { idA, idB } = msg;
+      const a = racer.tiles.find((tile) => tile.id === idA);
+      const b = racer.tiles.find((tile) => tile.id === idB);
+      if (!a || !b || a.face.id !== b.face.id || !isFree(a, racer.tiles) || !isFree(b, racer.tiles)) {
+        this.sendTo(socket, { type: "room-sync", room: this.room, presence: this.presenceList() });
+        return;
+      }
+
+      const clearedAt = Date.now();
+      if (!(this.room.state.matchLog || []).length) this.room.startedAt = this.room.startedAt || clearedAt;
+      if (!this.room.players.includes(user)) this.room.players.push(user);
+      this.room.startedPlayers = this.room.startedPlayers || [];
+      if (!this.room.startedPlayers.includes(user)) this.room.startedPlayers.push(user);
+      racer.tiles = racer.tiles.filter((tile) => tile.id !== idA && tile.id !== idB);
+      this.room.pairsCleared[user] = (this.room.pairsCleared[user] || 0) + 1;
+      this.room.streaks[user] = (this.room.streaks[user] || 0) + 1;
+      this.room.peakStreaks = this.room.peakStreaks || {};
+      this.room.peakStreaks[user] = Math.max(this.room.peakStreaks[user] || 0, this.room.streaks[user]);
+      this.room.state.state = "in_progress";
+      this.room.state.matchLog = [...(this.room.state.matchLog || []), { user, at: clearedAt }].slice(-200);
+
+      const isComplete = racer.tiles.length === 0;
+      if (isComplete && !this.room.completedAt) {
+        this.room.completedAt = new Date().toISOString();
+        this.room.state.state = "completed";
+      }
+      this.broadcast({
+        type: "race-cleared", idA, idB, user, at: clearedAt,
+        startedAt: this.room.startedAt,
+        players: this.room.players, startedPlayers: this.room.startedPlayers,
+        pairsCleared: this.room.pairsCleared, streaks: this.room.streaks,
+        peakStreaks: this.room.peakStreaks, remaining: racer.tiles.length,
+        completed: isComplete, completedAt: this.room.completedAt || null,
+      }, null);
+      await this.persist(isComplete);
+    } else if (msg.type === "clear-pair") {
       const { idA, idB } = msg;
       const tiles = this.room.state.tiles;
       const a = tiles.find((t) => t.id === idA);
@@ -450,6 +523,7 @@ export class RoomDO {
     room.streaks = this.room.streaks;
     room.peakStreaks = this.room.peakStreaks || {};
     room.assistsUsed = this.room.assistsUsed;
+    room.racers = this.room.racers;
     if (completed) {
       room.completedAt = this.room.completedAt || room.completedAt || new Date().toISOString();
       room.state.state = "completed";
