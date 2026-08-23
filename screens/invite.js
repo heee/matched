@@ -32,6 +32,24 @@ export function renderInvite(root, ctx, params = {}) {
   if (!room) { ctx.navigate("home"); return; }
   const link = roomInviteUrl(room.id);
   let pickerSeat = null; // which open seat index currently shows the invite picker
+  let refreshInFlight = false;
+  let renderSeats = null;
+
+  async function refreshJoinedPlayers() {
+    if (refreshInFlight || !root.isConnected) return;
+    refreshInFlight = true;
+    try {
+      const freshRoom = await ctx.refreshRoom(room.id);
+      if (!freshRoom || !root.isConnected) return;
+      room = freshRoom;
+      renderSeats?.();
+    } catch {
+      // Keep the locally cached seats usable while offline; the next tick,
+      // focus event, or visit to this screen will try again.
+    } finally {
+      refreshInFlight = false;
+    }
+  }
 
   root.appendChild(el("div", { class: "bg-flat", style: "flex:1;display:flex;flex-direction:column" }, [
     (() => {
@@ -84,7 +102,7 @@ export function renderInvite(root, ctx, params = {}) {
           pickerPanel.appendChild(cancel);
         }
 
-        function renderSeats() {
+        renderSeats = function renderSeats() {
           seatRow.innerHTML = "";
           const you = el("div", { style: "flex:1;padding:11px 6px;border-radius:13px;background:rgba(255,255,255,.06);display:flex;flex-direction:column;align-items:center;gap:6px" });
           you.appendChild(avatarDot(ctx.state.currentUser, 0, 32));
@@ -121,16 +139,12 @@ export function renderInvite(root, ctx, params = {}) {
             }
           }
           renderPicker();
-        }
+        };
         renderSeats();
         ctx.refreshUsers().then(() => {
           if (root.isConnected) renderSeats();
         }).catch(() => {});
-        ctx.refreshRoom(room.id).then((freshRoom) => {
-          if (!freshRoom || !root.isConnected) return;
-          room = freshRoom;
-          renderSeats();
-        }).catch(() => {});
+        refreshJoinedPlayers();
       }
 
       const actionRow = el("div", { style: "display:flex;gap:10px;margin-top:16px" });
@@ -168,4 +182,14 @@ export function renderInvite(root, ctx, params = {}) {
       return sheet;
     })(),
   ]));
+
+  const refreshTimer = window.setInterval(refreshJoinedPlayers, 5000);
+  const refreshWhenVisible = () => {
+    if (document.visibilityState === "visible") refreshJoinedPlayers();
+  };
+  document.addEventListener("visibilitychange", refreshWhenVisible);
+  window.__matchedCleanup = () => {
+    window.clearInterval(refreshTimer);
+    document.removeEventListener("visibilitychange", refreshWhenVisible);
+  };
 }
