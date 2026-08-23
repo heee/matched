@@ -7,6 +7,7 @@ structure, and copy; its `#1f` board is a working reference implementation
 of the game engine and was ported into `game/mahjong.js`).
 
 - **Minimize dialogue.** Keep responses terse — critical messages and summaries only, no play-by-play narration.
+- **Deploy without asking.** After committing a fix/feature to `master`, push to `origin master` immediately — don't pause for confirmation first. This is client-only (GitHub Pages auto-deploys from `master`); it does NOT cover `worker/index.js`, which still needs the manual Cloudflare dashboard paste described below.
 - **Worker deployment:** no wrangler (Windows ARM64 has no `workerd` build) and no Cloudflare API token in this environment. `worker/index.js` is deployed manually by pasting into the Cloudflare dashboard's Quick Edit — it deliberately has no imports outside itself. Run `npm run validate-worker` before pasting. See `scripts/deploy-worker.cjs` for the full manual checklist (create D1 database, apply `migrations/0001_initial.sql`, bind `DB`/`ROOM`, set `APP_KEY`/`ALLOWED_ORIGIN`).
 - Before any preview check: unregister service workers + clear caches, then reload.
 - Bump `sw.js`'s `CACHE_NAME` on every shipped change.
