@@ -6,7 +6,7 @@ import { el, avatarDot, supportsHaptics } from "./shared-ui.js?v=41";
 import { tierForPoints, nextTier, pointsToNextTier, TIER_UNLOCKS, TIERS, nextCosmeticUnlock, cosmeticUnlockEvents } from "../game/scoring.js";
 import { MATERIALS, equippedMaterialName } from "../game/materials.js";
 import { FELTS, equippedFeltName } from "../game/felts.js";
-import { roomElapsedSeconds } from "../game/ranking.js?v=42";
+import { roomElapsedSeconds } from "../game/ranking.js?v=43";
 
 const ICON_SWITCH_PLAYER = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>`;
 

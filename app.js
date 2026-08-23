@@ -11,12 +11,12 @@ import { equippedFeltName, feltCssVars } from "./game/felts.js?v=39";
 import { roomHasProgress, shouldAbandonRoomOnExit } from "./game/room-lists.js?v=2";
 
 import { renderNameEntry } from "./screens/name-entry.js?v=41";
-import { renderHome } from "./screens/home.js?v=54";
+import { renderHome } from "./screens/home.js?v=55";
 import { renderPlayCatalog } from "./screens/play-catalog.js?v=41";
 import { renderRoomSetup } from "./screens/room-setup.js?v=43";
-import { renderRanking } from "./screens/ranking.js?v=43";
+import { renderRanking } from "./screens/ranking.js?v=44";
 import { renderHeadToHead } from "./screens/head-to-head.js?v=1";
-import { renderProfile } from "./screens/profile.js?v=44";
+import { renderProfile } from "./screens/profile.js?v=45";
 import { renderManagePlayers } from "./screens/manage-players.js?v=38";
 import { renderBoard } from "./screens/board.js?v=54";
 import { renderRaceBoard } from "./screens/race-board.js?v=46";
@@ -454,10 +454,11 @@ if (workerApi.configured()) {
   workerApi.fetchData().then((data) => {
     state.store = mergeSharedData(state.store, data);
     saveStore(state.store);
-    // The name-entry picker builds its list synchronously from state.store,
-    // so if this resolves after it's already on screen, re-render to show
-    // the profiles that just came in.
-    if (state.screen === "name-entry") render();
+    // These screens build their lists and statistics synchronously from the
+    // local cache. Redraw them when the authoritative snapshot arrives so a
+    // room that progressed on another device moves out of "Waiting" and its
+    // joined players and statistics appear without requiring a reload.
+    if (["name-entry", "home", "profile", "ranking", "continue-playing", "open-rooms"].includes(state.screen)) render();
   }).catch(() => {});
 }
 

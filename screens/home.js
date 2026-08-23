@@ -262,12 +262,13 @@ function dailyOverviewCard(ctx) {
 export function continueRow(ctx, room) {
   const remaining = room.state.tiles.length;
   const pct = boardCompletion(room.tileCount, remaining);
+  const modeLabel = room.mode === "race" ? "Race" : room.mode === "solo" ? "Solo" : "Shared";
   const row = el("div", { style: "display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07);cursor:pointer" });
   row.addEventListener("click", () => ctx.navigate(room.mode === "race" ? "race-board" : "board", { roomId: room.id }));
   row.appendChild(modeIcon(room.mode));
   const info = el("div", { style: "flex:1;min-width:0" });
   info.appendChild(el("div", { style: "font:600 14.5px Figtree,sans-serif;color:#f6f1e4", text: room.title }));
-  info.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:2px", text: `${room.mode === "race" ? "Race" : "Shared"} · ${pct}% cleared` }));
+  info.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:2px", text: `${modeLabel} · ${pct}% cleared` }));
   info.appendChild(el("div", { class: "progress-thin", style: "margin-top:7px", html: `<div style="width:${pct}%"></div>` }));
   row.appendChild(info);
   const otherIdx = room.players.findIndex((p) => p !== ctx.state.currentUser);
@@ -276,12 +277,18 @@ export function continueRow(ctx, room) {
 }
 
 function waitingRow(ctx, room) {
+  const bots = new Set(room.botNames || []);
+  const otherPlayers = (room.players || []).filter((name) => name !== ctx.state.currentUser && !bots.has(name));
   const row = el("div", { style: "display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07)" });
   row.appendChild(modeIcon(room.mode));
   const info = el("div", { style: "flex:1;min-width:0" });
   info.appendChild(el("div", { style: "font:600 14.5px Figtree,sans-serif;color:#f6f1e4", text: room.title }));
-  info.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:2px", text: "Waiting for players" }));
+  info.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:2px", text: otherPlayers.length ? `${otherPlayers.join(", ")} joined` : "Waiting for players" }));
   row.appendChild(info);
+  if (otherPlayers.length) {
+    const seat = Math.max(0, room.players.indexOf(otherPlayers[0]));
+    row.appendChild(avatarDot(otherPlayers[0], seat, 26));
+  }
   row.appendChild(el("button", {
     class: "btn",
     style: "background:none;border:none;font:600 12px Figtree,sans-serif;color:rgba(246,241,228,.55);padding:4px;height:auto",

@@ -22,11 +22,27 @@ function timestampMs(value) {
 }
 
 export function roomElapsedSeconds(room) {
+  const completedMs = timestampMs(room?.completedAt);
+  // Multiplayer rooms can sit on the invite screen long before play. Older
+  // clients persisted that waiting as elapsed board time. A shared board is
+  // timed from its first match; for races, repair only clearly impossible
+  // legacy values so valid pre-first-match race time remains counted.
+  if ((room?.mode === "shared" || room?.mode === "race") && completedMs != null) {
+    const firstMatchMs = (room?.state?.matchLog || [])
+      .map((match) => timestampMs(match?.at))
+      .find((at) => at != null);
+    if (firstMatchMs != null && completedMs >= firstMatchMs) {
+      const eventElapsedMs = completedMs - firstMatchMs;
+      const storedElapsedMs = Number(room?.elapsedMs);
+      if (room.mode === "shared" || !Number.isFinite(storedElapsedMs) || storedElapsedMs > eventElapsedMs + 10 * 60 * 1000) {
+        return Math.max(1, Math.round(eventElapsedMs / 1000));
+      }
+    }
+  }
   const elapsedMs = Number(room?.elapsedMs);
   if (Number.isFinite(elapsedMs) && elapsedMs > 0) {
     return Math.max(1, Math.round(elapsedMs / 1000));
   }
-  const completedMs = timestampMs(room?.completedAt);
   // A room can sit open for days before anyone starts playing. Treating
   // createdAt as the start time turns that idle period into a bogus board
   // duration, so legacy rooms without an explicit start remain untimed.

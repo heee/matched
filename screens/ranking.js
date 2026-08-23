@@ -2,7 +2,7 @@
 // control, gold highlight for the current user. See design-reference #1k.
 
 import { el, avatarDot } from "./shared-ui.js";
-import { RANKING_METRICS, aggregateRankings, rankingMetricValue } from "../game/ranking.js?v=42";
+import { RANKING_METRICS, aggregateRankings, rankingMetricValue } from "../game/ranking.js?v=43";
 
 const PERIODS = ["Today", "Week", "Month", "All time"];
 

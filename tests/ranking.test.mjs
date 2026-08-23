@@ -89,6 +89,29 @@ test("explicit elapsed duration wins over inconsistent stored timestamps", () =>
   }), 90);
 });
 
+test("shared board timing excludes time spent waiting before the first match", () => {
+  assert.equal(roomElapsedSeconds({
+    mode: "shared",
+    startedAt: "2026-08-22T08:00:00.000Z",
+    completedAt: "2026-08-22T18:05:00.000Z",
+    elapsedMs: 36300000,
+    state: { matchLog: [
+      { user: "A", at: "2026-08-22T18:00:00.000Z" },
+      { user: "B", at: "2026-08-22T18:05:00.000Z" },
+    ] },
+  }), 300);
+});
+
+test("legacy race timing repairs hours of invite waiting without discarding valid setup time", () => {
+  const room = {
+    mode: "race",
+    completedAt: "2026-08-22T18:05:00.000Z",
+    state: { matchLog: [{ user: "A", at: "2026-08-22T18:02:30.000Z" }] },
+  };
+  assert.equal(roomElapsedSeconds({ ...room, elapsedMs: 20300000 }), 150);
+  assert.equal(roomElapsedSeconds({ ...room, elapsedMs: 210000 }), 210);
+});
+
 test("legacy completed rooms without a real start remain untimed", () => {
   assert.equal(roomElapsedSeconds({
     createdAt: "2026-08-22T17:57:26.000Z",
