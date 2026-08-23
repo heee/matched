@@ -19,9 +19,9 @@ test("fixed tab bar stays outside the scrolling app shell", () => {
 test("iPad mini tablet shell fills the viewport without side gutters", () => {
   const tabletRules = css.slice(css.indexOf("@media (min-width: 744px)"));
 
-  assert.match(tabletRules, /#app\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*960px;/);
-  assert.match(tabletRules, /\.tab-bar\s*\{[^}]*max-width:\s*960px;/);
-  assert.doesNotMatch(tabletRules, /94vw/);
+  assert.match(tabletRules, /#app\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*none;/);
+  assert.match(tabletRules, /\.tab-bar\s*\{[^}]*max-width:\s*none;/);
+  assert.doesNotMatch(tabletRules, /94vw|960px/);
 });
 
 test("player picker centers equal-width cards in two-column rows", () => {

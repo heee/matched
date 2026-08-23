@@ -683,11 +683,10 @@ a { color: var(--gold); }
    Matches TABLET_MIN_WIDTH in screens/shared-ui.js — keep both in sync.
    744px (not 768px) so iPad mini's 744pt portrait CSS viewport qualifies. */
 @media (min-width: 744px) {
-  /* Fill narrow tablet viewports instead of exposing the body background as
-     side gutters. #app and .tab-bar must keep the same cap or the tab bar
-     drifts out from under the content above it. */
-  #app { width: 100%; max-width: 960px; }
-  .tab-bar { max-width: 960px; }
+  /* The shell itself stays full-bleed on tablets in either orientation;
+     individual screen content is constrained by its own layout wrappers. */
+  #app { width: 100%; max-width: none; }
+  .tab-bar { max-width: none; }
   .sheet { max-width: min(90vw, 560px); }
 
   .row-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
