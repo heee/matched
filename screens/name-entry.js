@@ -13,8 +13,8 @@ export function renderNameEntry(root, ctx) {
     class: "matching-tiles-mark",
     src: "./icons/matched-tiles.png",
     alt: "Two matching mahjong tiles",
-    width: "88",
-    height: "56",
+    width: "176",
+    height: "112",
   }));
 
   wrap.appendChild(el("div", { class: "wordmark", text: "Matched" }));

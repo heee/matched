@@ -609,7 +609,7 @@ a { color: var(--gold); }
   justify-content: center; padding: 28px 24px; gap: 14px; text-align: center;
 }
 .matching-tiles-mark {
-  width: 88px; height: 56px;
+  width: 176px; height: 112px;
   display: block; object-fit: contain; margin-bottom: 4px;
 }
 .name-entry .wordmark { font-size: 30px; }
