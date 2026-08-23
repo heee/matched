@@ -1,12 +1,16 @@
-// Matched — Invite sheet. Copyable link, a seat grid showing bots already
-// picked in room-setup plus open seats you can invite a registered user
-// into, "Share invite" hands off to the OS share sheet. See
+// Matched — Invite sheet. A seat grid shows bots already picked in room-setup
+// plus open seats you can invite a registered user into. "Share invite"
+// hands off to the OS share sheet. See
 // docs/design-reference.html #1n.
 
 import { el, avatarDot, roomInviteUrl } from "./shared-ui.js";
 import { newBoardShareMessage } from "../game/share-messages.js";
 
 const TOTAL_SEATS = 4; // you + up to 3 others, matching room-setup's bot-seat count
+
+// Stroke-only action icons, following the app's Lucide-style icon convention.
+const ICON_SHARE = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg>`;
+const ICON_ENTER = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5M15 12H3"/></svg>`;
 
 function sendInvite(ctx, room, toUser) {
   ctx.state.store.invites = ctx.state.store.invites || [];
@@ -40,17 +44,6 @@ export function renderInvite(root, ctx, params = {}) {
       sheet.appendChild(el("div", { class: "sheet-handle" }));
       sheet.appendChild(el("div", { class: "title-serif", style: "font-size:26px", text: "Bring your people" }));
       sheet.appendChild(el("div", { style: "font:13.5px/1.5 Figtree,sans-serif;color:rgba(246,241,228,.6);margin-top:7px", text: "Anyone with the link can jump in. Their seat is claimed when they clear their first pair." }));
-
-      const copyRow = el("div", { class: "link-copy", style: "margin-top:16px" });
-      copyRow.appendChild(el("code", { text: link }));
-      const copyBtn = el("button", { text: "Copy" });
-      copyBtn.addEventListener("click", () => {
-        navigator.clipboard?.writeText(link).catch(() => {});
-        copyBtn.textContent = "Copied";
-        setTimeout(() => { copyBtn.textContent = "Copy"; }, 1400);
-      });
-      copyRow.appendChild(copyBtn);
-      sheet.appendChild(copyRow);
 
       // Solo rooms have nobody to bring in — skip the seat grid entirely.
       if (room.mode !== "solo") {
@@ -131,7 +124,12 @@ export function renderInvite(root, ctx, params = {}) {
         }).catch(() => {});
       }
 
-      const shareBtn = el("button", { class: "btn btn-primary btn-lg", style: "width:100%;margin-top:16px", text: "Share invite" });
+      const actionRow = el("div", { style: "display:flex;gap:10px;margin-top:16px" });
+      const shareBtn = el("button", {
+        class: "btn btn-primary btn-lg",
+        style: "flex:1;min-width:0;gap:8px",
+        html: `${ICON_SHARE}<span>Share invite</span>`,
+      });
       shareBtn.addEventListener("click", async () => {
         const message = newBoardShareMessage({
           inviter: ctx.state.currentUser,
@@ -147,11 +145,16 @@ export function renderInvite(root, ctx, params = {}) {
           ctx.toast("Invite copied");
         }
       });
-      sheet.appendChild(shareBtn);
+      actionRow.appendChild(shareBtn);
 
-      const enterBtn = el("button", { class: "btn btn-outline btn-lg", style: "width:100%;margin-top:10px", text: "Enter room" });
+      const enterBtn = el("button", {
+        class: "btn btn-outline btn-lg",
+        style: "flex:1;min-width:0;gap:8px",
+        html: `${ICON_ENTER}<span>Enter room</span>`,
+      });
       enterBtn.addEventListener("click", () => ctx.navigate(room.mode === "race" ? "race-board" : "board", { roomId: room.id }));
-      sheet.appendChild(enterBtn);
+      actionRow.appendChild(enterBtn);
+      sheet.appendChild(actionRow);
 
       return sheet;
     })(),
