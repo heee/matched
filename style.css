@@ -628,10 +628,11 @@ a { color: var(--gold); }
 .name-entry .wordmark { font-size: 30px; }
 
 .profile-picker-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 320px;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 100%; max-width: 320px;
   max-height: 34vh; overflow-y: auto; margin-top: 6px;
 }
 .profile-card {
+  width: calc(50% - 5px);
   background: var(--glass); border: 1.5px solid var(--glass-border); border-radius: 14px;
   padding: 9px 10px; display: flex; align-items: center; gap: 8px; cursor: pointer;
 }
@@ -641,14 +642,10 @@ a { color: var(--gold); }
 }
 .profile-card-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 12px var(--font-ui); color: var(--text); }
 .profile-card.new-player {
-  grid-column: 1 / -1; justify-self: center; width: calc(50% - 5px);
   background: transparent; box-shadow: none; border: 1.5px dashed rgba(246,241,228,.3);
 }
 .profile-card.new-player .profile-card-avatar { background: rgba(255,255,255,.08); color: var(--text-dim); font-size: 18px; }
 .profile-card.new-player .profile-card-name { color: var(--text-dim); font-weight: 500; }
-.profile-picker-grid.single-user .profile-card.new-player {
-  grid-column: auto; justify-self: stretch; width: auto;
-}
 
 .new-player-form { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 4px; width: 100%; max-width: 280px; }
 .new-player-form input {
@@ -686,10 +683,11 @@ a { color: var(--gold); }
    Matches TABLET_MIN_WIDTH in screens/shared-ui.js — keep both in sync.
    744px (not 768px) so iPad mini's 744pt portrait CSS viewport qualifies. */
 @media (min-width: 744px) {
-  /* #app and .tab-bar must share the same max-width or the tab bar drifts
-     out from under the content above it. */
-  #app { max-width: min(94vw, 960px); }
-  .tab-bar { max-width: min(94vw, 960px); }
+  /* Fill narrow tablet viewports instead of exposing the body background as
+     side gutters. #app and .tab-bar must keep the same cap or the tab bar
+     drifts out from under the content above it. */
+  #app { width: 100%; max-width: 960px; }
+  .tab-bar { max-width: 960px; }
   .sheet { max-width: min(90vw, 560px); }
 
   .row-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
@@ -697,7 +695,9 @@ a { color: var(--gold); }
 
   .hero-wrap { max-width: 640px; margin-left: auto; margin-right: auto; }
 
-  .profile-picker-grid { grid-template-columns: repeat(3, 1fr); max-width: 560px; }
+  /* The two-column flex layout keeps every card the same width and centers
+     partial rows for any number of saved players. */
+  .profile-picker-grid { max-width: 560px; }
   .cosmetic-grid { grid-template-columns: repeat(3, 1fr); }
   .stat-grid { grid-template-columns: repeat(4, 1fr); }
 }
