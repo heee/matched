@@ -34,7 +34,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
     ctx.persist();
   }
 
-  const local = { selectedId: null, lastStandingLeader: null, tileEls: new Map() };
+  const local = { selectedId: null, lastStandingLeader: null, tileEls: new Map(), boardBox: null, fixedBoardBox: null };
   let clueController = null;
   root.classList.add("bg-felt");
   root.style.cssText += feltCssVars(equippedFeltName(ctx.state.points, ctx.state.equipped));
@@ -55,7 +55,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
   const boardArea = el("div", { style: "flex:1;display:flex;align-items:center;justify-content:center;position:relative;min-height:0" });
   const boardViewport = el("div", { style: "position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center" });
   const material = equippedMaterialName(ctx.state.points, ctx.state.equipped);
-  const boardWrap = el("div", { class: "board-wrap", style: `position:relative;${materialCssVars(material)}` });
+  const boardWrap = el("div", { class: `board-wrap${ctx.state.settings.autoResizeBoard ? " auto-resize" : ""}`, style: `position:relative;${materialCssVars(material)}` });
   boardViewport.appendChild(boardWrap);
   boardArea.appendChild(boardViewport);
   root.appendChild(boardArea);
@@ -99,7 +99,8 @@ export function renderRaceBoard(root, ctx, params = {}) {
   // tilePixelBox for why the old worst-case-width formula left the board
   // sitting left-anchored inside an over-sized box.
   function tilePixelBox(tiles) {
-    let minPx = 0, maxPx = 0, minPy = 0, maxPy = 0;
+    if (tiles.length === 0) return { width: 0, height: 0, padLeft: 0, padTop: 0 };
+    let minPx = Infinity, maxPx = -Infinity, minPy = Infinity, maxPy = -Infinity;
     for (const t of tiles) {
       const px = t.x * STEP_X + t.z * LAYER_OFFSET;
       const py = t.y * STEP_Y - t.z * LAYER_OFFSET;
@@ -112,7 +113,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
   const BOARD_FILL = 0.85;
   const BOARD_MAX_SCALE = 1.9;
   function applyBoardScale() {
-    const box = tilePixelBox(room.racers[you].tiles);
+    const box = local.boardBox || tilePixelBox(room.racers[you].tiles);
     if (box.width === 0 || box.height === 0) return;
     const scale = Math.min((boardArea.clientWidth * BOARD_FILL) / box.width, (boardArea.clientHeight * BOARD_FILL) / box.height, BOARD_MAX_SCALE);
     boardWrap.style.transform = `scale(${scale})`;
@@ -126,7 +127,8 @@ export function renderRaceBoard(root, ctx, params = {}) {
     const mine = room.racers[you];
     const tiles = mine.tiles;
     const free = new Set(freeTiles(tiles).map((t) => t.id));
-    const box = tilePixelBox(tiles);
+    local.fixedBoardBox ||= tilePixelBox(tiles);
+    const box = local.boardBox = ctx.state.settings.autoResizeBoard ? tilePixelBox(tiles) : local.fixedBoardBox;
     boardWrap.style.width = `${box.width}px`;
     boardWrap.style.height = `${box.height}px`;
     applyBoardScale();

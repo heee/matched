@@ -703,6 +703,6 @@ a { color: var(--gold); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tile, .toast, .reaction-float, .match-flight { animation: none !important; transition: none !important; }
+  .board-wrap, .tile, .toast, .reaction-float, .match-flight { animation: none !important; transition: none !important; }
   .match-flight { display: none; }
 }

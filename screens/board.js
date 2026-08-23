@@ -63,6 +63,8 @@ export function renderBoard(root, ctx, params = {}) {
     roomSocket: null,
     presencePlayers: [],
     finished: false,
+    boardBox: null,
+    fixedBoardBox: null,
   };
   let clueController = null;
 
@@ -90,7 +92,7 @@ export function renderBoard(root, ctx, params = {}) {
   // every tile under this wrapper inherits them, so switching material
   // doesn't touch per-tile styling.
   const material = equippedMaterialName(ctx.state.points, ctx.state.equipped);
-  const boardWrap = el("div", { class: "board-wrap", style: `position:relative;${materialCssVars(material)}` });
+  const boardWrap = el("div", { class: `board-wrap${ctx.state.settings.autoResizeBoard ? " auto-resize" : ""}`, style: `position:relative;${materialCssVars(material)}` });
   boardViewport.appendChild(boardWrap);
   boardArea.appendChild(boardViewport);
   const toastEl = el("div", { class: "toast" });
@@ -213,7 +215,8 @@ export function renderBoard(root, ctx, params = {}) {
   // width/height formula) left real content sitting left/top-anchored
   // inside an over-sized box with all the slack on the right/bottom.
   function tilePixelBox(tiles) {
-    let minPx = 0, maxPx = 0, minPy = 0, maxPy = 0;
+    if (tiles.length === 0) return { width: 0, height: 0, padLeft: 0, padTop: 0 };
+    let minPx = Infinity, maxPx = -Infinity, minPy = Infinity, maxPy = -Infinity;
     for (const t of tiles) {
       const px = t.x * STEP_X + t.z * LAYER_OFFSET;
       const py = t.y * STEP_Y - t.z * LAYER_OFFSET;
@@ -238,8 +241,6 @@ export function renderBoard(root, ctx, params = {}) {
   const BOARD_FILL = 0.85;
   const BOARD_MAX_SCALE = 1.9;
   function applyBoardScale() {
-    // Uses the cached full-board box, not the live (shrinking) tile set —
-    // see syncBoardTiles for why recomputing per-clear causes a stutter.
     const box = local.boardBox || tilePixelBox(room.state.tiles);
     if (box.width === 0 || box.height === 0) return;
     const availW = boardArea.clientWidth * BOARD_FILL;
@@ -251,9 +252,8 @@ export function renderBoard(root, ctx, params = {}) {
   function renderBoardTiles() {
     const tiles = room.state.tiles;
     const free = new Set(freeTiles(tiles).map((t) => t.id));
-    // Cached so syncBoardTiles (per-clear) doesn't recompute it from the
-    // shrinking tile set — see syncBoardTiles for why that matters.
-    const box = local.boardBox = tilePixelBox(tiles);
+    local.fixedBoardBox ||= tilePixelBox(tiles);
+    const box = local.boardBox = ctx.state.settings.autoResizeBoard ? tilePixelBox(tiles) : local.fixedBoardBox;
     boardWrap.style.width = `${box.width}px`;
     boardWrap.style.height = `${box.height}px`;
     applyBoardScale();
@@ -283,14 +283,9 @@ export function renderBoard(root, ctx, params = {}) {
 
   // Keeps the existing tile nodes after a clear. Rebuilding the whole board
   // here used to restart every surviving tile's entrance animation while the
-  // two tray clones were also moving, which caused a visible hitch. Only
-  // free-state classes can change after a clear; positions and scale cannot.
-  //
-  // Box is the cached one from the last full render, NOT recomputed from
-  // the post-clear tile set: recomputing here shrank the bounding box
-  // whenever a cleared pair sat on its edge, which shifted padLeft/padTop
-  // (and boardWrap's size, feeding applyBoardScale) and snapped every
-  // surviving tile to a new position on every single match — the stutter.
+  // two tray clones were also moving, which caused a visible hitch. With
+  // automatic resizing enabled, surviving nodes smoothly move into the
+  // remaining tiles' live bounds instead of being destroyed and recreated.
   function syncBoardTiles(removedIds = []) {
     for (const id of removedIds) {
       local.tileEls.get(id)?.remove();
@@ -298,6 +293,18 @@ export function renderBoard(root, ctx, params = {}) {
     }
 
     const tiles = room.state.tiles;
+    if (ctx.state.settings.autoResizeBoard && tiles.length > 0) {
+      const box = local.boardBox = tilePixelBox(tiles);
+      boardWrap.style.width = `${box.width}px`;
+      boardWrap.style.height = `${box.height}px`;
+      for (const t of tiles) {
+        const tileEl = local.tileEls.get(t.id);
+        if (!tileEl) continue;
+        tileEl.style.left = `${t.x * STEP_X + t.z * LAYER_OFFSET + box.padLeft}px`;
+        tileEl.style.top = `${t.y * STEP_Y - t.z * LAYER_OFFSET + box.padTop}px`;
+      }
+      applyBoardScale();
+    }
     const free = new Set(freeTiles(tiles).map((t) => t.id));
     for (const t of tiles) {
       const tileEl = local.tileEls.get(t.id);

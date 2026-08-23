@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mergeSharedData } from "../storage.js";
+import { DEFAULT_SETTINGS, mergeSharedData } from "../storage.js";
+
+test("automatic board resizing is enabled by default", () => {
+  assert.equal(DEFAULT_SETTINGS.autoResizeBoard, true);
+});
 
 function room(completedAt) {
   return { players: ["A"], pairsCleared: { A: completedAt ? 2 : 0 }, state: { tiles: [], tray: [], matchLog: [] }, completedAt };

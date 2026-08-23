@@ -99,6 +99,7 @@ export const LOCAL_KEYS = {
 };
 
 export const DEFAULT_SETTINGS = {
+  autoResizeBoard: true,
   freeTilesGlow: false,
   hintsAllowed: true,
   provideClues: true,

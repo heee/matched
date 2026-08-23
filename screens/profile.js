@@ -209,6 +209,7 @@ export function renderProfile(root, ctx) {
     row.appendChild(t);
     return row;
   };
+  settingsCard.appendChild(toggleRow("Automatically resize board", "autoResizeBoard"));
   settingsCard.appendChild(toggleRow("Free tiles glow", "freeTilesGlow"));
   settingsCard.appendChild(toggleRow("Provide clues", "provideClues"));
   settingsCard.appendChild(toggleRow("Sound", "sound"));
