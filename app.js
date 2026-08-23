@@ -8,7 +8,7 @@ import { createMutationQueue } from "./sync.js?v=41";
 import { el, TAB_DEFS } from "./screens/shared-ui.js?v=41";
 import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.js?v=38";
 import { equippedFeltName, feltCssVars } from "./game/felts.js?v=39";
-import { refreshableRoomsForUser, roomHasProgress, shouldAbandonRoomOnExit } from "./game/room-lists.js?v=3";
+import { missingTrackedRoomIds, refreshableRoomsForUser, roomHasProgress, shouldAbandonRoomOnExit } from "./game/room-lists.js?v=4";
 
 import { renderNameEntry } from "./screens/name-entry.js?v=41";
 import { renderHome } from "./screens/home.js?v=56";
@@ -180,6 +180,11 @@ function refreshRoomLists() {
     const focusedRooms = {};
     for (const result of roomResults) {
       if (result.status === "fulfilled" && result.value?.room) focusedRooms[result.value.room.id] = result.value.room;
+    }
+    for (const roomId of missingTrackedRoomIds(trackedRooms, roomResults)) {
+      delete state.store.rooms[roomId];
+      state.store.invites = (state.store.invites || []).filter((invite) => invite.roomId !== roomId);
+      if (state.activeRoomId === roomId) state.activeRoomId = null;
     }
     state.store = mergeSharedData(state.store, {
       ...openData,

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   continuePlayingRooms,
   hasStartedRoom,
+  missingTrackedRoomIds,
   openRoomsForUser,
   randomRoomSample,
   refreshableRoomsForUser,
@@ -124,4 +125,15 @@ test("home refresh tracks waiting and active rooms relevant to the current playe
   ];
 
   assert.deepEqual(refreshableRoomsForUser(rooms, "Sam").map((item) => item.id), ["created", "joined"]);
+});
+
+test("home refresh retires only tracked rooms authoritatively missing from the server", () => {
+  const tracked = [{ id: "missing" }, { id: "offline" }, { id: "present" }];
+  const results = [
+    { status: "rejected", reason: { status: 404 } },
+    { status: "rejected", reason: { status: 0, code: "network_error" } },
+    { status: "fulfilled", value: { room: { id: "present" } } },
+  ];
+
+  assert.deepEqual(missingTrackedRoomIds(tracked, results), ["missing"]);
 });

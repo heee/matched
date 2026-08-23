@@ -56,6 +56,13 @@ export function refreshableRoomsForUser(rooms, currentUser) {
   );
 }
 
+export function missingTrackedRoomIds(trackedRooms, settledResults) {
+  return trackedRooms.flatMap((room, index) => {
+    const result = settledResults[index];
+    return result?.status === "rejected" && result.reason?.status === 404 ? [room.id] : [];
+  });
+}
+
 export function openRoomsForUser(rooms, users, currentUser) {
   return rooms.filter((room) => {
     const creator = room.createdBy;
