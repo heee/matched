@@ -11,6 +11,7 @@ import { continuePlayingRooms, openRoomsForUser, randomRoomSample, waitingForPla
 import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { completedWeekStats } from "../game/daily-stats.js";
 import { topRegisteredRankings } from "../game/ranking.js";
+import { continueAvatarEntries } from "../game/room-avatars.js?v=1";
 
 function miniSilhouette(layoutId) {
   const layout = LAYOUTS[layoutId];
@@ -271,8 +272,22 @@ export function continueRow(ctx, room) {
   info.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:2px", text: `${modeLabel} · ${pct}% cleared` }));
   info.appendChild(el("div", { class: "progress-thin", style: "margin-top:7px", html: `<div style="width:${pct}%"></div>` }));
   row.appendChild(info);
-  const otherIdx = room.players.findIndex((p) => p !== ctx.state.currentUser);
-  row.appendChild(avatarDot(room.players[otherIdx] || "?", Math.max(otherIdx, 0), 26));
+  const avatarEntries = continueAvatarEntries(room, ctx.state.currentUser);
+  const avatarStack = el("div", {
+    style: "display:flex;align-items:center;flex:none;padding-left:7px",
+    role: "img",
+    "aria-label": avatarEntries.map((entry) => entry.open ? "Open player seat" : entry.name).join(", "),
+  });
+  avatarEntries.forEach((entry, index) => {
+    const avatar = avatarDot(entry.name, entry.seat, 26);
+    avatar.style.marginLeft = index === 0 ? "0" : "-7px";
+    avatar.style.boxShadow = "0 0 0 2px #245b49";
+    avatar.style.position = "relative";
+    avatar.style.zIndex = String(index + 1);
+    avatar.setAttribute("aria-hidden", "true");
+    avatarStack.appendChild(avatar);
+  });
+  row.appendChild(avatarStack);
   return row;
 }
 
