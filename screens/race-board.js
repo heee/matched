@@ -12,7 +12,7 @@ import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { hasStartedRoom } from "../game/room-lists.js?v=2";
 import { equippedFeltName, feltCssVars } from "../game/felts.js";
 import { createIdleClueController } from "./idle-clues.js";
-import { elapsedMsSince, timestampMs } from "../game/time.js";
+import { elapsedMsSince, roomTimerStartMs, timestampMs } from "../game/time.js";
 import { createRoomSocket } from "../sync.js?v=41";
 
 const BOT_INTERVAL_MS = 4200;
@@ -28,9 +28,8 @@ export function renderRaceBoard(root, ctx, params = {}) {
   if (!room.racers || !room.racers[you]) { ensureRacer(room, you); ctx.persist(); }
   if (hasStartedRoom(room, ctx.state.currentUser)) ctx.state.activeRoomId = room.id;
   const totalPairs = room.tileCount / 2;
-  let startedAtMs = timestampMs(room.startedAt);
-  if (startedAtMs == null) {
-    startedAtMs = Date.now();
+  let startedAtMs = roomTimerStartMs(room);
+  if (startedAtMs != null && timestampMs(room.startedAt) !== startedAtMs) {
     room.startedAt = startedAtMs;
     ctx.persist();
   }
@@ -191,6 +190,10 @@ export function renderRaceBoard(root, ctx, params = {}) {
         local.roomSocket.send({ type: "race-clear-pair", idA: firstId, idB: id });
         return;
       }
+      if (startedAtMs == null) {
+        startedAtMs = Date.now();
+        room.startedAt = startedAtMs;
+      }
       mine.tiles = result.tiles;
       room.pairsCleared[you] = (room.pairsCleared[you] || 0) + 1;
       room.state.state = "in_progress";
@@ -243,6 +246,10 @@ export function renderRaceBoard(root, ctx, params = {}) {
       }
       const result = clearPair(racer.tiles, pair[0], pair[1]);
       if (result) {
+        if (startedAtMs == null) {
+          startedAtMs = Date.now();
+          room.startedAt = startedAtMs;
+        }
         racer.tiles = result.tiles;
         room.pairsCleared[bot] = (room.pairsCleared[bot] || 0) + 1;
         room.state.matchLog = [...(room.state.matchLog || []), { user: bot, at: Date.now() }];

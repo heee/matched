@@ -25,3 +25,13 @@ test("shared room clocks start at the first match instead of room creation", () 
   assert.equal(roomTimerStartMs({ mode: "shared", startedAt: 1000, state: { matchLog: [] } }), null);
   assert.equal(roomTimerStartMs({ mode: "solo", startedAt: 1000, state: { matchLog: [] } }), 1000);
 });
+
+test("race room clocks also start at the first match, not invite time", () => {
+  const firstMatchAt = Date.parse("2026-08-23T20:44:21.330Z");
+  assert.equal(roomTimerStartMs({
+    mode: "race",
+    startedAt: Date.parse("2026-08-23T00:39:47.256Z"),
+    state: { matchLog: [{ user: "Christie", at: firstMatchAt }] },
+  }), firstMatchAt);
+  assert.equal(roomTimerStartMs({ mode: "race", startedAt: 1000, state: { matchLog: [] } }), null);
+});
