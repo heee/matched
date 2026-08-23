@@ -2,9 +2,9 @@
 // screens/ and game/; this file wires navigation, the bottom tab bar, and
 // the local-first store, then hands each screen its render call.
 
-import { createWorkerApi } from "./api.js?v=41";
+import { createWorkerApi } from "./api.js?v=42";
 import { createJsonStorage, normalizeSharedData, mergeSharedData, LOCAL_KEYS, DEFAULT_SETTINGS } from "./storage.js?v=43";
-import { createMutationQueue } from "./sync.js?v=40";
+import { createMutationQueue } from "./sync.js?v=41";
 import { el, TAB_DEFS } from "./screens/shared-ui.js?v=41";
 import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.js?v=38";
 import { equippedFeltName, feltCssVars } from "./game/felts.js?v=39";
@@ -13,15 +13,15 @@ import { roomHasProgress, shouldAbandonRoomOnExit } from "./game/room-lists.js?v
 import { renderNameEntry } from "./screens/name-entry.js?v=39";
 import { renderHome } from "./screens/home.js?v=54";
 import { renderPlayCatalog } from "./screens/play-catalog.js?v=41";
-import { renderRoomSetup } from "./screens/room-setup.js?v=42";
+import { renderRoomSetup } from "./screens/room-setup.js?v=43";
 import { renderRanking } from "./screens/ranking.js?v=43";
 import { renderHeadToHead } from "./screens/head-to-head.js?v=1";
 import { renderProfile } from "./screens/profile.js?v=44";
 import { renderManagePlayers } from "./screens/manage-players.js?v=38";
-import { renderBoard } from "./screens/board.js?v=52";
+import { renderBoard } from "./screens/board.js?v=53";
 import { renderRaceBoard } from "./screens/race-board.js?v=46";
 import { renderResults } from "./screens/results.js?v=40";
-import { renderInvite } from "./screens/invite.js?v=39";
+import { renderInvite } from "./screens/invite.js?v=40";
 import { renderDaily } from "./screens/daily.js?v=42";
 import { renderContinuePlaying } from "./screens/continue-playing.js?v=40";
 import { renderOpenRooms } from "./screens/open-rooms.js?v=45";
@@ -158,7 +158,16 @@ const ctx = {
   reportDailyResult,
   abandonRoom,
   refreshAppearance,
+  refreshUsers,
 };
+
+async function refreshUsers() {
+  if (!workerApi.configured()) return state.store.users;
+  const data = await workerApi.fetchUsers();
+  state.store.users = { ...state.store.users, ...(data.users || {}) };
+  persist();
+  return state.store.users;
+}
 
 function abandonRoom(room) {
   if (!room) return;

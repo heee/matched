@@ -15,6 +15,7 @@ import { hasStartedRoom } from "../game/room-lists.js?v=2";
 import { equippedFeltName, feltCssVars } from "../game/felts.js";
 import { createIdleClueController } from "./idle-clues.js";
 import { elapsedMsSince, timestampMs } from "../game/time.js";
+import { createRoomSocket } from "../sync.js?v=41";
 
 const BOT_INTERVAL_MS = 5200;
 const REACTIONS = ["🔥", "😮", "👏", "😂", "😍", "🎉", "💪", "😱", "👍"];
@@ -56,6 +57,9 @@ export function renderBoard(root, ctx, params = {}) {
     comboCount: 0,
     showMoves: false,
     persistTimer: null,
+    roomSocket: null,
+    presencePlayers: [],
+    finished: false,
   };
   let clueController = null;
 
@@ -183,7 +187,7 @@ export function renderBoard(root, ctx, params = {}) {
   // ===================== rendering =====================
 
   function playerList() {
-    return room.players;
+    return [...new Set([...(room.players || []), ...local.presencePlayers])];
   }
 
   function renderScoreCards() {
@@ -395,11 +399,16 @@ export function renderBoard(root, ctx, params = {}) {
 
   function sendReaction(emoji) {
     ctx.announce(`${you} reacted ${emoji}`);
+    local.roomSocket?.send({ type: "reaction", emoji });
   }
 
   // localStorage serializes the whole room synchronously. Delay and coalesce
   // writes so match-flight frames are not blocked by a large JSON write.
   function schedulePersist() {
+    if (local.roomSocket) {
+      ctx.persist();
+      return;
+    }
     clearTimeout(local.persistTimer);
     local.persistTimer = setTimeout(() => {
       local.persistTimer = null;
@@ -407,13 +416,18 @@ export function renderBoard(root, ctx, params = {}) {
     }, 120);
   }
 
-  function performClear(idA, idB, user) {
+  function performClear(idA, idB, user, authoritative = null) {
     const result = clearPair(room.state.tiles, idA, idB);
     if (!result) return false;
+    if (!room.players.includes(user)) room.players.push(user);
+    room.startedPlayers = room.startedPlayers || [];
+    if (!room.startedPlayers.includes(user)) room.startedPlayers.push(user);
+    room.pairsCleared[user] = room.pairsCleared[user] || 0;
+    room.streaks[user] = room.streaks[user] || 0;
     room.state.tiles = result.tiles;
     room.pairsCleared[user] = (room.pairsCleared[user] || 0) + 1;
     room.state.state = "in_progress";
-    if (user === you && room.pairsCleared[user] === 1) {
+    if (user === you && room.pairsCleared[user] === 1 && !local.roomSocket) {
       ctx.commitRoomMembership(room);
     }
     for (const name of Object.keys(room.streaks)) room.streaks[name] = name === user ? (room.streaks[name] || 0) + 1 : 0;
@@ -423,9 +437,14 @@ export function renderBoard(root, ctx, params = {}) {
     // before the board finished.
     room.peakStreaks = room.peakStreaks || {};
     room.peakStreaks[user] = Math.max(room.peakStreaks[user] || 0, room.streaks[user]);
-    const trayEntry = { id: `${idA}-${idB}`, face: result.removed[0].face, user };
+    if (authoritative?.pairsCleared) room.pairsCleared = { ...authoritative.pairsCleared };
+    if (authoritative?.streaks) room.streaks = { ...authoritative.streaks };
+    if (authoritative?.peakStreaks) room.peakStreaks = { ...authoritative.peakStreaks };
+    if (authoritative?.players) room.players = [...authoritative.players];
+    if (authoritative?.startedPlayers) room.startedPlayers = [...authoritative.startedPlayers];
+    const trayEntry = authoritative?.tray || { id: `${idA}-${idB}`, face: result.removed[0].face, user };
     room.state.tray = [trayEntry, ...room.state.tray].slice(0, 60);
-    room.state.matchLog = [...(room.state.matchLog || []), { seat: playerList().indexOf(user), user, at: Date.now() }];
+    room.state.matchLog = [...(room.state.matchLog || []), { seat: playerList().indexOf(user), user, at: authoritative?.at || Date.now() }];
     local.history.push({ removed: result.removed, user });
     local.selectedId = null;
 
@@ -440,8 +459,8 @@ export function renderBoard(root, ctx, params = {}) {
     renderSub();
     renderStuckBanner();
 
-    if (room.state.tiles.length === 0 && !room.completedAt) {
-      room.completedAt = new Date().toISOString();
+    if ((authoritative?.completed || room.state.tiles.length === 0) && !room.completedAt) {
+      room.completedAt = authoritative?.completedAt || new Date().toISOString();
       room.state.state = "completed";
       finishRoom();
     }
@@ -449,6 +468,8 @@ export function renderBoard(root, ctx, params = {}) {
   }
 
   function finishRoom() {
+    if (local.finished) return;
+    local.finished = true;
     const elapsedMs = elapsedMsSince(startedAtMs, Date.now());
     room.elapsedMs = elapsedMs;
     const myPairs = room.pairsCleared[you] || 0;
@@ -613,8 +634,14 @@ export function renderBoard(root, ctx, params = {}) {
         }
       }
 
-      flyToTray(firstId, id);
-      performClear(firstId, id, you);
+      if (local.roomSocket) {
+        local.selectedId = null;
+        updateTileSelection();
+        local.roomSocket.send({ type: "clear-pair", idA: firstId, idB: id });
+      } else {
+        flyToTray(firstId, id);
+        performClear(firstId, id, you);
+      }
     } else {
       shakeMismatch(firstId, id);
     }
@@ -624,7 +651,8 @@ export function renderBoard(root, ctx, params = {}) {
   // then fades — transient, so it never fights with tap-to-select state.
   function useHint() {
     if (!room.hintsAllowed) { ctx.toast("Hints are off for this room."); return; }
-    room.assistsUsed[you] = (room.assistsUsed[you] || 0) + 1;
+    if (local.roomSocket) local.roomSocket.send({ type: "assist", kind: "hint" });
+    else room.assistsUsed[you] = (room.assistsUsed[you] || 0) + 1;
     const pair = findHintPair(room.state.tiles);
     if (!pair) { ctx.toast("No matching pair is currently free."); return; }
     for (const id of pair) {
@@ -642,6 +670,10 @@ export function renderBoard(root, ctx, params = {}) {
     const oldPos = new Map();
     for (const [id, tileEl] of local.tileEls) {
       oldPos.set(id, { left: parseFloat(tileEl.style.left), top: parseFloat(tileEl.style.top) });
+    }
+    if (local.roomSocket) {
+      local.roomSocket.send({ type: "assist", kind: "shuffle" });
+      return;
     }
     room.assistsUsed[you] = (room.assistsUsed[you] || 0) + 1;
     room.state.tiles = shuffleRemaining(room.state.tiles);
@@ -669,6 +701,10 @@ export function renderBoard(root, ctx, params = {}) {
   }
 
   function useUndo() {
+    if (local.roomSocket) {
+      local.roomSocket.send({ type: "assist", kind: "undo" });
+      return;
+    }
     const last = local.history.pop();
     if (!last) { ctx.toast("Nothing to undo."); return; }
     room.state.tiles = restorePair(room.state.tiles, last.removed);
@@ -714,8 +750,11 @@ export function renderBoard(root, ctx, params = {}) {
       const eligible = bots.filter((b) => Math.random() < (BOT_ACT_CHANCE[difficulty[b]] ?? BOT_ACT_CHANCE.medium));
       const pool = eligible.length ? eligible : bots;
       const bot = pool[Math.floor(Math.random() * pool.length)];
-      flyToTray(pair[0], pair[1]);
-      performClear(pair[0], pair[1], bot);
+      if (local.roomSocket) local.roomSocket.send({ type: "clear-pair", idA: pair[0], idB: pair[1], user: bot });
+      else {
+        flyToTray(pair[0], pair[1]);
+        performClear(pair[0], pair[1], bot);
+      }
     }, BOT_INTERVAL_MS);
   }
   function stopBots() {
@@ -735,10 +774,57 @@ export function renderBoard(root, ctx, params = {}) {
       local.persistTimer = null;
       ctx.reportRoomProgress(room);
     }
+    local.roomSocket?.close();
     window.removeEventListener("resize", applyBoardScale);
   };
 
   fullRender();
+  if (isShared && ctx.api.configured()) {
+    local.roomSocket = createRoomSocket({
+      url: ctx.api.wsUrl(room.id, you),
+      onMessage: (message) => {
+        if (message.type === "init" || message.type === "room-sync") {
+          if (message.room) {
+            Object.assign(room, message.room);
+            repairCurrentPlayerAliases(room, you);
+            local.boardBox = null;
+          }
+          local.presencePlayers = message.presence || local.presencePlayers;
+          ctx.persist();
+          fullRender();
+          if (room.completedAt && !local.finished) finishRoom();
+          return;
+        }
+        if (message.type === "presence") {
+          local.presencePlayers = message.players || [];
+          renderScoreCards();
+          return;
+        }
+        if (message.type === "cleared") {
+          if (!room.state.tiles.some((tile) => tile.id === message.idA || tile.id === message.idB)) return;
+          flyToTray(message.idA, message.idB);
+          performClear(message.idA, message.idB, message.user, message);
+          return;
+        }
+        if (message.type === "shuffled") {
+          room.state.tiles = message.tiles || room.state.tiles;
+          room.assistsUsed = message.assistsUsed || room.assistsUsed;
+          local.selectedId = null;
+          local.boardBox = null;
+          ctx.persist();
+          fullRender();
+          return;
+        }
+        if (message.type === "assist-used") {
+          room.assistsUsed = message.assistsUsed || room.assistsUsed;
+          ctx.persist();
+          return;
+        }
+        if (message.type === "reaction") floatReaction(message.emoji);
+        if (message.type === "room-deleted") ctx.navigate("home");
+      },
+    });
+  }
   clueController = createIdleClueController({
     enabled: ctx.state.settings.provideClues && room.hintsAllowed,
     getTiles: () => room.state.tiles,

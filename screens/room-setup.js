@@ -239,7 +239,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
       });
       if (ctx.api.configured()) {
         try {
-          const result = await ctx.api.createRoom({ title: room.title, mode: room.mode, layoutId: room.layoutId, difficulty: room.difficulty, visibility: room.visibility, createdBy: room.createdBy, freeTilesGlow: room.freeTilesGlow, hintsAllowed: room.hintsAllowed });
+          const result = await ctx.api.createRoom({ title: room.title, mode: room.mode, layoutId: room.layoutId, difficulty: room.difficulty, visibility: room.visibility, createdBy: room.createdBy, freeTilesGlow: room.freeTilesGlow, hintsAllowed: room.hintsAllowed, bots: local.bots.filter(Boolean) });
           // Keep the local board/bot setup, but use the persisted room id so
           // the completion snapshot updates the same D1 record.
           room.id = result.room.id;

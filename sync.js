@@ -66,12 +66,14 @@ export function createRoomSocket({ url, onMessage, onOpen, onClose, wsFactory = 
   let closedByUser = false;
   let backoffMs = 500;
   let reconnectTimer = null;
+  const pending = [];
 
   function connect() {
     closedByUser = false;
     socket = wsFactory(url);
     socket.addEventListener("open", () => {
       backoffMs = 500;
+      while (pending.length && socket.readyState === 1) socket.send(pending.shift());
       onOpen?.();
     });
     socket.addEventListener("message", (evt) => {
@@ -93,12 +95,16 @@ export function createRoomSocket({ url, onMessage, onOpen, onClose, wsFactory = 
   }
 
   function send(msg) {
-    if (socket && socket.readyState === 1) socket.send(JSON.stringify(msg));
+    const payload = JSON.stringify(msg);
+    if (socket && socket.readyState === 1) socket.send(payload);
+    else pending.push(payload);
+    return true;
   }
 
   function close() {
     closedByUser = true;
     clearTimeout(reconnectTimer);
+    pending.length = 0;
     try { socket?.close(1000, "client closed"); } catch (e) {}
   }
 

@@ -126,6 +126,9 @@ export function renderInvite(root, ctx, params = {}) {
           renderPicker();
         }
         renderSeats();
+        ctx.refreshUsers().then(() => {
+          if (root.isConnected) renderSeats();
+        }).catch(() => {});
       }
 
       const shareBtn = el("button", { class: "btn btn-primary btn-lg", style: "width:100%;margin-top:16px", text: "Share invite" });

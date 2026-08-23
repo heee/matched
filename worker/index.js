@@ -228,9 +228,7 @@ export class RoomDO {
   constructor(state, env) {
     this.state = state;
     this.env = env;
-    this.sockets = new Map(); // WebSocket -> { user }
     this.room = null; // loaded lazily from storage
-    this.lastPersist = 0;
     this.deleted = false;
   }
 
@@ -268,10 +266,9 @@ export class RoomDO {
     if (url.pathname === "/delete" && request.method === "POST") {
       this.deleted = true;
       this.broadcast({ type: "room-deleted" }, null);
-      for (const socket of this.sockets.keys()) {
+      for (const socket of this.state.getWebSockets()) {
         try { socket.close(1000, "room deleted"); } catch (e) {}
       }
-      this.sockets.clear();
       this.room = null;
       await this.state.storage.deleteAll();
       return new Response("ok");
@@ -290,21 +287,18 @@ export class RoomDO {
     const spectator = url.searchParams.get("spectator") === "1";
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
-    server.accept();
-
-    this.sockets.set(server, { user, spectator });
+    this.state.acceptWebSocket(server);
+    server.serializeAttachment({ user, spectator });
     this.sendTo(server, { type: "init", room: this.room, presence: this.presenceList() });
     this.broadcastPresence();
-
-    server.addEventListener("message", (evt) => this.handleMessage(server, this.sockets.get(server), evt));
-    server.addEventListener("close", () => { this.sockets.delete(server); this.broadcastPresence(); });
-    server.addEventListener("error", () => { this.sockets.delete(server); this.broadcastPresence(); });
 
     return new Response(null, { status: 101, webSocket: client });
   }
 
   presenceList() {
-    return [...this.sockets.values()].map((v) => v.user);
+    return this.state.getWebSockets()
+      .map((socket) => socket.deserializeAttachment()?.user)
+      .filter(isActualPlayerName);
   }
 
   broadcastPresence() {
@@ -317,10 +311,24 @@ export class RoomDO {
 
   broadcast(msg, exceptSocket) {
     const payload = JSON.stringify(msg);
-    for (const socket of this.sockets.keys()) {
+    for (const socket of this.state.getWebSockets()) {
       if (socket === exceptSocket) continue;
       try { socket.send(payload); } catch (e) {}
     }
+  }
+
+  async webSocketMessage(socket, message) {
+    await this.handleMessage(socket, socket.deserializeAttachment(), { data: message });
+  }
+
+  async webSocketClose(socket, code, reason) {
+    try { socket.close(code, reason); } catch (e) {}
+    this.broadcastPresence();
+  }
+
+  async webSocketError(socket) {
+    try { socket.close(1011, "socket error"); } catch (e) {}
+    this.broadcastPresence();
   }
 
   async handleMessage(socket, metadata, evt) {
@@ -328,7 +336,8 @@ export class RoomDO {
     try { msg = JSON.parse(evt.data); } catch (e) { return; }
     await this.loadRoom();
     if (!this.room) return;
-    const user = metadata?.user || "anonymous";
+    const requestedUser = typeof msg.user === "string" ? msg.user : "";
+    const user = this.room.botNames?.includes(requestedUser) ? requestedUser : metadata?.user || "anonymous";
     if (metadata?.spectator && msg.type !== "reaction") return; // spectators watch only
 
     if (msg.type === "clear-pair") {
@@ -339,7 +348,10 @@ export class RoomDO {
       // Race guard: another player may have already claimed one of these —
       // the first clear-pair to reach this DO instance wins, same rule as
       // Across's per-cell first-write-wins.
-      if (!a || !b || a.face.id !== b.face.id) return;
+      if (!a || !b || a.face.id !== b.face.id || !isFree(a, tiles) || !isFree(b, tiles)) {
+        this.sendTo(socket, { type: "room-sync", room: this.room, presence: this.presenceList() });
+        return;
+      }
       if (!this.room.players.includes(user)) this.room.players.push(user);
       this.room.startedPlayers = this.room.startedPlayers || [];
       if (!this.room.startedPlayers.includes(user)) this.room.startedPlayers.push(user);
@@ -351,16 +363,24 @@ export class RoomDO {
       for (const name of Object.keys(this.room.streaks)) {
         this.room.streaks[name] = name === user ? (this.room.streaks[name] || 0) + 1 : 0;
       }
+      this.room.peakStreaks = this.room.peakStreaks || {};
+      this.room.peakStreaks[user] = Math.max(this.room.peakStreaks[user] || 0, this.room.streaks[user]);
       const trayEntry = { id: `${idA}-${idB}`, face: a.face, user, at: Date.now() };
       this.room.state.tray = [trayEntry, ...this.room.state.tray].slice(0, 60);
-      this.room.state.matchLog = [...(this.room.state.matchLog || []), { user, at: Date.now() }].slice(-200);
+      this.room.state.matchLog = [...(this.room.state.matchLog || []), { user, at: trayEntry.at, removed: [a, b] }].slice(-200);
 
       const isComplete = this.room.state.tiles.length === 0;
       if (isComplete && !this.room.completedAt) {
         this.room.completedAt = new Date().toISOString();
         this.room.state.state = "completed";
       }
-      this.broadcast({ type: "cleared", idA, idB, user, tray: trayEntry, pairsCleared: this.room.pairsCleared, streaks: this.room.streaks, completed: isComplete }, null);
+      this.broadcast({
+        type: "cleared", idA, idB, user, tray: trayEntry, at: trayEntry.at,
+        players: this.room.players, startedPlayers: this.room.startedPlayers,
+        pairsCleared: this.room.pairsCleared, streaks: this.room.streaks,
+        peakStreaks: this.room.peakStreaks, completed: isComplete,
+        completedAt: this.room.completedAt || null,
+      }, null);
       await this.persist(isComplete);
     } else if (msg.type === "assist") {
       // { kind: "hint" | "shuffle" | "undo" | "flag-stuck" }
@@ -368,6 +388,20 @@ export class RoomDO {
       if (msg.kind === "shuffle") {
         this.room.state.tiles = shuffleTilesKeepingSolvable(this.room.state.tiles);
         this.broadcast({ type: "shuffled", tiles: this.room.state.tiles, assistsUsed: this.room.assistsUsed }, null);
+      } else if (msg.kind === "undo") {
+        const log = this.room.state.matchLog || [];
+        const last = log[log.length - 1];
+        if (last?.removed?.length === 2) {
+          this.room.state.tiles = [...this.room.state.tiles, ...last.removed];
+          this.room.state.matchLog = log.slice(0, -1);
+          this.room.state.tray = this.room.state.tray.slice(1);
+          this.room.pairsCleared[last.user] = Math.max(0, (this.room.pairsCleared[last.user] || 0) - 1);
+          this.room.completedAt = null;
+          this.room.state.state = this.room.state.matchLog.length ? "in_progress" : "waiting";
+          this.broadcast({ type: "room-sync", room: this.room, presence: this.presenceList() }, null);
+        } else {
+          this.sendTo(socket, { type: "room-sync", room: this.room, presence: this.presenceList() });
+        }
       } else {
         this.broadcast({ type: "assist-used", user, kind: msg.kind, assistsUsed: this.room.assistsUsed }, null);
       }
@@ -384,11 +418,7 @@ export class RoomDO {
   async persist(completed) {
     if (this.deleted || !this.room) return;
     await this.state.storage.put("room", this.room);
-    const now = Date.now();
-    if (completed || now - this.lastPersist > 15000) {
-      this.lastPersist = now;
-      await this.commitSnapshot(completed);
-    }
+    await this.commitSnapshot(completed);
   }
 
   async commitSnapshot(completed) {
@@ -397,11 +427,13 @@ export class RoomDO {
     room.state = this.room.state;
     room.players = this.room.players;
     room.startedPlayers = this.room.startedPlayers || [];
+    room.startedAt = this.room.startedAt;
     room.pairsCleared = this.room.pairsCleared;
     room.streaks = this.room.streaks;
+    room.peakStreaks = this.room.peakStreaks || {};
     room.assistsUsed = this.room.assistsUsed;
-    if (completed && !room.completedAt) {
-      room.completedAt = new Date().toISOString();
+    if (completed) {
+      room.completedAt = this.room.completedAt || room.completedAt || new Date().toISOString();
       room.state.state = "completed";
     }
     await upsertRoom(this.env.DB, room);
@@ -593,8 +625,15 @@ function validateCreateRoom(body) {
   const createdBy = String(body.createdBy || "").trim().slice(0, 40);
   const freeTilesGlow = body.freeTilesGlow !== false;
   const hintsAllowed = body.hintsAllowed !== false;
+  const bots = Array.isArray(body.bots)
+    ? body.bots.slice(0, 3).flatMap((bot) => {
+        const name = String(bot?.name || "").trim().slice(0, 40);
+        const botDifficulty = ["easy", "medium", "hard"].includes(bot?.difficulty) ? bot.difficulty : "medium";
+        return isActualPlayerName(name) && name !== createdBy ? [{ name, difficulty: botDifficulty }] : [];
+      })
+    : [];
   if (!title || !isActualPlayerName(createdBy)) return null;
-  return { title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed };
+  return { title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed, bots };
 }
 
 function slugify(s) {
@@ -618,12 +657,11 @@ function buildRoom(req) {
     startedAt: Date.now(),
     freeTilesGlow: req.freeTilesGlow,
     hintsAllowed: req.hintsAllowed,
-    players: [req.createdBy],
-    // Server rooms are always created by the requesting player. Bots are
-    // local, opt-in seats and never call or participate in this endpoint.
-    botNames: [],
-    pairsCleared: { [req.createdBy]: 0 },
-    streaks: { [req.createdBy]: 0 },
+    players: [req.createdBy, ...req.bots.map((bot) => bot.name)],
+    botNames: req.bots.map((bot) => bot.name),
+    botDifficulty: Object.fromEntries(req.bots.map((bot) => [bot.name, bot.difficulty])),
+    pairsCleared: Object.fromEntries([req.createdBy, ...req.bots.map((bot) => bot.name)].map((name) => [name, 0])),
+    streaks: Object.fromEntries([req.createdBy, ...req.bots.map((bot) => bot.name)].map((name) => [name, 0])),
     assistsUsed: {},
     state: { tiles, tray: [], matchLog: [], state: req.mode === "solo" ? "ready" : "waiting", seed },
     completedAt: null,
@@ -685,7 +723,8 @@ async function loadData(db, scope, user) {
   const users = {};
   for (const row of userResult.results || []) users[row.name] = userFromRow(row);
   let rooms = (roomResult.results || []).map((row) => roomFromRow(row)).filter(Boolean);
-  if (scope === "open") rooms = rooms.filter((r) =>
+  if (scope === "users") rooms = [];
+  else if (scope === "open") rooms = rooms.filter((r) =>
     r.visibility === "open"
     && r.state?.state !== "completed"
     && isActualPlayerName(r.createdBy)

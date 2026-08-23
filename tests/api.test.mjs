@@ -37,3 +37,22 @@ test("daily completion reports only the active user's measured result", async ()
   assert.equal(request.url, "https://example.test/daily-result");
   assert.deepEqual(JSON.parse(request.options.body), result);
 });
+
+test("invite picker can refresh the registered-user directory without loading rooms", async () => {
+  let requestUrl;
+  const api = createWorkerApi({
+    baseUrl: "https://example.test",
+    appKey: "test-key",
+    fetchImpl: async (url) => {
+      requestUrl = url;
+      return new Response(JSON.stringify({ users: { Christie: {} }, rooms: {} }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    },
+  });
+
+  const data = await api.fetchUsers();
+  assert.equal(requestUrl, "https://example.test/data?scope=users");
+  assert.ok(data.users.Christie);
+});
