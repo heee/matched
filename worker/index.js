@@ -268,31 +268,50 @@ export class RoomDO {
     return room;
   }
 
-  async reconcileRaceSnapshot(roomId) {
-    if (this.room?.mode !== "race" || !roomId) return;
+  // A DO instance caches `this.room` from the moment it's first seeded (at
+  // room creation) or first connected to, and after that only its own
+  // websocket-driven actions (clear-pair, etc.) mutate it. Anything written
+  // through a REST-only path — /join-room, /update-room's gameStarted flip —
+  // lands in D1 but never reaches an already-alive DO, so a player who
+  // joined or a host who started the game between creation and the first
+  // socket connect would otherwise silently vanish from the live game the
+  // moment the DO's cached copy overwrites D1 on its next persist. Race mode
+  // already reconciled players/startedPlayers/pairsCleared from D1 on every
+  // connect for this reason; shared mode needs the same protection now that
+  // joining and starting both happen over REST before any socket exists.
+  async reconcileSnapshot(roomId) {
+    if (!roomId) return;
     const snapshot = await getRoom(this.env.DB, roomId);
     if (!snapshot) return;
-    this.room.racers = this.room.racers || {};
-    for (const [name, racer] of Object.entries(snapshot.racers || {})) {
-      const current = this.room.racers[name];
-      if (!current || (racer?.tiles?.length ?? Infinity) < (current?.tiles?.length ?? Infinity)) {
-        this.room.racers[name] = racer;
-      }
-    }
     this.room.players = [...new Set([...(this.room.players || []), ...(snapshot.players || [])])];
     this.room.startedPlayers = [...new Set([...(this.room.startedPlayers || []), ...(snapshot.startedPlayers || [])])];
     for (const [name, count] of Object.entries(snapshot.pairsCleared || {})) {
       this.room.pairsCleared[name] = Math.max(this.room.pairsCleared[name] || 0, Number(count) || 0);
     }
-    if ((snapshot.state?.matchLog?.length || 0) > (this.room.state?.matchLog?.length || 0)) {
-      this.room.state.matchLog = snapshot.state.matchLog;
+    for (const [name, count] of Object.entries(snapshot.streaks || {})) {
+      if (!(name in this.room.streaks)) this.room.streaks[name] = count;
     }
-    this.room.startedAt = this.room.startedAt || snapshot.startedAt;
-    if (snapshot.completedAt) {
-      this.room.completedAt = snapshot.completedAt;
-      this.room.state.state = "completed";
-    } else if (snapshot.state?.state === "in_progress") {
-      this.room.state.state = "in_progress";
+    if (this.room.mode === "shared" && snapshot.gameStarted && !this.room.gameStarted) {
+      this.room.gameStarted = true;
+    }
+    if (this.room.mode === "race") {
+      this.room.racers = this.room.racers || {};
+      for (const [name, racer] of Object.entries(snapshot.racers || {})) {
+        const current = this.room.racers[name];
+        if (!current || (racer?.tiles?.length ?? Infinity) < (current?.tiles?.length ?? Infinity)) {
+          this.room.racers[name] = racer;
+        }
+      }
+      if ((snapshot.state?.matchLog?.length || 0) > (this.room.state?.matchLog?.length || 0)) {
+        this.room.state.matchLog = snapshot.state.matchLog;
+      }
+      this.room.startedAt = this.room.startedAt || snapshot.startedAt;
+      if (snapshot.completedAt) {
+        this.room.completedAt = snapshot.completedAt;
+        this.room.state.state = "completed";
+      } else if (snapshot.state?.state === "in_progress") {
+        this.room.state.state = "in_progress";
+      }
     }
     await this.state.storage.put("room", this.room);
   }
@@ -328,7 +347,7 @@ export class RoomDO {
     const roomId = url.pathname.match(/^\/room\/([a-zA-Z0-9_-]+)\/connect$/)?.[1];
     await this.ensureRoom(roomId);
     if (!this.room) return new Response("room not found", { status: 404 });
-    await this.reconcileRaceSnapshot(roomId);
+    await this.reconcileSnapshot(roomId);
 
     const user = url.searchParams.get("user") || "";
     if (!isActualPlayerName(user)) return new Response("invalid user", { status: 400 });
