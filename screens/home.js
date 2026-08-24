@@ -489,14 +489,14 @@ export function renderHome(root, ctx) {
   root.appendChild(continueList);
 
   if (waitingForPlayers.length > 0) {
-    root.appendChild(el("div", { class: "section-label", style: "padding-top:20px", text: "Waiting for players" }));
+    root.appendChild(el("div", { class: "section-label", style: "padding-top:20px", text: "Your games waiting for others" }));
     const waitingList = el("div", { class: "row-list" });
     waitingForPlayers.forEach((room) => waitingList.appendChild(waitingRow(ctx, room)));
     root.appendChild(waitingList);
   }
 
   const openLabel = el("div", { class: "section-label section-label-row", style: "padding-top:20px" });
-  openLabel.appendChild(el("span", { text: "Open rooms" }));
+  openLabel.appendChild(el("span", { text: "Other games for you to join" }));
   if (openRooms.length > 3) {
     openLabel.appendChild(el("button", {
       class: "pill section-more",
@@ -506,7 +506,6 @@ export function renderHome(root, ctx) {
     }));
   }
   root.appendChild(openLabel);
-  root.appendChild(el("div", { class: "section-helper", text: "Started by other players and open for you to join." }));
   const openList = el("div", { class: "row-list" });
   if (openRooms.length === 0) openList.appendChild(el("div", { class: "empty-note", style: "padding:0 4px", text: "No open rooms yet — create one from the + tab." }));
   featuredOpenRooms.forEach((r) => openList.appendChild(openRow(ctx, r)));
