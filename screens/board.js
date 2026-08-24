@@ -2,7 +2,7 @@
 // tap-match-to-clear, tray attribution, hint/shuffle/undo, simulated
 // opponents, toasts, reactions. See docs/design-reference.html #1f.
 
-import { el, avatarDot, renderTileFace, trayFaceGlyph, formatClock, haptic, playMatchSound } from "./shared-ui.js?v=41";
+import { el, avatarDot, renderTileFace, trayFaceGlyph, formatClock, haptic, playMatchSound } from "./shared-ui.js?v=42";
 import {
   isFree, freeTiles, findHintPair, findHintPairs, clearPair, restorePair, shuffleRemaining,
   hasMovesRemaining, boardCompletion,
@@ -11,7 +11,7 @@ import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js
 import { PLAYER_COLORS, pointsForSession, highlightsFromLog, BOT_ACT_CHANCE, COMBO_WINDOW_MS, COMBO_BONUS_POINTS } from "../game/scoring.js";
 import { equippedMaterialName, materialCssVars } from "../game/materials.js";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
-import { hasStartedRoom } from "../game/room-lists.js?v=2";
+import { hasStartedRoom } from "../game/room-lists.js?v=3";
 import { equippedFeltName, feltCssVars } from "../game/felts.js";
 import { createIdleClueController } from "./idle-clues.js";
 import { roomTimerStartMs, timestampMs, currentActiveMs, openActiveWindow, closeActiveWindow } from "../game/time.js";
@@ -38,6 +38,17 @@ export function renderBoard(root, ctx, params = {}) {
   if (hasStartedRoom(room, ctx.state.currentUser)) ctx.state.activeRoomId = room.id;
   const you = ctx.state.currentUser;
   const isShared = room.mode === "shared";
+  const isLive = room.mode === "live";
+  const LIVE_IDLE_TIMEOUT_MS = 12000;
+  // Whoever the board should currently attribute a clear/assist to: the
+  // signed-in device owner everywhere except Live, where the device is
+  // passed around and the room's own turn rotation decides who's "up".
+  function currentTurnPlayer() {
+    return room.players[(room.turnIndex || 0) % room.players.length];
+  }
+  function actingPlayer() {
+    return isLive ? currentTurnPlayer() : you;
+  }
   let startedAtMs = roomTimerStartMs(room);
   if (startedAtMs != null && timestampMs(room.startedAt) !== startedAtMs) {
     room.startedAt = startedAtMs;
@@ -102,7 +113,15 @@ export function renderBoard(root, ctx, params = {}) {
   boardArea.appendChild(stuckBanner);
   const movesBadge = el("div", { style: "position:absolute;top:10px;right:16px;padding:7px 11px;border-radius:999px;background:rgba(8,26,20,.82);border:1px solid rgba(232,200,135,.38);box-shadow:0 5px 16px rgba(0,0,0,.24);font:700 11.5px Figtree,sans-serif;color:#f2e6cc;display:none;z-index:20;pointer-events:none" });
   boardArea.appendChild(movesBadge);
+  const liveTurnBadge = el("div", { style: "position:absolute;top:10px;left:16px;padding:7px 11px;border-radius:999px;background:rgba(8,26,20,.82);border:1px solid rgba(232,200,135,.38);box-shadow:0 5px 16px rgba(0,0,0,.24);font:700 11.5px Figtree,sans-serif;color:#f2e6cc;display:none;z-index:20;pointer-events:none" });
+  if (isLive) boardArea.appendChild(liveTurnBadge);
   root.appendChild(boardArea);
+
+  // ---- handoff overlay (Live only) ----
+  // Full-screen and opaque, not just a dim — the whole point is nobody sees
+  // the board mid-pass while it's someone else's turn about to start.
+  const handoffOverlay = isLive ? el("div", { style: "position:fixed;inset:0;background:#0a2a1f;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:95;padding:24px;text-align:center" }) : null;
+  if (isLive) document.body.appendChild(handoffOverlay);
 
   // ---- tray ----
   const tray = el("div", { class: "tray" });
@@ -143,8 +162,9 @@ export function renderBoard(root, ctx, params = {}) {
   }
   controls.appendChild(el("div", { style: "flex:1" }));
 
-  // Reactions don't make sense with nobody else on the board to see them.
-  if (room.players.some((name) => name !== you)) {
+  // Reactions don't make sense with nobody else on the board to see them
+  // (or, in Live's case, with everyone sharing the one screen already).
+  if (!isLive && room.players.some((name) => name !== you)) {
     const pageWidth = REACTIONS_PER_PAGE * REACTION_BTN_W;
     const pageCount = Math.ceil(REACTIONS.length / REACTIONS_PER_PAGE);
     let reactionPage = 0;
@@ -197,9 +217,10 @@ export function renderBoard(root, ctx, params = {}) {
 
   function renderScoreCards() {
     scoreRow.innerHTML = "";
+    const active = actingPlayer();
     playerList().forEach((name, i) => {
       const streak = room.streaks[name] || 0;
-      const card = el("div", { class: `player-card${name === you ? " me" : ""}` });
+      const card = el("div", { class: `player-card${name === active ? " me" : ""}` });
       const top = el("div", { style: "display:flex;align-items:center;gap:6px" });
       top.appendChild(avatarDot(name, i, 18));
       top.appendChild(el("span", { style: "font:700 13px Figtree,sans-serif;color:#f6f1e4", text: String(room.pairsCleared[name] || 0) }));
@@ -350,9 +371,13 @@ export function renderBoard(root, ctx, params = {}) {
       nodes.push(chip);
     });
     trayStrip.replaceChildren(...nodes);
-    const myPairs = room.pairsCleared[you] || 0;
     const pct = boardCompletion(room.tileCount, room.state.tiles.length);
-    trayCount.textContent = `You ${myPairs} ${myPairs === 1 ? "pair" : "pairs"} · board ${pct}%`;
+    if (isLive) {
+      trayCount.textContent = `${room.state.tray.length} cleared · board ${pct}%`;
+    } else {
+      const myPairs = room.pairsCleared[you] || 0;
+      trayCount.textContent = `You ${myPairs} ${myPairs === 1 ? "pair" : "pairs"} · board ${pct}%`;
+    }
     updateTrayNav();
   }
 
@@ -436,7 +461,10 @@ export function renderBoard(root, ctx, params = {}) {
     clearTimeout(local.persistTimer);
     local.persistTimer = setTimeout(() => {
       local.persistTimer = null;
-      ctx.reportRoomProgress(room);
+      // Live plays entirely on-device — persist locally only, never a
+      // mid-game Worker round-trip.
+      if (isLive) ctx.persist();
+      else ctx.reportRoomProgress(room);
     }, 120);
   }
 
@@ -457,7 +485,7 @@ export function renderBoard(root, ctx, params = {}) {
     room.state.tiles = result.tiles;
     room.pairsCleared[user] = (room.pairsCleared[user] || 0) + 1;
     room.state.state = "in_progress";
-    if (user === you && room.pairsCleared[user] === 1 && !local.roomSocket) {
+    if (!isLive && user === you && room.pairsCleared[user] === 1 && !local.roomSocket) {
       ctx.commitRoomMembership(room);
     }
     for (const name of Object.keys(room.streaks)) room.streaks[name] = name === user ? (room.streaks[name] || 0) + 1 : 0;
@@ -478,7 +506,7 @@ export function renderBoard(root, ctx, params = {}) {
     local.history.push({ removed: result.removed, user });
     local.selectedId = null;
 
-    if (user !== you) {
+    if (!isLive && user !== you) {
       const streak = room.streaks[user];
       showToast(`${user} took a pair${streak >= 3 ? ` · ${streak} streak` : ""}`, playerList().indexOf(user));
     }
@@ -516,6 +544,11 @@ export function renderBoard(root, ctx, params = {}) {
       ctx.state.dailyStreaks[you] = ctx.state.dailyCompletedByUser[you] === yesterday ? (ctx.state.dailyStreaks[you] || 0) + 1 : 1;
       ctx.state.dailyCompletedByUser[you] = today;
       ctx.reportDailyResult(room, elapsedMs);
+    } else if (isLive) {
+      // Live never touches the Worker — no server room was ever created for
+      // it, so there's nothing to complete server-side. Local Ranking/
+      // streak/head-to-head already read straight from state.store.rooms.
+      ctx.persist();
     } else {
       ctx.reportCompletedRoom(room);
     }
@@ -628,6 +661,7 @@ export function renderBoard(root, ctx, params = {}) {
   }
 
   function tap(id) {
+    if (isLive && handoffOverlay.style.display !== "none") return;
     if (!local.botsActive) startBots();
     const free = freeTiles(room.state.tiles).map((t) => t.id);
     if (!free.includes(id)) return;
@@ -650,7 +684,9 @@ export function renderBoard(root, ctx, params = {}) {
       const isCombo = local.lastClearAt && now - local.lastClearAt <= COMBO_WINDOW_MS;
       local.comboCount = isCombo ? local.comboCount + 1 : 1;
       local.lastClearAt = now;
-      if (isCombo) {
+      // Combo bonus points only ever bank to the signed-in device owner, so
+      // they're meaningless in Live's hot-seat rotation — skip entirely.
+      if (isCombo && !isLive) {
         room.comboBonus = room.comboBonus || {};
         room.comboBonus[you] = (room.comboBonus[you] || 0) + COMBO_BONUS_POINTS;
         const elA = local.tileEls.get(firstId);
@@ -668,10 +704,12 @@ export function renderBoard(root, ctx, params = {}) {
         local.roomSocket.send({ type: "clear-pair", idA: firstId, idB: id });
       } else {
         flyToTray(firstId, id);
-        performClear(firstId, id, you);
+        performClear(firstId, id, actingPlayer());
+        if (isLive) onLiveClear();
       }
     } else {
       shakeMismatch(firstId, id);
+      if (isLive) onLiveMismatch();
     }
   }
 
@@ -680,7 +718,7 @@ export function renderBoard(root, ctx, params = {}) {
   function useHint() {
     if (!room.hintsAllowed) { ctx.toast("Hints are off for this room."); return; }
     if (local.roomSocket) local.roomSocket.send({ type: "assist", kind: "hint" });
-    else room.assistsUsed[you] = (room.assistsUsed[you] || 0) + 1;
+    else room.assistsUsed[actingPlayer()] = (room.assistsUsed[actingPlayer()] || 0) + 1;
     const pair = findHintPair(room.state.tiles);
     if (!pair) { ctx.toast("No matching pair is currently free."); return; }
     for (const id of pair) {
@@ -703,7 +741,7 @@ export function renderBoard(root, ctx, params = {}) {
       local.roomSocket.send({ type: "assist", kind: "shuffle" });
       return;
     }
-    room.assistsUsed[you] = (room.assistsUsed[you] || 0) + 1;
+    room.assistsUsed[actingPlayer()] = (room.assistsUsed[actingPlayer()] || 0) + 1;
     room.state.tiles = shuffleRemaining(room.state.tiles);
     local.selectedId = null;
     ctx.persist();
@@ -742,8 +780,97 @@ export function renderBoard(root, ctx, params = {}) {
     const matchIndex = matchLog.map((match) => match.user).lastIndexOf(last.user);
     if (matchIndex >= 0) matchLog.splice(matchIndex, 1);
     room.state.matchLog = matchLog;
-    ctx.reportRoomProgress(room);
+    if (isLive) ctx.persist();
+    else ctx.reportRoomProgress(room);
     fullRender();
+  }
+
+  // ===================== Live turn rotation =====================
+
+  let liveTurnTimer = null;
+  let liveIdleTimer = null;
+
+  function clearLiveTurnTimer() {
+    clearInterval(liveTurnTimer);
+    liveTurnTimer = null;
+  }
+  function clearLiveIdleTimer() {
+    clearTimeout(liveIdleTimer);
+    liveIdleTimer = null;
+  }
+
+  function updateLiveTurnBadge() {
+    if (!isLive || room.turnRule !== "timed" || room.turnStartedAt == null) return;
+    const remaining = Math.max(0, room.turnSeconds - Math.floor((Date.now() - room.turnStartedAt) / 1000));
+    liveTurnBadge.textContent = `${remaining}s left`;
+  }
+
+  function startLiveTurnTimer() {
+    if (!isLive || room.turnRule !== "timed") { liveTurnBadge.style.display = "none"; return; }
+    clearLiveTurnTimer();
+    room.turnStartedAt = Date.now();
+    liveTurnBadge.style.display = "block";
+    updateLiveTurnBadge();
+    liveTurnTimer = setInterval(() => {
+      updateLiveTurnBadge();
+      const remaining = room.turnSeconds - Math.floor((Date.now() - room.turnStartedAt) / 1000);
+      if (remaining <= 0) endLiveTurn();
+    }, 250);
+  }
+
+  function resetLiveIdleTimer() {
+    if (!isLive || room.turnRule !== "streak") return;
+    clearLiveIdleTimer();
+    liveIdleTimer = setTimeout(() => endLiveTurn(), LIVE_IDLE_TIMEOUT_MS);
+  }
+
+  // Turn-end rules: "single" ends right after the one successful clear,
+  // "streak" ends on a miss or a stretch of inactivity, "timed" only ever
+  // ends when its own countdown (started in the ready handler) hits zero —
+  // clears and misses alike just keep it running.
+  function onLiveClear() {
+    if (room.completedAt) return; // board just finished — finishRoom takes over
+    if (room.turnRule === "single") endLiveTurn();
+    else if (room.turnRule === "streak") resetLiveIdleTimer();
+  }
+  function onLiveMismatch() {
+    if (room.completedAt) return;
+    if (room.turnRule === "streak") endLiveTurn();
+  }
+
+  function endLiveTurn() {
+    if (!isLive || local.finished || room.completedAt) return;
+    clearLiveTurnTimer();
+    clearLiveIdleTimer();
+    liveTurnBadge.style.display = "none";
+    room.turnIndex = ((room.turnIndex || 0) + 1) % room.players.length;
+    room.turnStartedAt = null;
+    local.selectedId = null;
+    updateTileSelection();
+    ctx.persist();
+    showHandoffOverlay();
+  }
+
+  function renderHandoffOverlay() {
+    handoffOverlay.innerHTML = "";
+    const name = currentTurnPlayer();
+    const seat = room.players.indexOf(name);
+    handoffOverlay.appendChild(avatarDot(name, seat, 72));
+    handoffOverlay.appendChild(el("div", { class: "title-serif", style: "font-size:24px;color:#f6f1e4;margin-top:6px", text: `Pass to ${name}` }));
+    handoffOverlay.appendChild(el("div", { style: "font:13px Figtree,sans-serif;color:rgba(246,241,228,.6);max-width:260px", text: "Hand the device over, then tap ready to reveal the board." }));
+    const readyBtn = el("button", { class: "btn btn-primary btn-lg", style: "margin-top:10px;min-width:200px", text: "I'm ready" });
+    readyBtn.addEventListener("click", () => {
+      handoffOverlay.style.display = "none";
+      startLiveTurnTimer();
+      resetLiveIdleTimer();
+    });
+    handoffOverlay.appendChild(readyBtn);
+  }
+
+  function showHandoffOverlay() {
+    renderHandoffOverlay();
+    handoffOverlay.style.display = "flex";
+    renderScoreCards();
   }
 
   hintBtn.addEventListener("click", () => { clueController?.reset(); useHint(); });
@@ -797,11 +924,15 @@ export function renderBoard(root, ctx, params = {}) {
     stopBots();
     clueController?.stop();
     clearInterval(clockTimer);
+    clearLiveTurnTimer();
+    clearLiveIdleTimer();
+    handoffOverlay?.remove();
     document.removeEventListener("visibilitychange", handleVisibilityChange);
     if (local.persistTimer) {
       clearTimeout(local.persistTimer);
       local.persistTimer = null;
-      ctx.reportRoomProgress(room);
+      if (isLive) ctx.persist();
+      else ctx.reportRoomProgress(room);
     }
     if (local.roomSocket) {
       local.roomSocket.send({ type: "visibility", visible: false });
@@ -876,6 +1007,7 @@ export function renderBoard(root, ctx, params = {}) {
   } else if (!document.hidden && startedAtMs != null) {
     openActiveWindow(room);
   }
+  if (isLive) showHandoffOverlay();
   document.addEventListener("visibilitychange", handleVisibilityChange);
   clueController = createIdleClueController({
     enabled: ctx.state.settings.provideClues && room.hintsAllowed,

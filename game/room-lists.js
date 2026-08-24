@@ -15,7 +15,11 @@ export function roomHasProgress(room) {
 }
 
 export function hasWaitingReason(room, invites = []) {
-  if (!room || room.mode === "solo") return false;
+  // Solo and Live never sit in an invite sheet waiting on anyone else —
+  // Live's "other players" are local hot-seat names on the same device,
+  // not remote joins, so it must never be mistaken for a room still
+  // waiting to fill.
+  if (!room || room.mode === "solo" || room.mode === "live") return false;
   const bots = new Set(room.botNames || []);
   const anotherHumanJoined = (room.players || []).some((name) => name !== room.createdBy && !bots.has(name));
   const pendingInvite = invites.some((invite) => invite.roomId === room.id);

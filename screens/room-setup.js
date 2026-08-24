@@ -3,8 +3,9 @@
 
 import { el, avatarDot } from "./shared-ui.js";
 import { LAYOUTS, defaultLayoutForDifficulty, DIFFICULTY_TILE_COUNTS } from "../game/layouts.js";
-import { buildLocalRoom } from "../game/room.js?v=4";
+import { buildLocalRoom } from "../game/room.js?v=5";
 import { BOT_DIFFICULTIES, BOT_NAME_POOL } from "../game/scoring.js";
+import { isActualPlayerName } from "../game/identity.js";
 
 // Optional bot seats for Shared/Race rooms — off by default. A seat left
 // dotted/empty isn't filled by a bot; it just stays open for a real player
@@ -38,6 +39,22 @@ const MODES = [
       return wrap;
     },
   },
+  {
+    id: "live", name: "Live", desc: "One device, passed around. Everyone takes a turn.",
+    icon: () => {
+      const wrap = el("div", { style: "display:flex;align-items:flex-end;gap:3px;margin-bottom:9px;height:20px" });
+      wrap.appendChild(el("div", { style: "width:13px;height:18px;border-radius:3px;background:#f2ecdc" }));
+      wrap.appendChild(el("div", { style: "width:8px;height:8px;border-radius:50%;background:rgba(242,236,220,.4);margin:0 1px 3px" }));
+      wrap.appendChild(el("div", { style: "width:13px;height:14px;border-radius:3px;background:rgba(242,236,220,.35)" }));
+      return wrap;
+    },
+  },
+];
+
+const TURN_RULES = [
+  { id: "single", label: "One match", desc: "Turn ends after one pair." },
+  { id: "streak", label: "Until you miss", desc: "Keep going until you stall or miss." },
+  { id: "timed", label: "Timed", desc: "Everyone gets the same clock." },
 ];
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
@@ -52,6 +69,9 @@ export function renderRoomSetup(root, ctx, params = {}) {
     openLink: true,
     bots: new Array(BOT_SEAT_COUNT).fill(null), // each slot: null (open) or { name, difficulty }
     pickerSeat: null, // seat index (0-based within bots[]) currently showing the difficulty popover
+    livePlayers: [ctx.state.currentUser], // Live only: hot-seat roster in turn order
+    turnRule: "single", // Live only
+    turnSeconds: 20, // Live only, used when turnRule === "timed"
   };
   let openLinkRow = null;
   let primaryButton = null;
@@ -59,8 +79,9 @@ export function renderRoomSetup(root, ctx, params = {}) {
 
   function renderModeDependentControls() {
     const solo = local.mode === "solo";
-    if (openLinkRow) openLinkRow.style.display = solo ? "none" : "flex";
-    if (primaryButton) primaryButton.textContent = solo ? "Create and play" : "Create & invite";
+    const live = local.mode === "live";
+    if (openLinkRow) openLinkRow.style.display = solo || live ? "none" : "flex";
+    if (primaryButton) primaryButton.textContent = solo || live ? "Create and play" : "Create & invite";
   }
 
   const header = el("div", { style: "padding:6px 20px 16px;display:flex;align-items:baseline;justify-content:space-between" });
@@ -88,6 +109,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
         local.mode = m.id;
         renderModes();
         renderPlayers();
+        renderLiveSections();
         renderModeDependentControls();
       });
       modeRow.appendChild(card);
@@ -133,8 +155,8 @@ export function renderRoomSetup(root, ctx, params = {}) {
   }
 
   function renderPlayers() {
-    playersSection.style.display = local.mode === "solo" ? "none" : "";
-    if (local.mode === "solo") { local.pickerSeat = null; return; }
+    playersSection.style.display = local.mode === "solo" || local.mode === "live" ? "none" : "";
+    if (local.mode === "solo" || local.mode === "live") { local.pickerSeat = null; return; }
     seatRow.innerHTML = "";
     const you = el("div", { style: "display:flex;flex-direction:column;align-items:center;gap:5px" });
     you.appendChild(avatarDot(ctx.state.currentUser, 0, 48));
@@ -159,6 +181,111 @@ export function renderRoomSetup(root, ctx, params = {}) {
   }
   renderPlayers();
   body.appendChild(playersSection);
+
+  // ---- roster (Live only) ----
+  const rosterSection = el("div");
+  rosterSection.appendChild(el("div", { class: "section-label", style: "padding:0 0 9px", text: "Players" }));
+  const rosterList = el("div", { style: "display:flex;flex-direction:column;gap:6px" });
+  rosterSection.appendChild(rosterList);
+  const addRow = el("div", { style: "display:flex;gap:8px;margin-top:8px" });
+  const addInput = el("input", { type: "text", placeholder: "Add a player", style: "flex:1;min-width:0;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#f6f1e4;font:13px Figtree,sans-serif" });
+  const addBtn = el("button", { class: "btn btn-ghost", style: "padding:0 16px", text: "Add" });
+  function addLivePlayer() {
+    const name = addInput.value.trim();
+    if (!name) return;
+    if (!isActualPlayerName(name)) { ctx.toast("Enter an actual name."); return; }
+    if (local.livePlayers.some((p) => p.toLowerCase() === name.toLowerCase())) { ctx.toast("That name is already in the lineup."); return; }
+    local.livePlayers.push(name);
+    addInput.value = "";
+    renderRoster();
+  }
+  addBtn.addEventListener("click", addLivePlayer);
+  addInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addLivePlayer(); } });
+  addRow.appendChild(addInput);
+  addRow.appendChild(addBtn);
+  rosterSection.appendChild(addRow);
+  rosterSection.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:8px", text: "Players go in this order, then repeat. Use ↑/↓ to reorder." }));
+
+  function renderRoster() {
+    rosterList.innerHTML = "";
+    local.livePlayers.forEach((name, i) => {
+      const first = i === 0;
+      const last = i === local.livePlayers.length - 1;
+      const onlyTwo = local.livePlayers.length <= 2;
+      const row = el("div", { style: "display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.06)" });
+      row.appendChild(avatarDot(name, i, 34));
+      row.appendChild(el("div", { style: "flex:1;min-width:0;font:600 13.5px Figtree,sans-serif;color:#f6f1e4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap", text: name }));
+      const upBtn = el("button", { style: `background:none;border:none;padding:4px;color:${first ? "rgba(246,241,228,.25)" : "rgba(246,241,228,.75)"};cursor:pointer;font-size:14px`, text: "↑" });
+      upBtn.addEventListener("click", () => {
+        if (first) return;
+        [local.livePlayers[i - 1], local.livePlayers[i]] = [local.livePlayers[i], local.livePlayers[i - 1]];
+        renderRoster();
+      });
+      const downBtn = el("button", { style: `background:none;border:none;padding:4px;color:${last ? "rgba(246,241,228,.25)" : "rgba(246,241,228,.75)"};cursor:pointer;font-size:14px`, text: "↓" });
+      downBtn.addEventListener("click", () => {
+        if (last) return;
+        [local.livePlayers[i + 1], local.livePlayers[i]] = [local.livePlayers[i], local.livePlayers[i + 1]];
+        renderRoster();
+      });
+      const removeBtn = el("button", { style: `background:none;border:none;padding:4px;color:${onlyTwo ? "rgba(246,241,228,.25)" : "rgba(246,241,228,.55)"};cursor:pointer;font-size:16px`, text: "×", "aria-label": `Remove ${name}` });
+      removeBtn.addEventListener("click", () => {
+        if (onlyTwo) { ctx.toast("Live needs at least two players."); return; }
+        local.livePlayers.splice(i, 1);
+        renderRoster();
+      });
+      row.appendChild(upBtn);
+      row.appendChild(downBtn);
+      row.appendChild(removeBtn);
+      rosterList.appendChild(row);
+    });
+  }
+  renderRoster();
+  body.appendChild(rosterSection);
+
+  // ---- turn rule (Live only) ----
+  const turnRuleSection = el("div");
+  turnRuleSection.appendChild(el("div", { class: "section-label", style: "padding:0 0 9px", text: "Turn rule" }));
+  const turnRuleRow = el("div", { style: "display:flex;gap:8px" });
+  turnRuleSection.appendChild(turnRuleRow);
+  const turnSecondsRow = el("div", { style: "display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.06)" });
+  turnRuleSection.appendChild(turnSecondsRow);
+
+  function renderTurnRule() {
+    turnRuleRow.innerHTML = "";
+    TURN_RULES.forEach((r) => {
+      const active = r.id === local.turnRule;
+      const card = el("div", { style: `flex:1;padding:10px;border-radius:12px;background:${active ? "rgba(217,164,65,.16)" : "rgba(255,255,255,.06)"};border:1.5px solid ${active ? "#d9a441" : "rgba(255,255,255,.1)"};cursor:pointer` });
+      card.appendChild(el("div", { style: "font:700 12px Figtree,sans-serif;color:#f6f1e4", text: r.label }));
+      card.appendChild(el("div", { style: "font:10.5px/1.3 Figtree,sans-serif;color:rgba(246,241,228,.55);margin-top:3px", text: r.desc }));
+      card.addEventListener("click", () => { local.turnRule = r.id; renderTurnRule(); });
+      turnRuleRow.appendChild(card);
+    });
+    turnSecondsRow.style.display = local.turnRule === "timed" ? "flex" : "none";
+  }
+  function renderTurnSeconds() {
+    turnSecondsRow.innerHTML = "";
+    turnSecondsRow.appendChild(el("span", { style: "font:600 13px Figtree,sans-serif;color:#f6f1e4", text: "Seconds per turn" }));
+    const stepper = el("div", { style: "display:flex;align-items:center;gap:12px" });
+    const minusBtn = el("button", { class: "icon-btn", style: "width:32px;height:32px", text: "–", "aria-label": "Fewer seconds" });
+    const valueEl = el("span", { style: "font:700 14px Figtree,sans-serif;color:#f6f1e4;min-width:28px;text-align:center", text: String(local.turnSeconds) });
+    const plusBtn = el("button", { class: "icon-btn", style: "width:32px;height:32px", text: "+", "aria-label": "More seconds" });
+    minusBtn.addEventListener("click", () => { local.turnSeconds = Math.max(10, local.turnSeconds - 5); valueEl.textContent = String(local.turnSeconds); });
+    plusBtn.addEventListener("click", () => { local.turnSeconds = Math.min(60, local.turnSeconds + 5); valueEl.textContent = String(local.turnSeconds); });
+    stepper.appendChild(minusBtn);
+    stepper.appendChild(valueEl);
+    stepper.appendChild(plusBtn);
+    turnSecondsRow.appendChild(stepper);
+  }
+  renderTurnRule();
+  renderTurnSeconds();
+  body.appendChild(turnRuleSection);
+
+  function renderLiveSections() {
+    const live = local.mode === "live";
+    rosterSection.style.display = live ? "" : "none";
+    turnRuleSection.style.display = live ? "" : "none";
+  }
+  renderLiveSections();
 
   // ---- layout ----
   body.appendChild(el("div", { class: "section-label", style: "padding:0 0 9px", text: "Layout" }));
@@ -233,18 +360,26 @@ export function renderRoomSetup(root, ctx, params = {}) {
       primaryButton.textContent = "Creating…";
       try {
         const layout = LAYOUTS[local.layoutId];
+        const live = local.mode === "live";
         const room = buildLocalRoom({
           title: layout.name,
           mode: local.mode,
           layoutId: local.layoutId,
           difficulty: local.difficulty,
-          visibility: local.mode === "solo" ? "private" : local.openLink ? "open" : "private",
+          visibility: local.mode === "solo" || live ? "private" : local.openLink ? "open" : "private",
           createdBy: ctx.state.currentUser,
           freeTilesGlow: local.freeTilesGlow,
           hintsAllowed: local.hintsAllowed,
           bots: local.bots.filter(Boolean),
+          players: live ? local.livePlayers : undefined,
+          turnRule: live ? local.turnRule : undefined,
+          turnSeconds: live ? local.turnSeconds : undefined,
         });
-        if (ctx.api.configured()) {
+        // Live is hot-seat play on this one device — no server room, no
+        // mid-game network traffic. Local play/ranking already works fully
+        // offline (same fallback solo/shared use when the Worker is
+        // unreachable), so this just skips the round-trip outright.
+        if (!live && ctx.api.configured()) {
           try {
             const result = await ctx.api.createRoom({ title: room.title, mode: room.mode, layoutId: room.layoutId, difficulty: room.difficulty, visibility: room.visibility, createdBy: room.createdBy, freeTilesGlow: room.freeTilesGlow, hintsAllowed: room.hintsAllowed, bots: local.bots.filter(Boolean) });
             // Keep the local board/bot setup, but use the persisted room id so
@@ -258,7 +393,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
         ctx.state.store.rooms[room.id] = room;
         ctx.state.activeRoomId = room.id;
         ctx.persist();
-        ctx.navigate(room.mode === "solo" ? "board" : "invite", { roomId: room.id });
+        ctx.navigate(room.mode === "solo" || live ? "board" : "invite", { roomId: room.id });
       } catch {
         ctx.toast("Couldn't create that room. Please try again.");
       } finally {

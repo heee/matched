@@ -2,7 +2,7 @@
 // "This month" stats, settings flattened onto the screen. See
 // design-reference.html #1l.
 
-import { el, avatarDot, supportsHaptics } from "./shared-ui.js?v=41";
+import { el, avatarDot, supportsHaptics } from "./shared-ui.js?v=42";
 import { tierForPoints, nextTier, pointsToNextTier, TIER_UNLOCKS, TIERS, nextCosmeticUnlock, cosmeticUnlockEvents } from "../game/scoring.js";
 import { MATERIALS, equippedMaterialName } from "../game/materials.js";
 import { FELTS, equippedFeltName } from "../game/felts.js";

@@ -3,7 +3,7 @@
 
 import { el, avatarDot, formatDuration, roomInviteUrl } from "./shared-ui.js";
 import { PLAYER_COLORS, highlightsFromLog, pointsToNextTier, nextTier, tierForPoints } from "../game/scoring.js";
-import { buildLocalRoom } from "../game/room.js?v=4";
+import { buildLocalRoom } from "../game/room.js?v=5";
 import { resultShareMessage } from "../game/share-messages.js";
 import { currentActiveMs } from "../game/time.js";
 
@@ -93,6 +93,9 @@ export function renderResults(root, ctx, params = {}) {
     const fresh = buildLocalRoom({
       title: room.title, mode: room.mode, layoutId: room.layoutId, difficulty: room.difficulty,
       visibility: room.visibility, createdBy: ctx.state.currentUser, freeTilesGlow: room.freeTilesGlow, hintsAllowed: room.hintsAllowed,
+      players: room.mode === "live" ? room.players : undefined,
+      turnRule: room.mode === "live" ? room.turnRule : undefined,
+      turnSeconds: room.mode === "live" ? room.turnSeconds : undefined,
     });
     ctx.state.store.rooms[fresh.id] = fresh;
     ctx.state.activeRoomId = fresh.id;

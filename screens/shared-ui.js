@@ -194,6 +194,12 @@ export function modeIcon(mode, size = 42) {
     wrap.appendChild(el("div", { style: "width:11px;height:15px;border-radius:3px;background:#f2ecdc" }));
     wrap.appendChild(el("div", { style: "width:11px;height:15px;border-radius:3px;border:1.5px dashed rgba(242,236,220,.4);box-sizing:border-box" }));
     box.appendChild(wrap);
+  } else if (mode === "live") {
+    const wrap = el("div", { style: "display:flex;align-items:flex-end;gap:2px" });
+    wrap.appendChild(el("div", { style: "width:9px;height:15px;border-radius:2px;background:#f2ecdc" }));
+    wrap.appendChild(el("div", { style: "width:6px;height:6px;border-radius:50%;background:rgba(242,236,220,.4);margin-bottom:2px" }));
+    wrap.appendChild(el("div", { style: "width:9px;height:12px;border-radius:2px;background:rgba(242,236,220,.35)" }));
+    box.appendChild(wrap);
   } else {
     const wrap = el("div", { style: "display:flex;gap:3px" });
     for (let i = 0; i < 3; i++) wrap.appendChild(el("div", { style: "width:9px;height:15px;border-radius:2px;background:#f2ecdc" }));

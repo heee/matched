@@ -7,7 +7,7 @@ import { dailyLayoutFor, dailySeedFor, todayDateStr, msUntilNextReset } from "..
 import { LAYOUTS, layoutSilhouette } from "../game/layouts.js";
 import { TIERS, colorForSeat, levelProgress, nextCosmeticUnlock, nextTier, tierForPoints } from "../game/scoring.js";
 import { materialFor } from "../game/materials.js";
-import { continuePlayingRooms, openRoomsForUser, randomRoomSample, waitingForPlayersRooms } from "../game/room-lists.js?v=2";
+import { continuePlayingRooms, openRoomsForUser, randomRoomSample, waitingForPlayersRooms } from "../game/room-lists.js?v=3";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { completedWeekStats } from "../game/daily-stats.js";
 import { topRegisteredRankings } from "../game/ranking.js";
@@ -263,7 +263,7 @@ function dailyOverviewCard(ctx) {
 export function continueRow(ctx, room) {
   const remaining = room.state.tiles.length;
   const pct = boardCompletion(room.tileCount, remaining);
-  const modeLabel = room.mode === "race" ? "Race" : room.mode === "solo" ? "Solo" : "Shared";
+  const modeLabel = room.mode === "race" ? "Race" : room.mode === "solo" ? "Solo" : room.mode === "live" ? "Live" : "Shared";
   const row = el("div", { style: "display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07);cursor:pointer" });
   row.addEventListener("click", () => ctx.navigate(room.mode === "race" ? "race-board" : "board", { roomId: room.id }));
   row.appendChild(modeIcon(room.mode));

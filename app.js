@@ -5,24 +5,24 @@
 import { createWorkerApi } from "./api.js?v=42";
 import { createJsonStorage, normalizeSharedData, mergeSharedData, writeRoomCache, LOCAL_KEYS, DEFAULT_SETTINGS } from "./storage.js?v=46";
 import { createMutationQueue } from "./sync.js?v=41";
-import { el, TAB_DEFS } from "./screens/shared-ui.js?v=41";
+import { el, TAB_DEFS } from "./screens/shared-ui.js?v=42";
 import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.js?v=38";
 import { equippedFeltName, feltCssVars } from "./game/felts.js?v=39";
-import { missingTrackedRoomIds, refreshableRoomsForUser, roomHasProgress, shouldAbandonRoomOnExit } from "./game/room-lists.js?v=4";
+import { missingTrackedRoomIds, refreshableRoomsForUser, roomHasProgress, shouldAbandonRoomOnExit } from "./game/room-lists.js?v=5";
 
 import { renderNameEntry } from "./screens/name-entry.js?v=41";
-import { renderHome } from "./screens/home.js?v=56";
+import { renderHome } from "./screens/home.js?v=57";
 import { renderPlayCatalog } from "./screens/play-catalog.js?v=43";
-import { renderRoomSetup } from "./screens/room-setup.js?v=44";
+import { renderRoomSetup } from "./screens/room-setup.js?v=45";
 import { renderRanking } from "./screens/ranking.js?v=44";
 import { renderHeadToHead } from "./screens/head-to-head.js?v=1";
 import { renderProfile } from "./screens/profile.js?v=46";
 import { renderManagePlayers } from "./screens/manage-players.js?v=38";
-import { renderBoard } from "./screens/board.js?v=56";
-import { renderRaceBoard } from "./screens/race-board.js?v=50";
-import { renderResults } from "./screens/results.js?v=41";
+import { renderBoard } from "./screens/board.js?v=57";
+import { renderRaceBoard } from "./screens/race-board.js?v=51";
+import { renderResults } from "./screens/results.js?v=42";
 import { renderInvite } from "./screens/invite.js?v=43";
-import { renderDaily } from "./screens/daily.js?v=42";
+import { renderDaily } from "./screens/daily.js?v=43";
 import { renderContinuePlaying } from "./screens/continue-playing.js?v=40";
 import { renderOpenRooms } from "./screens/open-rooms.js?v=45";
 

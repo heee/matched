@@ -11,21 +11,26 @@ function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "room";
 }
 
-export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed, seed, isDaily, bots }) {
+export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed, seed, isDaily, bots, players: livePlayers, turnRule, turnSeconds }) {
   if (!isActualPlayerName(createdBy)) throw new TypeError("A human creator is required");
   const id = `${slugify(title)}-${Date.now().toString(36)}`;
   const resolvedSeed = seed ?? hashSeed(id);
   const layout = layoutId || defaultLayoutForDifficulty(difficulty).id;
   const board = generateBoard(layout, { rng: mulberry32(resolvedSeed) });
   // Bots are opt-in per room (picked in room-setup's seat grid, each with
-  // its own { name, difficulty }) — a solo room never has them regardless
-  // of what was picked before switching mode. botNames is kept alongside
-  // players so Ranking (and anything else scanning completed rooms) can
-  // exclude bots from real-player stats without guessing by name.
-  const botList = mode === "solo" ? [] : (bots || []);
+  // its own { name, difficulty }) — a solo or live room never has them
+  // regardless of what was picked before switching mode. botNames is kept
+  // alongside players so Ranking (and anything else scanning completed
+  // rooms) can exclude bots from real-player stats without guessing by name.
+  const botList = mode === "solo" || mode === "live" ? [] : (bots || []);
   const botNames = botList.map((b) => b.name);
   if (botNames.includes(createdBy)) throw new TypeError("A bot cannot create a room");
-  const players = mode === "solo" ? [createdBy] : [createdBy, ...botNames];
+  // Live is hot-seat play — one device, a roster of real local players
+  // passed in from room-setup's roster editor (falls back to just the
+  // creator if somehow empty).
+  const players = mode === "solo" ? [createdBy]
+    : mode === "live" ? (livePlayers && livePlayers.length ? livePlayers : [createdBy])
+    : [createdBy, ...botNames];
   const pairsCleared = {};
   const streaks = {};
   for (const p of players) { pairsCleared[p] = 0; streaks[p] = 0; }
@@ -49,6 +54,12 @@ export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, 
     activeWindow: null,
     freeTilesGlow: freeTilesGlow !== false,
     hintsAllowed: hintsAllowed !== false,
+    // Live-only: whose turn it is (index into players) and the turn-end
+    // rule chosen at setup. Irrelevant, and left undefined, outside live.
+    turnRule: mode === "live" ? (turnRule || "single") : undefined,
+    turnSeconds: mode === "live" && turnRule === "timed" ? (turnSeconds || 20) : undefined,
+    turnIndex: mode === "live" ? 0 : undefined,
+    turnStartedAt: null,
     players,
     botNames,
     botDifficulty: Object.fromEntries(botList.map((b) => [b.name, b.difficulty])),
