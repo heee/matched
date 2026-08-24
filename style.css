@@ -554,6 +554,7 @@ a { color: var(--gold); }
   background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.08);
 }
 .player-card.me { background: rgba(217,164,65,.16); border-color: rgba(217,164,65,.4); }
+.player-card.offline { opacity: .4; filter: grayscale(1); }
 .player-card .pname { font: 10.5px var(--font-ui); color: var(--text-dim); margin-top: 3px; }
 
 .tray {

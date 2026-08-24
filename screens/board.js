@@ -80,6 +80,12 @@ export function renderBoard(root, ctx, params = {}) {
     persistTimer: null,
     roomSocket: null,
     presencePlayers: [],
+    // Who currently has the board on screen, per the Worker's per-socket
+    // visibility tracking — null until the first server round trip so a
+    // still-loading room never flashes everyone as offline. Distinct from
+    // presencePlayers: a backgrounded tab stays connected (so its clock
+    // resumes correctly) but drops out of this set.
+    visiblePlayers: null,
     finished: false,
     boardBox: null,
     fixedBoardBox: null,
@@ -222,12 +228,23 @@ export function renderBoard(root, ctx, params = {}) {
     return [...new Set([...(room.players || []), ...local.presencePlayers])];
   }
 
+  // A shared room's clock already pauses when nobody's watching (see
+  // game/time.js); this mirrors that same per-socket visibility so a
+  // player who backgrounded the tab or left the screen reads as offline
+  // instead of just quietly not scoring. Never true for you (this device
+  // is always visible to itself) or before the first server round trip.
+  function isPlayerOffline(name) {
+    return isShared && !!local.roomSocket && local.visiblePlayers != null
+      && name !== you && !local.visiblePlayers.includes(name);
+  }
+
   function renderScoreCards() {
     scoreRow.innerHTML = "";
     const active = actingPlayer();
     playerList().forEach((name, i) => {
       const streak = room.streaks[name] || 0;
-      const card = el("div", { class: `player-card${name === active ? " me" : ""}` });
+      const offline = isPlayerOffline(name);
+      const card = el("div", { class: `player-card${name === active ? " me" : ""}${offline ? " offline" : ""}` });
       const top = el("div", { style: "display:flex;align-items:center;gap:6px" });
       top.appendChild(avatarDot(name, i, 18, ctx.state.store.users));
       top.appendChild(el("span", { style: "font:700 13px Figtree,sans-serif;color:#f6f1e4", text: String(room.pairsCleared[name] || 0) }));
@@ -969,6 +986,7 @@ export function renderBoard(root, ctx, params = {}) {
             local.boardBox = null;
           }
           local.presencePlayers = message.presence || local.presencePlayers;
+          if (message.visible) local.visiblePlayers = message.visible;
           ctx.persist();
           fullRender();
           if (room.completedAt && !local.finished) finishRoom();
@@ -976,6 +994,7 @@ export function renderBoard(root, ctx, params = {}) {
         }
         if (message.type === "presence") {
           local.presencePlayers = message.players || [];
+          if (message.visible) local.visiblePlayers = message.visible;
           renderScoreCards();
           return;
         }

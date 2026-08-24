@@ -379,7 +379,7 @@ export class RoomDO {
     // means a room already in progress starts its active window immediately
     // instead of waiting a round trip.
     server.serializeAttachment({ user, spectator, visible: true });
-    this.sendTo(server, { type: "init", room: this.room, presence: this.presenceList() });
+    this.sendTo(server, { type: "init", room: this.room, presence: this.presenceList(), visible: this.visiblePresenceList() });
     this.broadcastPresence();
     await this.applyActiveWindowChange();
 
@@ -392,8 +392,19 @@ export class RoomDO {
       .filter(isActualPlayerName);
   }
 
+  // Subset of presenceList() that currently has the board on screen — a
+  // connected-but-backgrounded player (tab switched away, app minimized)
+  // stays connected so their clock keeps counting once they're back, but
+  // the client greys their score card out in the meantime.
+  visiblePresenceList() {
+    return this.state.getWebSockets()
+      .filter((socket) => socket.deserializeAttachment()?.visible !== false)
+      .map((socket) => socket.deserializeAttachment()?.user)
+      .filter(isActualPlayerName);
+  }
+
   broadcastPresence() {
-    this.broadcast({ type: "presence", players: this.presenceList() }, null);
+    this.broadcast({ type: "presence", players: this.presenceList(), visible: this.visiblePresenceList() }, null);
   }
 
   // Union of "is anyone currently looking at this board" across every
@@ -478,7 +489,7 @@ export class RoomDO {
       const a = racer.tiles.find((tile) => tile.id === idA);
       const b = racer.tiles.find((tile) => tile.id === idB);
       if (!a || !b || a.face.id !== b.face.id || !isFree(a, racer.tiles) || !isFree(b, racer.tiles)) {
-        this.sendTo(socket, { type: "room-sync", room: this.room, presence: this.presenceList() });
+        this.sendTo(socket, { type: "room-sync", room: this.room, presence: this.presenceList(), visible: this.visiblePresenceList() });
         return;
       }
 
@@ -520,7 +531,7 @@ export class RoomDO {
       // the first clear-pair to reach this DO instance wins, same rule as
       // Across's per-cell first-write-wins.
       if (!a || !b || a.face.id !== b.face.id || !isFree(a, tiles) || !isFree(b, tiles)) {
-        this.sendTo(socket, { type: "room-sync", room: this.room, presence: this.presenceList() });
+        this.sendTo(socket, { type: "room-sync", room: this.room, presence: this.presenceList(), visible: this.visiblePresenceList() });
         return;
       }
       const clearedAt = Date.now();
@@ -579,9 +590,9 @@ export class RoomDO {
           this.room.pairsCleared[last.user] = Math.max(0, (this.room.pairsCleared[last.user] || 0) - 1);
           this.room.completedAt = null;
           this.room.state.state = this.room.state.matchLog.length ? "in_progress" : "waiting";
-          this.broadcast({ type: "room-sync", room: this.room, presence: this.presenceList() }, null);
+          this.broadcast({ type: "room-sync", room: this.room, presence: this.presenceList(), visible: this.visiblePresenceList() }, null);
         } else {
-          this.sendTo(socket, { type: "room-sync", room: this.room, presence: this.presenceList() });
+          this.sendTo(socket, { type: "room-sync", room: this.room, presence: this.presenceList(), visible: this.visiblePresenceList() });
         }
       } else {
         this.broadcast({ type: "assist-used", user, kind: msg.kind, assistsUsed: this.room.assistsUsed }, null);
@@ -589,7 +600,10 @@ export class RoomDO {
       await this.persist(false);
     } else if (msg.type === "visibility") {
       const visible = !!msg.visible;
-      if (metadata?.visible !== visible) socket.serializeAttachment({ ...metadata, visible });
+      if (metadata?.visible !== visible) {
+        socket.serializeAttachment({ ...metadata, visible });
+        this.broadcastPresence();
+      }
       await this.applyActiveWindowChange();
     } else if (msg.type === "reaction") {
       this.broadcast({ type: "reaction", user, emoji: msg.emoji }, socket);
