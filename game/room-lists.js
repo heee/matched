@@ -48,7 +48,9 @@ export function continuePlayingRooms(rooms, currentUser, activeRoomId) {
     room.id !== activeRoomId
     && room.players?.includes(currentUser)
     && hasStartedRoom(room, currentUser)
-    && roomHasProgress(room)
+    // A joined shared room still waiting on the host's "Start game" has no
+    // progress yet, but the joiner still needs a way back to its lobby.
+    && (roomHasProgress(room) || (room.mode === "shared" && !room.gameStarted))
     && room.state?.state !== "completed"
   );
 }

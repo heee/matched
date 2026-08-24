@@ -8,20 +8,20 @@ import { createMutationQueue } from "./sync.js?v=41";
 import { el, TAB_DEFS } from "./screens/shared-ui.js?v=42";
 import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.js?v=38";
 import { equippedFeltName, feltCssVars } from "./game/felts.js?v=39";
-import { missingTrackedRoomIds, refreshableRoomsForUser, roomHasProgress, shouldAbandonRoomOnExit } from "./game/room-lists.js?v=5";
+import { missingTrackedRoomIds, refreshableRoomsForUser, roomHasProgress, shouldAbandonRoomOnExit } from "./game/room-lists.js?v=6";
 
 import { renderNameEntry } from "./screens/name-entry.js?v=41";
-import { renderHome } from "./screens/home.js?v=58";
+import { renderHome } from "./screens/home.js?v=59";
 import { renderPlayCatalog } from "./screens/play-catalog.js?v=43";
 import { renderRoomSetup } from "./screens/room-setup.js?v=45";
 import { renderRanking } from "./screens/ranking.js?v=44";
 import { renderHeadToHead } from "./screens/head-to-head.js?v=1";
 import { renderProfile } from "./screens/profile.js?v=46";
 import { renderManagePlayers } from "./screens/manage-players.js?v=38";
-import { renderBoard } from "./screens/board.js?v=57";
+import { renderBoard } from "./screens/board.js?v=58";
 import { renderRaceBoard } from "./screens/race-board.js?v=51";
 import { renderResults } from "./screens/results.js?v=42";
-import { renderInvite } from "./screens/invite.js?v=43";
+import { renderInvite } from "./screens/invite.js?v=44";
 import { renderDaily } from "./screens/daily.js?v=43";
 import { renderContinuePlaying } from "./screens/continue-playing.js?v=40";
 import { renderOpenRooms } from "./screens/open-rooms.js?v=45";
@@ -256,6 +256,7 @@ function commitRoomMembership(room) {
 function roomProgressPayload(room) {
   return {
     startedAt: room.startedAt,
+    gameStarted: room.gameStarted,
     activeMs: room.activeMs || 0,
     activeWindow: room.activeWindow || null,
     state: room.state,
@@ -420,12 +421,11 @@ async function joinRoomFromInvite(roomId) {
     return;
   }
   repairCurrentPlayerAliases(room, state.currentUser);
-  if (!room.players.includes(state.currentUser)) {
-    room.players.push(state.currentUser);
-    room.pairsCleared[state.currentUser] = room.pairsCleared[state.currentUser] || 0;
-    room.streaks[state.currentUser] = room.streaks[state.currentUser] || 0;
-    state.store.rooms[roomId] = room;
-    persist();
+  state.store.rooms[roomId] = room;
+  if (room.createdBy !== state.currentUser) commitRoomMembership(room);
+  if (room.mode === "shared" && !room.gameStarted) {
+    navigate("invite", { roomId });
+    return;
   }
   navigate(room.mode === "race" ? "race-board" : "board", { roomId });
 }

@@ -11,7 +11,7 @@ import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js
 import { PLAYER_COLORS, pointsForSession, highlightsFromLog, BOT_ACT_CHANCE, COMBO_WINDOW_MS, COMBO_BONUS_POINTS } from "../game/scoring.js";
 import { equippedMaterialName, materialCssVars } from "../game/materials.js";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
-import { hasStartedRoom } from "../game/room-lists.js?v=3";
+import { hasStartedRoom } from "../game/room-lists.js?v=6";
 import { equippedFeltName, feltCssVars } from "../game/felts.js";
 import { createIdleClueController } from "./idle-clues.js";
 import { roomTimerStartMs, timestampMs, currentActiveMs, openActiveWindow, closeActiveWindow } from "../game/time.js";
@@ -34,6 +34,13 @@ const ICON_MOVES = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" 
 export function renderBoard(root, ctx, params = {}) {
   const room = ctx.state.store.rooms[params.roomId];
   if (!room) { ctx.navigate("home"); return; }
+  // Shared rooms sit in a lobby until the host starts them — a guest who
+  // lands here early (stale link, back button) gets bounced to the lobby
+  // instead of seeing a board nobody's meant to be on yet.
+  if (room.mode === "shared" && !room.gameStarted && room.createdBy !== ctx.state.currentUser) {
+    ctx.navigate("invite", { roomId: room.id });
+    return;
+  }
   if (repairCurrentPlayerAliases(room, ctx.state.currentUser)) ctx.persist();
   if (hasStartedRoom(room, ctx.state.currentUser)) ctx.state.activeRoomId = room.id;
   const you = ctx.state.currentUser;

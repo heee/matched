@@ -218,7 +218,7 @@ export default {
         if (!room) throw new Error("room not found");
         // Never let a late progress write reopen or replace a completed room.
         if (!room.completedAt) {
-          for (const key of ["startedAt", "activeMs", "activeWindow", "state", "players", "startedPlayers", "botNames", "pairsCleared", "streaks", "peakStreaks", "assistsUsed", "racers"]) {
+          for (const key of ["startedAt", "activeMs", "activeWindow", "state", "players", "startedPlayers", "botNames", "pairsCleared", "streaks", "peakStreaks", "assistsUsed", "racers", "gameStarted"]) {
             if (payload[key] !== undefined) room[key] = payload[key];
           }
           await upsertRoom(env.DB, room);
@@ -670,6 +670,14 @@ function repairRoomMetadata(room) {
   const log = Array.isArray(room.state?.matchLog) ? room.state.matchLog : [];
   if (!Array.isArray(room.players)) { room.players = []; changed = true; }
   if (!Array.isArray(room.startedPlayers)) { room.startedPlayers = []; changed = true; }
+  if (typeof room.gameStarted !== "boolean") {
+    // Backfill for rooms created before the lobby/start-game feature: a
+    // shared room already past its first match was already effectively
+    // started, so only a still-fresh waiting room gets gated.
+    room.gameStarted = room.mode !== "shared" || log.length > 0
+      || room.state?.state === "in_progress" || room.state?.state === "completed";
+    changed = true;
+  }
   for (const entry of log) {
     const name = entry?.user;
     if (!isActualPlayerName(name)) continue;
@@ -853,6 +861,7 @@ function buildRoom(req) {
     visibility: req.visibility,
     createdBy: req.createdBy,
     createdAt: new Date().toISOString(),
+    gameStarted: req.mode !== "shared",
     startedAt: null,
     activeMs: 0,
     activeWindow: null,

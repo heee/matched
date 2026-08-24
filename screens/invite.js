@@ -12,6 +12,7 @@ const TOTAL_SEATS = 4; // you + up to 3 others, matching room-setup's bot-seat c
 // Stroke-only action icons, following the app's Lucide-style icon convention.
 const ICON_SHARE = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg>`;
 const ICON_ENTER = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5M15 12H3"/></svg>`;
+const ICON_PLAY = `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" stroke="none" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>`;
 
 function sendInvite(ctx, room, toUser) {
   ctx.state.store.invites = ctx.state.store.invites || [];
@@ -31,9 +32,11 @@ export function renderInvite(root, ctx, params = {}) {
   let room = ctx.state.store.rooms[params.roomId];
   if (!room) { ctx.navigate("home"); return; }
   const link = roomInviteUrl(room.id);
+  const isHost = room.createdBy === ctx.state.currentUser;
   let pickerSeat = null; // which open seat index currently shows the invite picker
   let refreshInFlight = false;
   let renderSeats = null;
+  let renderActions = null;
 
   async function refreshJoinedPlayers() {
     if (refreshInFlight || !root.isConnected) return;
@@ -41,8 +44,15 @@ export function renderInvite(root, ctx, params = {}) {
     try {
       const freshRoom = await ctx.refreshRoom(room.id);
       if (!freshRoom || !root.isConnected) return;
+      const justStarted = !room.gameStarted && freshRoom.gameStarted;
       room = freshRoom;
       renderSeats?.();
+      renderActions?.();
+      // The host started the game while we were waiting here — follow them
+      // straight into the board instead of making the guest tap "Enter".
+      if (justStarted && !isHost) {
+        ctx.navigate(room.mode === "race" ? "race-board" : "board", { roomId: room.id });
+      }
     } catch {
       // Keep the locally cached seats usable while offline; the next tick,
       // focus event, or visit to this screen will try again.
@@ -62,7 +72,10 @@ export function renderInvite(root, ctx, params = {}) {
       const sheet = el("div", { class: "sheet", style: "margin-top:auto" });
       sheet.appendChild(el("div", { class: "sheet-handle" }));
       sheet.appendChild(el("div", { class: "title-serif", style: "font-size:26px", text: "Bring your people" }));
-      sheet.appendChild(el("div", { style: "font:13.5px/1.5 Figtree,sans-serif;color:rgba(246,241,228,.6);margin-top:7px", text: "Anyone with the link can jump in. Their seat is claimed when they clear their first pair." }));
+      const helperText = room.mode === "shared"
+        ? (isHost ? "Anyone with the link can jump in and wait here. Start the game once your people are in." : "Anyone with the link can jump in. The host starts the game once everyone's ready.")
+        : "Anyone with the link can jump in. Their seat is claimed when they clear their first pair.";
+      sheet.appendChild(el("div", { style: "font:13.5px/1.5 Figtree,sans-serif;color:rgba(246,241,228,.6);margin-top:7px", text: helperText }));
 
       // Solo rooms have nobody to bring in — skip the seat grid entirely.
       if (room.mode !== "solo") {
@@ -170,14 +183,47 @@ export function renderInvite(root, ctx, params = {}) {
       });
       actionRow.appendChild(shareBtn);
 
-      const enterBtn = el("button", {
-        class: "btn btn-outline btn-lg",
-        style: "flex:1;min-width:0;gap:8px",
-        html: `${ICON_ENTER}<span>Enter room</span>`,
-      });
-      enterBtn.addEventListener("click", () => ctx.navigate(room.mode === "race" ? "race-board" : "board", { roomId: room.id }));
-      actionRow.appendChild(enterBtn);
+      const secondSlot = el("div", { style: "flex:1;min-width:0" });
+      actionRow.appendChild(secondSlot);
       sheet.appendChild(actionRow);
+
+      function goToBoard() {
+        ctx.navigate(room.mode === "race" ? "race-board" : "board", { roomId: room.id });
+      }
+
+      function startGame() {
+        room.gameStarted = true;
+        ctx.reportRoomProgress(room);
+        goToBoard();
+      }
+
+      renderActions = function renderActions() {
+        secondSlot.innerHTML = "";
+        const lobbyGated = room.mode === "shared" && !room.gameStarted;
+        if (lobbyGated && isHost) {
+          const startBtn = el("button", {
+            class: "btn btn-primary btn-lg",
+            style: "width:100%;gap:8px",
+            html: `${ICON_PLAY}<span>Start game</span>`,
+          });
+          startBtn.addEventListener("click", startGame);
+          secondSlot.appendChild(startBtn);
+        } else if (lobbyGated) {
+          secondSlot.appendChild(el("div", {
+            style: "width:100%;height:100%;min-height:44px;display:flex;align-items:center;justify-content:center;text-align:center;border-radius:12px;background:rgba(255,255,255,.05);font:600 12.5px Figtree,sans-serif;color:rgba(246,241,228,.55)",
+            text: `Waiting for ${room.createdBy} to start…`,
+          }));
+        } else {
+          const enterBtn = el("button", {
+            class: "btn btn-outline btn-lg",
+            style: "width:100%;gap:8px",
+            html: `${ICON_ENTER}<span>Enter room</span>`,
+          });
+          enterBtn.addEventListener("click", goToBoard);
+          secondSlot.appendChild(enterBtn);
+        }
+      };
+      renderActions();
 
       return sheet;
     })(),

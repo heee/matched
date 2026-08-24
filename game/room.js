@@ -45,6 +45,10 @@ export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, 
     visibility: visibility || "open",
     createdBy,
     createdAt: new Date().toISOString(),
+    // Shared rooms sit in a lobby until the host explicitly starts play —
+    // everyone else is gated out of the board until this flips true. Every
+    // other mode has no lobby, so it starts true.
+    gameStarted: mode !== "shared",
     // Shared rooms may wait in the invite sheet indefinitely. Board screens
     // set this when play actually begins (the first match for Shared).
     startedAt: null,

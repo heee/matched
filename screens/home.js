@@ -7,7 +7,7 @@ import { dailyLayoutFor, dailySeedFor, todayDateStr, msUntilNextReset } from "..
 import { LAYOUTS, layoutSilhouette } from "../game/layouts.js";
 import { TIERS, colorForSeat, levelProgress, nextCosmeticUnlock, nextTier, tierForPoints } from "../game/scoring.js";
 import { materialFor } from "../game/materials.js";
-import { continuePlayingRooms, openRoomsForUser, randomRoomSample, waitingForPlayersRooms } from "../game/room-lists.js?v=3";
+import { continuePlayingRooms, openRoomsForUser, randomRoomSample, waitingForPlayersRooms } from "../game/room-lists.js?v=6";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { completedWeekStats } from "../game/daily-stats.js";
 import { topRegisteredRankings } from "../game/ranking.js";
@@ -261,15 +261,16 @@ function dailyOverviewCard(ctx) {
 }
 
 export function continueRow(ctx, room) {
+  const lobbyGated = room.mode === "shared" && !room.gameStarted;
   const remaining = room.state.tiles.length;
   const pct = boardCompletion(room.tileCount, remaining);
   const modeLabel = room.mode === "race" ? "Race" : room.mode === "solo" ? "Solo" : room.mode === "live" ? "Live" : "Shared";
   const row = el("div", { style: "display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07);cursor:pointer" });
-  row.addEventListener("click", () => ctx.navigate(room.mode === "race" ? "race-board" : "board", { roomId: room.id }));
+  row.addEventListener("click", () => ctx.navigate(lobbyGated ? "invite" : (room.mode === "race" ? "race-board" : "board"), { roomId: room.id }));
   row.appendChild(modeIcon(room.mode));
   const info = el("div", { style: "flex:1;min-width:0" });
   info.appendChild(el("div", { style: "font:600 14.5px Figtree,sans-serif;color:#f6f1e4", text: room.title }));
-  info.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:2px", text: `${modeLabel} · ${pct}% cleared` }));
+  info.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:2px", text: lobbyGated ? `${modeLabel} · waiting for host to start` : `${modeLabel} · ${pct}% cleared` }));
   info.appendChild(el("div", { class: "progress-thin", style: "margin-top:7px", html: `<div style="width:${pct}%"></div>` }));
   row.appendChild(info);
   const avatarEntries = continueAvatarEntries(room, ctx.state.currentUser);
@@ -333,11 +334,12 @@ export function openRow(ctx, room) {
     class: "btn", style: "background:none;border:none;font:600 12px Figtree,sans-serif;color:#d9a441;padding:0;height:auto", text: "Join",
     onClick: () => {
       repairCurrentPlayerAliases(room, ctx.state.currentUser);
-      if (!room.players.includes(ctx.state.currentUser)) room.players.push(ctx.state.currentUser);
-      room.pairsCleared[ctx.state.currentUser] = room.pairsCleared[ctx.state.currentUser] || 0;
-      room.streaks[ctx.state.currentUser] = room.streaks[ctx.state.currentUser] || 0;
       ctx.state.store.rooms[room.id] = room;
-      ctx.persist();
+      ctx.commitRoomMembership(room);
+      if (room.mode === "shared" && !room.gameStarted) {
+        ctx.navigate("invite", { roomId: room.id });
+        return;
+      }
       ctx.navigate(room.mode === "race" ? "race-board" : "board", { roomId: room.id });
     },
   }));
@@ -361,12 +363,11 @@ async function showInviteNotice(ctx, invite) {
     const room = ctx.state.store.rooms[invite.roomId];
     if (room) {
       repairCurrentPlayerAliases(room, ctx.state.currentUser);
-      if (!room.players.includes(ctx.state.currentUser)) {
-        room.players.push(ctx.state.currentUser);
-        room.pairsCleared[ctx.state.currentUser] = room.pairsCleared[ctx.state.currentUser] || 0;
-        room.streaks[ctx.state.currentUser] = room.streaks[ctx.state.currentUser] || 0;
+      ctx.commitRoomMembership(room);
+      if (room.mode === "shared" && !room.gameStarted) {
+        ctx.navigate("invite", { roomId: room.id });
+        return;
       }
-      ctx.persist();
       ctx.navigate(room.mode === "race" ? "race-board" : "board", { roomId: room.id });
       return;
     }

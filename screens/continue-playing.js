@@ -1,8 +1,8 @@
 // Expanded list of every unfinished room the current player has joined.
 
 import { el } from "./shared-ui.js";
-import { continuePlayingRooms } from "../game/room-lists.js?v=3";
-import { continueRow } from "./home.js?v=58";
+import { continuePlayingRooms } from "../game/room-lists.js?v=6";
+import { continueRow } from "./home.js?v=59";
 
 export function renderContinuePlaying(root, ctx) {
   const rooms = continuePlayingRooms(

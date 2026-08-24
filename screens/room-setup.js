@@ -3,7 +3,7 @@
 
 import { el, avatarDot } from "./shared-ui.js";
 import { LAYOUTS, defaultLayoutForDifficulty, DIFFICULTY_TILE_COUNTS } from "../game/layouts.js";
-import { buildLocalRoom } from "../game/room.js?v=5";
+import { buildLocalRoom } from "../game/room.js?v=6";
 import { BOT_DIFFICULTIES, BOT_NAME_POOL } from "../game/scoring.js";
 import { isActualPlayerName } from "../game/identity.js";
 
