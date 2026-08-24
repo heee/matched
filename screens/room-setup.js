@@ -14,10 +14,11 @@ const BOT_SEAT_COUNT = 3;
 
 const MODES = [
   {
-    id: "shared", name: "Shared", desc: "One board, everyone tapping. First to a pair takes it.",
+    id: "solo", name: "Solo", desc: "Just you. Times still count toward Ranking.",
     icon: () => {
-      const wrap = el("div", { style: "display:flex;gap:3px;margin-bottom:9px;height:20px" });
-      for (let i = 0; i < 3; i++) wrap.appendChild(el("div", { style: "width:13px;height:18px;border-radius:3px;background:#f2ecdc" }));
+      const wrap = el("div", { style: "display:flex;align-items:center;gap:3px;margin-bottom:9px;height:20px" });
+      wrap.appendChild(el("div", { style: "width:13px;height:18px;border-radius:3px;background:#f2ecdc" }));
+      wrap.appendChild(el("div", { style: "width:13px;height:18px;border-radius:3px;border:1.5px dashed rgba(242,236,220,.35);box-sizing:border-box" }));
       return wrap;
     },
   },
@@ -31,11 +32,10 @@ const MODES = [
     },
   },
   {
-    id: "solo", name: "Solo", desc: "Just you. Times still count toward Ranking.",
+    id: "shared", name: "Shared", desc: "One board, everyone tapping. First to a pair takes it.",
     icon: () => {
-      const wrap = el("div", { style: "display:flex;align-items:center;gap:3px;margin-bottom:9px;height:20px" });
-      wrap.appendChild(el("div", { style: "width:13px;height:18px;border-radius:3px;background:#f2ecdc" }));
-      wrap.appendChild(el("div", { style: "width:13px;height:18px;border-radius:3px;border:1.5px dashed rgba(242,236,220,.35);box-sizing:border-box" }));
+      const wrap = el("div", { style: "display:flex;gap:3px;margin-bottom:9px;height:20px" });
+      for (let i = 0; i < 3; i++) wrap.appendChild(el("div", { style: "width:13px;height:18px;border-radius:3px;background:#f2ecdc" }));
       return wrap;
     },
   },
