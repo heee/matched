@@ -551,27 +551,25 @@ export function renderBoard(root, ctx, params = {}) {
       // can coalesce that with the insertion and never observe a pre-animation
       // style, leaving the clone with no visible flight at all.
       if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches && typeof stage.animate === "function") {
-        const timing = { duration: 850, easing: "cubic-bezier(.3,.5,.3,1)", fill: "both" };
+        const timing = { duration: 950, easing: "cubic-bezier(.3,.5,.3,1)", fill: "both" };
         stage.animate([
           { transform: "translate3d(0,0,0) scale(1)", opacity: 1, offset: 0 },
-          { transform: "translate3d(0,-28px,0) scale(1.08)", opacity: 1, offset: 0.16 },
-          { transform: `translate3d(${dx * 0.12}px,-30px,0) scale(1.05)`, opacity: 1, offset: 0.5 },
-          { transform: `translate3d(${dx * 0.7}px,${dy * 0.55 - 14}px,0) scale(.7)`, opacity: 1, offset: 0.8 },
-          { transform: `translate3d(${dx}px,${dy}px,0) scale(.25)`, opacity: 0, offset: 1 },
+          { transform: "translate3d(0,-46px,0) scale(1.15)", opacity: 1, offset: 0.22 },
+          { transform: `translate3d(${dx * 0.08}px,-50px,0) scale(1.1)`, opacity: 1, offset: 0.48 },
+          { transform: `translate3d(${dx * 0.68}px,${dy * 0.5 - 12}px,0) scale(.6)`, opacity: 1, offset: 0.78 },
+          { transform: `translate3d(${dx}px,${dy}px,0) scale(.22)`, opacity: 0, offset: 1 },
         ], timing);
         clone.animate([
           { transform: "rotateY(0deg)", offset: 0 },
-          { transform: "rotateY(360deg)", offset: 0.16 },
-          { transform: "rotateY(1080deg)", offset: 0.5 },
-          { transform: "rotateY(1800deg)", offset: 0.8 },
-          { transform: "rotateY(2160deg)", offset: 1 },
-        ], { duration: 850, easing: "linear", fill: "both" });
+          { transform: "rotateY(760deg)", offset: 0.48 },
+          { transform: "rotateY(1800deg)", offset: 1 },
+        ], { duration: 950, easing: "cubic-bezier(.45,0,.55,1)", fill: "both" });
       } else if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         // Older browsers without Web Animations still get the CSS version;
         // two frames keep insertion and animation start in separate paints.
         requestAnimationFrame(() => requestAnimationFrame(() => stage.classList.add("is-flying")));
       }
-      setTimeout(() => stage.remove(), 900);
+      setTimeout(() => stage.remove(), 1000);
     });
   }
 
