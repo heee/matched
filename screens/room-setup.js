@@ -361,8 +361,12 @@ export function renderRoomSetup(root, ctx, params = {}) {
       try {
         const layout = LAYOUTS[local.layoutId];
         const live = local.mode === "live";
+        // Shared boards can pile up several of the same layout in open
+        // rooms/invites at once — prefix with the host's name so they're
+        // distinguishable at a glance instead of all reading "Dragon's Nest".
+        const title = local.mode === "shared" ? `${ctx.state.currentUser}'s ${layout.name}` : layout.name;
         const room = buildLocalRoom({
-          title: layout.name,
+          title,
           mode: local.mode,
           layoutId: local.layoutId,
           difficulty: local.difficulty,
