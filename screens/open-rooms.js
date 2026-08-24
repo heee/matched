@@ -2,7 +2,7 @@
 
 import { el } from "./shared-ui.js";
 import { openRoomsForUser } from "../game/room-lists.js?v=6";
-import { openRow } from "./home.js?v=60";
+import { openRow } from "./home.js?v=61";
 
 export function renderOpenRooms(root, ctx) {
   const rooms = openRoomsForUser(

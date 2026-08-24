@@ -12,7 +12,7 @@ import { PLAYER_HUES } from "./game/scoring.js";
 import { missingTrackedRoomIds, refreshableRoomsForUser, roomHasProgress, shouldAbandonRoomOnExit } from "./game/room-lists.js?v=6";
 
 import { renderNameEntry } from "./screens/name-entry.js?v=41";
-import { renderHome } from "./screens/home.js?v=60";
+import { renderHome } from "./screens/home.js?v=61";
 import { renderPlayCatalog } from "./screens/play-catalog.js?v=43";
 import { renderRoomSetup } from "./screens/room-setup.js?v=48";
 import { renderRanking } from "./screens/ranking.js?v=44";

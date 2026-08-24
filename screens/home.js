@@ -358,16 +358,21 @@ function activityCopy(item) {
   return "";
 }
 
-function activityRow(ctx, item) {
-  const row = el("div", { style: "display:flex;align-items:center;gap:13px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08)" });
-  row.appendChild(avatarDot(item.user, 0, 34, ctx.state.store.users));
-  const info = el("div", { style: "flex:1;min-width:0" });
-  info.appendChild(el("div", { style: "font:14px Figtree,sans-serif;color:#f6f1e4" }, [
-    el("span", { style: "font-weight:600", text: item.user }),
+// Deliberately plain — a hairline-divided line, not a bordered/backgrounded
+// card like openRow/waitingRow. Those are actionable rooms you can tap into;
+// this is a passive log, and looking identical to them made the two
+// contexts easy to confuse.
+function activityRow(ctx, item, isLast) {
+  const row = el("div", {
+    style: `display:flex;align-items:center;gap:10px;padding:9px 2px;${isLast ? "" : "border-bottom:1px solid rgba(255,255,255,.06)"}`,
+  });
+  row.appendChild(avatarDot(item.user, 0, 24, ctx.state.store.users));
+  const info = el("div", { style: "flex:1;min-width:0;font:13px Figtree,sans-serif;color:rgba(246,241,228,.75)" }, [
+    el("span", { style: "font-weight:600;color:#f6f1e4", text: item.user }),
     ` ${activityCopy(item)}`,
-  ]));
-  info.appendChild(el("div", { style: "font:11px Figtree,sans-serif;color:rgba(246,241,228,.45);margin-top:2px", text: formatRelativeTime(item.at) }));
+  ]);
   row.appendChild(info);
+  row.appendChild(el("div", { style: "flex:none;font:11px Figtree,sans-serif;color:rgba(246,241,228,.35)", text: formatRelativeTime(item.at) }));
   return row;
 }
 
@@ -539,10 +544,17 @@ export function renderHome(root, ctx) {
 
   root.appendChild(el("div", { class: "section-label", style: "padding-top:20px", text: "Recent activity" }));
   const activityItems = ctx.state.store.activity || [];
-  const activityList = el("div", { class: "row-list" });
-  if (activityItems.length === 0) activityList.appendChild(el("div", { class: "empty-note", style: "padding:0 4px", text: "Activity from you and other players will show up here." }));
-  activityItems.slice(0, 8).forEach((item) => activityList.appendChild(activityRow(ctx, item)));
-  root.appendChild(activityList);
+  // A flat panel with hairline row dividers, not the boxed-card row-list
+  // grid used for actionable rooms above — deliberately reads as a passive
+  // log rather than another set of tappable game cards.
+  const activityPanel = el("div", { style: "margin:0 16px" });
+  if (activityItems.length === 0) {
+    activityPanel.appendChild(el("div", { class: "empty-note", text: "Activity from you and other players will show up here." }));
+  } else {
+    const shown = activityItems.slice(0, 8);
+    shown.forEach((item, i) => activityPanel.appendChild(activityRow(ctx, item, i === shown.length - 1)));
+  }
+  root.appendChild(activityPanel);
 
   root.appendChild(el("div", { style: "flex:1" }));
 }
