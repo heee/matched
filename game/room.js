@@ -11,7 +11,7 @@ function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "room";
 }
 
-export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed, seed, isDaily, bots, players: livePlayers, turnRule, turnSeconds }) {
+export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed, shuffleAllowed, openPairsAllowed, undoAllowed, seed, isDaily, bots, players: livePlayers, turnRule, turnSeconds }) {
   if (!isActualPlayerName(createdBy)) throw new TypeError("A human creator is required");
   const id = `${slugify(title)}-${Date.now().toString(36)}`;
   const resolvedSeed = seed ?? hashSeed(id);
@@ -58,6 +58,13 @@ export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, 
     activeWindow: null,
     freeTilesGlow: freeTilesGlow !== false,
     hintsAllowed: hintsAllowed !== false,
+    shuffleAllowed: shuffleAllowed !== false,
+    openPairsAllowed: openPairsAllowed !== false,
+    // Undo is a fairness/integrity concern in modes other people are also
+    // playing in real time — only Solo (and hot-seat Live, where it's
+    // always been on) ever gets it, and Solo's is the only user-facing
+    // toggle for it.
+    undoAllowed: mode === "solo" ? undoAllowed !== false : mode === "live",
     // Live-only: whose turn it is (index into players) and the turn-end
     // rule chosen at setup. Irrelevant, and left undefined, outside live.
     turnRule: mode === "live" ? (turnRule || "single") : undefined,

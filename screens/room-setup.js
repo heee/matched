@@ -3,7 +3,7 @@
 
 import { el, avatarDot } from "./shared-ui.js";
 import { LAYOUTS, defaultLayoutForDifficulty, DIFFICULTY_TILE_COUNTS } from "../game/layouts.js";
-import { buildLocalRoom } from "../game/room.js?v=6";
+import { buildLocalRoom } from "../game/room.js?v=7";
 import { BOT_DIFFICULTIES, BOT_NAME_POOL } from "../game/scoring.js";
 import { isActualPlayerName } from "../game/identity.js";
 
@@ -66,6 +66,9 @@ export function renderRoomSetup(root, ctx, params = {}) {
     difficulty: params.layoutId ? LAYOUTS[params.layoutId].difficulty === "hard" ? "hard" : LAYOUTS[params.layoutId].difficulty : "medium",
     freeTilesGlow: ctx.state.settings.freeTilesGlow,
     hintsAllowed: true,
+    shuffleAllowed: true,
+    openPairsAllowed: true,
+    undoAllowed: true, // Solo/Live only — forced off for Shared/Race regardless
     openLink: true,
     bots: new Array(BOT_SEAT_COUNT).fill(null), // each slot: null (open) or { name, difficulty }
     pickerSeat: null, // seat index (0-based within bots[]) currently showing the difficulty popover
@@ -74,6 +77,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
     turnSeconds: 20, // Live only, used when turnRule === "timed"
   };
   let openLinkRow = null;
+  let undoRow = null;
   let primaryButton = null;
   let creating = false;
 
@@ -81,6 +85,11 @@ export function renderRoomSetup(root, ctx, params = {}) {
     const solo = local.mode === "solo";
     const live = local.mode === "live";
     if (openLinkRow) openLinkRow.style.display = solo || live ? "none" : "flex";
+    // Undo is a fairness concern once other people share the board in real
+    // time — Solo is the only mode where it's ever a real choice (Live's
+    // hot-seat stays always-on, Shared/Race stay always-off; see
+    // game/room.js's buildLocalRoom).
+    if (undoRow) undoRow.style.display = solo ? "flex" : "none";
     if (primaryButton) primaryButton.textContent = solo || live ? "Create and play" : "Create & invite";
   }
 
@@ -343,6 +352,10 @@ export function renderRoomSetup(root, ctx, params = {}) {
   }
   toggles.appendChild(toggleRow("Free tiles glow", "freeTilesGlow"));
   toggles.appendChild(toggleRow("Hints allowed", "hintsAllowed"));
+  toggles.appendChild(toggleRow("Allow shuffle", "shuffleAllowed"));
+  toggles.appendChild(toggleRow("Show open pairs", "openPairsAllowed"));
+  undoRow = toggleRow("Allow undo", "undoAllowed");
+  toggles.appendChild(undoRow);
   openLinkRow = toggleRow("Open to anyone with the link", "openLink");
   toggles.appendChild(openLinkRow);
   body.appendChild(toggles);
@@ -374,6 +387,9 @@ export function renderRoomSetup(root, ctx, params = {}) {
           createdBy: ctx.state.currentUser,
           freeTilesGlow: local.freeTilesGlow,
           hintsAllowed: local.hintsAllowed,
+          shuffleAllowed: local.shuffleAllowed,
+          openPairsAllowed: local.openPairsAllowed,
+          undoAllowed: local.undoAllowed,
           bots: local.bots.filter(Boolean),
           players: live ? local.livePlayers : undefined,
           turnRule: live ? local.turnRule : undefined,
@@ -385,7 +401,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
         // unreachable), so this just skips the round-trip outright.
         if (!live && ctx.api.configured()) {
           try {
-            const result = await ctx.api.createRoom({ title: room.title, mode: room.mode, layoutId: room.layoutId, difficulty: room.difficulty, visibility: room.visibility, createdBy: room.createdBy, freeTilesGlow: room.freeTilesGlow, hintsAllowed: room.hintsAllowed, bots: local.bots.filter(Boolean) });
+            const result = await ctx.api.createRoom({ title: room.title, mode: room.mode, layoutId: room.layoutId, difficulty: room.difficulty, visibility: room.visibility, createdBy: room.createdBy, freeTilesGlow: room.freeTilesGlow, hintsAllowed: room.hintsAllowed, shuffleAllowed: room.shuffleAllowed, openPairsAllowed: room.openPairsAllowed, undoAllowed: room.undoAllowed, bots: local.bots.filter(Boolean) });
             // Keep the local board/bot setup, but use the persisted room id so
             // the completion snapshot updates the same D1 record.
             room.id = result.room.id;

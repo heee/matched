@@ -3,11 +3,11 @@
 // strip instead of a toast; no tray. See docs/design-reference.html #1h.
 
 import { el, avatarDot, renderTileFace, formatClock, haptic, playMatchSound } from "./shared-ui.js?v=42";
-import { freeTiles, findHintPair, clearPair, hasMovesRemaining, shuffleRemaining } from "../game/mahjong.js";
+import { freeTiles, findHintPair, findHintPairs, clearPair, hasMovesRemaining, shuffleRemaining } from "../game/mahjong.js";
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
 import { colorForPlayer, BOT_ACT_CHANCE, pointsForSession } from "../game/scoring.js";
 import { equippedMaterialName, materialCssVars } from "../game/materials.js";
-import { ensureRacer } from "../game/room.js?v=6";
+import { ensureRacer } from "../game/room.js?v=7";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { hasStartedRoom } from "../game/room-lists.js?v=6";
 import { equippedFeltName, feltCssVars } from "../game/felts.js";
@@ -16,6 +16,7 @@ import { roomTimerStartMs, timestampMs, currentActiveMs, openActiveWindow, close
 import { createRoomSocket } from "../sync.js?v=41";
 
 const BOT_INTERVAL_MS = 4200;
+const ICON_MOVES = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>`;
 
 export function renderRaceBoard(root, ctx, params = {}) {
   const room = ctx.state.store.rooms[params.roomId];
@@ -34,7 +35,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
     ctx.persist();
   }
 
-  const local = { selectedId: null, lastStandingLeader: null, tileEls: new Map(), boardBox: null, fixedBoardBox: null, roomSocket: null, finished: false };
+  const local = { selectedId: null, lastStandingLeader: null, tileEls: new Map(), boardBox: null, fixedBoardBox: null, roomSocket: null, finished: false, showMoves: false };
   let clueController = null;
   root.classList.add("bg-felt");
   root.style.cssText += feltCssVars(equippedFeltName(ctx.state.points, ctx.state.equipped));
@@ -47,7 +48,9 @@ export function renderRaceBoard(root, ctx, params = {}) {
   titleWrap.appendChild(subLine);
   header.appendChild(titleWrap);
   const shuffleBtn = el("button", { class: "icon-btn amber", "aria-label": "Shuffle", text: "✦" });
-  header.appendChild(shuffleBtn);
+  if (room.shuffleAllowed) header.appendChild(shuffleBtn);
+  const movesBtn = el("button", { class: "icon-btn", style: "width:42px;height:42px", html: ICON_MOVES, "aria-label": "Show available matching pairs", "aria-pressed": "false" });
+  if (room.openPairsAllowed) header.appendChild(movesBtn);
   root.appendChild(header);
 
   const racersCard = el("div", { style: "margin:12px 16px 0;padding:12px;border-radius:16px;background:rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:10px" });
@@ -60,8 +63,10 @@ export function renderRaceBoard(root, ctx, params = {}) {
   boardViewport.appendChild(boardWrap);
   boardArea.appendChild(boardViewport);
   const stuckBanner = el("div", { style: "position:absolute;left:16px;right:16px;bottom:8px;padding:10px 14px;border-radius:12px;background:rgba(217,164,65,.18);border:1px solid rgba(217,164,65,.4);font:600 12.5px Figtree,sans-serif;color:#f2e6cc;text-align:center;display:none" });
-  stuckBanner.textContent = "No moves remaining — try Shuffle.";
+  stuckBanner.textContent = room.shuffleAllowed ? "No moves remaining — try Shuffle." : "No moves remaining.";
   boardArea.appendChild(stuckBanner);
+  const movesBadge = el("div", { style: "position:absolute;top:10px;right:16px;padding:7px 11px;border-radius:999px;background:rgba(8,26,20,.82);border:1px solid rgba(232,200,135,.38);box-shadow:0 5px 16px rgba(0,0,0,.24);font:700 11.5px Figtree,sans-serif;color:#f2e6cc;display:none;z-index:20;pointer-events:none" });
+  boardArea.appendChild(movesBadge);
   root.appendChild(boardArea);
 
   const strip = el("div", { style: "margin:0 16px 22px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.08);display:none;align-items:center;gap:10px" });
@@ -162,9 +167,13 @@ export function renderRaceBoard(root, ctx, params = {}) {
     const tiles = room.racers[you].tiles;
     const stuck = tiles.length > 0 && !hasMovesRemaining(tiles);
     stuckBanner.style.display = stuck ? "block" : "none";
+    const count = findHintPairs(tiles).length;
+    movesBadge.textContent = `${count} playable ${count === 1 ? "pair" : "pairs"}`;
+    movesBadge.style.display = local.showMoves ? "block" : "none";
   }
 
   function useShuffle() {
+    if (!room.shuffleAllowed) { ctx.toast("Shuffle is off for this room."); return; }
     const mine = room.racers[you];
     if (local.roomSocket) {
       local.roomSocket.send({ type: "assist", kind: "shuffle" });
@@ -256,6 +265,13 @@ export function renderRaceBoard(root, ctx, params = {}) {
   }
 
   shuffleBtn.addEventListener("click", () => { clueController?.reset(); useShuffle(); });
+  movesBtn.addEventListener("click", () => {
+    local.showMoves = !local.showMoves;
+    movesBtn.classList.toggle("amber", local.showMoves);
+    movesBtn.setAttribute("aria-pressed", String(local.showMoves));
+    movesBtn.setAttribute("aria-label", local.showMoves ? "Hide available matching pairs" : "Show available matching pairs");
+    renderStuckBanner();
+  });
 
   let botTimer = setInterval(() => {
     const bots = (room.botNames || []).filter((name) => name !== you && room.players.includes(name));

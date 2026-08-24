@@ -122,7 +122,7 @@ export function renderBoard(root, ctx, params = {}) {
   const toastEl = el("div", { class: "toast" });
   boardArea.appendChild(toastEl);
   const stuckBanner = el("div", { style: "position:absolute;left:16px;right:16px;bottom:8px;padding:10px 14px;border-radius:12px;background:rgba(217,164,65,.18);border:1px solid rgba(217,164,65,.4);font:600 12.5px Figtree,sans-serif;color:#f2e6cc;text-align:center;display:none" });
-  stuckBanner.textContent = "No moves remaining — try Shuffle.";
+  stuckBanner.textContent = room.shuffleAllowed ? "No moves remaining — try Shuffle." : "No moves remaining.";
   boardArea.appendChild(stuckBanner);
   const movesBadge = el("div", { style: "position:absolute;top:10px;right:16px;padding:7px 11px;border-radius:999px;background:rgba(8,26,20,.82);border:1px solid rgba(232,200,135,.38);box-shadow:0 5px 16px rgba(0,0,0,.24);font:700 11.5px Figtree,sans-serif;color:#f2e6cc;display:none;z-index:20;pointer-events:none" });
   boardArea.appendChild(movesBadge);
@@ -167,12 +167,10 @@ export function renderBoard(root, ctx, params = {}) {
   const undoBtn = el("button", { class: "icon-btn", style: "width:42px;height:42px", html: ICON_UNDO, "aria-label": "Undo" });
   const hintBtn = el("button", { class: "icon-btn", style: "width:42px;height:42px", html: ICON_HINT, "aria-label": "Hint" });
   const movesBtn = el("button", { class: "icon-btn", style: "width:42px;height:42px", html: ICON_MOVES, "aria-label": "Show available matching pairs", "aria-pressed": "false" });
-  controls.appendChild(shuffleBtn);
-  controls.appendChild(undoBtn);
-  if (room.hintsAllowed) {
-    controls.appendChild(hintBtn);
-    controls.appendChild(movesBtn);
-  }
+  if (room.shuffleAllowed) controls.appendChild(shuffleBtn);
+  if (room.undoAllowed) controls.appendChild(undoBtn);
+  if (room.hintsAllowed) controls.appendChild(hintBtn);
+  if (room.openPairsAllowed) controls.appendChild(movesBtn);
   controls.appendChild(el("div", { style: "flex:1" }));
 
   // Reactions don't make sense with nobody else on the board to see them
@@ -757,6 +755,7 @@ export function renderBoard(root, ctx, params = {}) {
   }
 
   function useShuffle() {
+    if (!room.shuffleAllowed) { ctx.toast("Shuffle is off for this room."); return; }
     const oldPos = new Map();
     for (const [id, tileEl] of local.tileEls) {
       oldPos.set(id, { left: parseFloat(tileEl.style.left), top: parseFloat(tileEl.style.top) });
@@ -791,6 +790,7 @@ export function renderBoard(root, ctx, params = {}) {
   }
 
   function useUndo() {
+    if (!room.undoAllowed) { ctx.toast("Undo is off for this room."); return; }
     if (local.roomSocket) {
       local.roomSocket.send({ type: "assist", kind: "undo" });
       return;

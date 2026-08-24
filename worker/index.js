@@ -730,6 +730,14 @@ function repairRoomMetadata(room) {
       || room.state?.state === "in_progress" || room.state?.state === "completed";
     changed = true;
   }
+  if (typeof room.shuffleAllowed !== "boolean") { room.shuffleAllowed = true; changed = true; }
+  if (typeof room.openPairsAllowed !== "boolean") { room.openPairsAllowed = true; changed = true; }
+  if (typeof room.undoAllowed !== "boolean") {
+    // Undo used to be unconditionally on everywhere; retroactively pull it
+    // from older Shared/Race rooms rather than only new ones.
+    room.undoAllowed = room.mode === "solo" || room.mode === "live";
+    changed = true;
+  }
   for (const entry of log) {
     const name = entry?.user;
     if (!isActualPlayerName(name)) continue;
@@ -884,6 +892,11 @@ function validateCreateRoom(body) {
   const createdBy = String(body.createdBy || "").trim().slice(0, 40);
   const freeTilesGlow = body.freeTilesGlow !== false;
   const hintsAllowed = body.hintsAllowed !== false;
+  const shuffleAllowed = body.shuffleAllowed !== false;
+  const openPairsAllowed = body.openPairsAllowed !== false;
+  // Same fairness rule as game/room.js's buildLocalRoom: only Solo/Live ever
+  // get Undo, and only Solo's is client-toggleable.
+  const undoAllowed = mode === "solo" ? body.undoAllowed !== false : mode === "live";
   const bots = Array.isArray(body.bots)
     ? body.bots.slice(0, 3).flatMap((bot) => {
         const name = String(bot?.name || "").trim().slice(0, 40);
@@ -892,7 +905,7 @@ function validateCreateRoom(body) {
       })
     : [];
   if (!title || !isActualPlayerName(createdBy)) return null;
-  return { title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed, bots };
+  return { title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed, shuffleAllowed, openPairsAllowed, undoAllowed, bots };
 }
 
 function slugify(s) {
@@ -919,6 +932,9 @@ function buildRoom(req) {
     activeWindow: null,
     freeTilesGlow: req.freeTilesGlow,
     hintsAllowed: req.hintsAllowed,
+    shuffleAllowed: req.shuffleAllowed,
+    openPairsAllowed: req.openPairsAllowed,
+    undoAllowed: req.undoAllowed,
     players: [req.createdBy, ...req.bots.map((bot) => bot.name)],
     botNames: req.bots.map((bot) => bot.name),
     botDifficulty: Object.fromEntries(req.bots.map((bot) => [bot.name, bot.difficulty])),
