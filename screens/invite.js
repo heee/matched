@@ -225,6 +225,28 @@ export function renderInvite(root, ctx, params = {}) {
       };
       renderActions();
 
+      // Only a guest who joined someone else's room can withdraw — the host
+      // has "Cancel" for that role elsewhere (home's waiting-for-players row).
+      if (!isHost) {
+        const withdrawBtn = el("button", {
+          style: "width:100%;margin-top:10px;padding:10px;background:none;border:none;color:rgba(246,241,228,.5);font:600 13px Figtree,sans-serif;cursor:pointer;text-align:center",
+          text: "Withdraw",
+        });
+        withdrawBtn.addEventListener("click", () => {
+          const user = ctx.state.currentUser;
+          room.players = (room.players || []).filter((name) => name !== user);
+          room.startedPlayers = (room.startedPlayers || []).filter((name) => name !== user);
+          delete room.pairsCleared[user];
+          delete room.streaks[user];
+          if (ctx.state.activeRoomId === room.id) ctx.state.activeRoomId = null;
+          ctx.state.store.rooms[room.id] = room;
+          ctx.reportRoomProgress(room);
+          ctx.toast("You've withdrawn from this game");
+          ctx.navigate("home");
+        });
+        sheet.appendChild(withdrawBtn);
+      }
+
       return sheet;
     })(),
   ]));
