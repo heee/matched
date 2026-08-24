@@ -479,7 +479,12 @@ export class RoomDO {
     } else if (msg.type === "assist") {
       // { kind: "hint" | "shuffle" | "undo" | "flag-stuck" }
       this.room.assistsUsed[user] = (this.room.assistsUsed[user] || 0) + 1;
-      if (msg.kind === "shuffle") {
+      if (msg.kind === "shuffle" && this.room.mode === "race") {
+        this.room.racers = this.room.racers || {};
+        const racer = this.room.racers[user];
+        if (racer) racer.tiles = shuffleTilesKeepingSolvable(racer.tiles);
+        this.broadcast({ type: "race-shuffled", user, tiles: racer?.tiles || [], assistsUsed: this.room.assistsUsed }, null);
+      } else if (msg.kind === "shuffle") {
         this.room.state.tiles = shuffleTilesKeepingSolvable(this.room.state.tiles);
         this.broadcast({ type: "shuffled", tiles: this.room.state.tiles, assistsUsed: this.room.assistsUsed }, null);
       } else if (msg.kind === "undo") {

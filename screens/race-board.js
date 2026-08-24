@@ -3,7 +3,7 @@
 // strip instead of a toast; no tray. See docs/design-reference.html #1h.
 
 import { el, avatarDot, renderTileFace, formatClock, haptic, playMatchSound } from "./shared-ui.js?v=41";
-import { freeTiles, findHintPair, clearPair, hasMovesRemaining } from "../game/mahjong.js";
+import { freeTiles, findHintPair, clearPair, hasMovesRemaining, shuffleRemaining } from "../game/mahjong.js";
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
 import { PLAYER_COLORS, BOT_ACT_CHANCE, pointsForSession } from "../game/scoring.js";
 import { equippedMaterialName, materialCssVars } from "../game/materials.js";
@@ -46,7 +46,8 @@ export function renderRaceBoard(root, ctx, params = {}) {
   const subLine = el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(240,244,243,.55)", text: "Same layout, own board" });
   titleWrap.appendChild(subLine);
   header.appendChild(titleWrap);
-  header.appendChild(el("div", { class: "icon-btn amber", text: "✦" }));
+  const shuffleBtn = el("button", { class: "icon-btn amber", "aria-label": "Shuffle", text: "✦" });
+  header.appendChild(shuffleBtn);
   root.appendChild(header);
 
   const racersCard = el("div", { style: "margin:12px 16px 0;padding:12px;border-radius:16px;background:rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:10px" });
@@ -58,6 +59,9 @@ export function renderRaceBoard(root, ctx, params = {}) {
   const boardWrap = el("div", { class: `board-wrap${ctx.state.settings.autoResizeBoard ? " auto-resize" : ""}`, style: `position:relative;${materialCssVars(material)}` });
   boardViewport.appendChild(boardWrap);
   boardArea.appendChild(boardViewport);
+  const stuckBanner = el("div", { style: "position:absolute;left:16px;right:16px;bottom:8px;padding:10px 14px;border-radius:12px;background:rgba(217,164,65,.18);border:1px solid rgba(217,164,65,.4);font:600 12.5px Figtree,sans-serif;color:#f2e6cc;text-align:center;display:none" });
+  stuckBanner.textContent = "No moves remaining — try Shuffle.";
+  boardArea.appendChild(stuckBanner);
   root.appendChild(boardArea);
 
   const strip = el("div", { style: "margin:0 16px 22px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.08);display:none;align-items:center;gap:10px" });
@@ -151,6 +155,26 @@ export function renderRaceBoard(root, ctx, params = {}) {
       local.tileEls.set(t.id, tileEl);
     }
     updateTileSelection();
+    renderStuckBanner();
+  }
+
+  function renderStuckBanner() {
+    const tiles = room.racers[you].tiles;
+    const stuck = tiles.length > 0 && !hasMovesRemaining(tiles);
+    stuckBanner.style.display = stuck ? "block" : "none";
+  }
+
+  function useShuffle() {
+    const mine = room.racers[you];
+    if (local.roomSocket) {
+      local.roomSocket.send({ type: "assist", kind: "shuffle" });
+      return;
+    }
+    room.assistsUsed[you] = (room.assistsUsed[you] || 0) + 1;
+    mine.tiles = shuffleRemaining(mine.tiles);
+    local.selectedId = null;
+    ctx.persist();
+    renderMyBoard();
   }
 
   function updateTileSelection() {
@@ -229,6 +253,8 @@ export function renderRaceBoard(root, ctx, params = {}) {
     else ctx.reportCompletedRoom(room);
     ctx.navigate("results", { roomId: room.id });
   }
+
+  shuffleBtn.addEventListener("click", () => { clueController?.reset(); useShuffle(); });
 
   let botTimer = setInterval(() => {
     const bots = (room.botNames || []).filter((name) => name !== you && room.players.includes(name));
@@ -310,6 +336,16 @@ export function renderRaceBoard(root, ctx, params = {}) {
           ctx.persist();
           renderRacers();
           if (message.completed) finishRace();
+          return;
+        }
+        if (message.type === "race-shuffled") {
+          room.assistsUsed = message.assistsUsed || room.assistsUsed;
+          if (message.user === you) {
+            room.racers[you].tiles = message.tiles || room.racers[you].tiles;
+            local.selectedId = null;
+            renderMyBoard();
+          }
+          ctx.persist();
           return;
         }
         if (message.type === "room-deleted") ctx.navigate("home");

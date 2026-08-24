@@ -115,6 +115,52 @@ test("RoomDO broadcasts authoritative race progress without touching another rac
   assert.equal(frames.at(-1).remaining, room.tileCount - 2);
 });
 
+test("RoomDO shuffle assist reshuffles only the requesting racer's own board", async () => {
+  const request = validateCreateRoom({
+    title: "Two Bridges",
+    mode: "race",
+    layoutId: "two-bridges",
+    difficulty: "easy",
+    visibility: "open",
+    createdBy: "Henning",
+  });
+  const room = buildRoom(request);
+  room.racers.Christie = { tiles: JSON.parse(JSON.stringify(room.racers.Henning.tiles)) };
+  const henningFacesBefore = room.racers.Henning.tiles.map((t) => t.face.id);
+  const christieFacesBefore = room.racers.Christie.tiles.map((t) => t.face.id);
+
+  const frames = [];
+  const sender = {
+    send: (frame) => frames.push(JSON.parse(frame)),
+    deserializeAttachment: () => ({ user: "Henning", spectator: false }),
+  };
+  const observer = {
+    send: (frame) => frames.push(JSON.parse(frame)),
+    deserializeAttachment: () => ({ user: "Christie", spectator: false }),
+  };
+  const stored = new Map([["room", room]]);
+  const state = {
+    storage: {
+      get: async (key) => stored.get(key),
+      put: async (key, value) => stored.set(key, value),
+    },
+    getWebSockets: () => [sender, observer],
+  };
+  const instance = new RoomDO(state, { DB: mockDb(room) });
+  instance.room = room;
+
+  await instance.webSocketMessage(sender, JSON.stringify({ type: "assist", kind: "shuffle" }));
+
+  const henningFacesAfter = room.racers.Henning.tiles.map((t) => t.face.id);
+  const christieFacesAfter = room.racers.Christie.tiles.map((t) => t.face.id);
+  assert.notDeepEqual(henningFacesAfter, henningFacesBefore);
+  assert.deepEqual(christieFacesAfter, christieFacesBefore);
+  assert.equal(room.assistsUsed.Henning, 1);
+  assert.equal(frames.at(-1).type, "race-shuffled");
+  assert.equal(frames.at(-1).user, "Henning");
+  assert.deepEqual(frames.at(-1).tiles.map((t) => t.face.id), henningFacesAfter);
+});
+
 test("legacy shared room metadata is repaired from its authoritative match log", () => {
   const firstMatchAt = Date.parse("2026-08-23T20:44:21.330Z");
   const room = {
