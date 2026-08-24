@@ -482,9 +482,10 @@ export class RoomDO {
       this.room.racers = this.room.racers || {};
       if (!this.room.racers[user]) {
         const seedOffset = Object.keys(this.room.racers).length * 104729;
-        this.room.racers[user] = { tiles: generateBoard(this.room.layoutId, this.room.state.seed + seedOffset) };
+        this.room.racers[user] = { tiles: generateBoard(this.room.layoutId, this.room.state.seed + seedOffset), stuckOut: false };
       }
       const racer = this.room.racers[user];
+      if (racer.stuckOut) return;
       const { idA, idB } = msg;
       const a = racer.tiles.find((tile) => tile.id === idA);
       const b = racer.tiles.find((tile) => tile.id === idB);
@@ -598,6 +599,34 @@ export class RoomDO {
         this.broadcast({ type: "assist-used", user, kind: msg.kind, assistsUsed: this.room.assistsUsed }, null);
       }
       await this.persist(false);
+    } else if (msg.type === "stuck") {
+      // Shared/Solo/Live single-board sudden death: never trust the
+      // client's claim alone — re-check server-side before ending the room.
+      if (this.room.mode === "race" || !this.room.suddenDeath || this.room.completedAt) return;
+      if (hasMovesRemaining(this.room.state.tiles)) {
+        this.sendTo(socket, { type: "room-sync", room: this.room, presence: this.presenceList(), visible: this.visiblePresenceList() });
+        return;
+      }
+      this.room.completedAt = new Date().toISOString();
+      this.room.state.state = "completed";
+      this.broadcast({ type: "room-sync", room: this.room, presence: this.presenceList(), visible: this.visiblePresenceList() }, null);
+      await this.persist(true);
+    } else if (msg.type === "race-stuck") {
+      if (this.room.mode !== "race" || !this.room.suddenDeath) return;
+      this.room.racers = this.room.racers || {};
+      const racer = this.room.racers[user];
+      if (!racer || racer.stuckOut || racer.tiles.length === 0 || hasMovesRemaining(racer.tiles)) return;
+      racer.stuckOut = true;
+      const decided = Object.values(this.room.racers).every((r) => r.tiles.length === 0 || r.stuckOut);
+      if (decided && !this.room.completedAt) {
+        this.room.completedAt = new Date().toISOString();
+        this.room.state.state = "completed";
+      }
+      this.broadcast({
+        type: "race-racer-stuck", user,
+        completed: decided, completedAt: this.room.completedAt || null,
+      }, null);
+      await this.persist(decided);
     } else if (msg.type === "visibility") {
       const visible = !!msg.visible;
       if (metadata?.visible !== visible) {
@@ -764,6 +793,19 @@ function isFree(tile, live) {
   return !(l && r);
 }
 
+// Mirrors game/mahjong.js's hasMovesRemaining/findHintPair — kept duplicated
+// here since this file has no imports (see the manual-deploy note at the
+// top of the repo's CLAUDE.md).
+function hasMovesRemaining(tiles) {
+  const free = tiles.filter((t) => isFree(t, tiles));
+  const seenFaces = new Set();
+  for (const t of free) {
+    if (seenFaces.has(t.face.id)) return true;
+    seenFaces.add(t.face.id);
+  }
+  return false;
+}
+
 function rect(x0, x1, y0, y1, z) {
   const out = [];
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) out.push({ x, y, z });
@@ -892,7 +934,10 @@ function validateCreateRoom(body) {
   const createdBy = String(body.createdBy || "").trim().slice(0, 40);
   const freeTilesGlow = body.freeTilesGlow !== false;
   const hintsAllowed = body.hintsAllowed !== false;
-  const shuffleAllowed = body.shuffleAllowed !== false;
+  // Sudden death and shuffle are mutually exclusive — same rule as
+  // game/room.js's buildLocalRoom.
+  const suddenDeath = !!body.suddenDeath;
+  const shuffleAllowed = suddenDeath ? false : body.shuffleAllowed !== false;
   const openPairsAllowed = body.openPairsAllowed !== false;
   // Same fairness rule as game/room.js's buildLocalRoom: only Solo/Live ever
   // get Undo, and only Solo's is client-toggleable.
@@ -905,7 +950,7 @@ function validateCreateRoom(body) {
       })
     : [];
   if (!title || !isActualPlayerName(createdBy)) return null;
-  return { title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed, shuffleAllowed, openPairsAllowed, undoAllowed, bots };
+  return { title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed, shuffleAllowed, openPairsAllowed, undoAllowed, suddenDeath, bots };
 }
 
 function slugify(s) {
@@ -935,6 +980,7 @@ function buildRoom(req) {
     shuffleAllowed: req.shuffleAllowed,
     openPairsAllowed: req.openPairsAllowed,
     undoAllowed: req.undoAllowed,
+    suddenDeath: req.suddenDeath,
     players: [req.createdBy, ...req.bots.map((bot) => bot.name)],
     botNames: req.bots.map((bot) => bot.name),
     botDifficulty: Object.fromEntries(req.bots.map((bot) => [bot.name, bot.difficulty])),
@@ -949,7 +995,7 @@ function buildRoom(req) {
   // synced down from here without this field makes race-board.js bounce
   // straight back to home (see its `!room.racers` guard).
   if (req.mode === "race") {
-    room.racers = { [req.createdBy]: { tiles: generateBoard(req.layoutId, seed + 104729) } };
+    room.racers = { [req.createdBy]: { tiles: generateBoard(req.layoutId, seed + 104729), stuckOut: false } };
   }
   return room;
 }
@@ -1085,7 +1131,7 @@ async function joinRoom(db, roomId, user) {
   room.streaks[user] = room.streaks[user] || 0;
   if (room.mode === "race") {
     if (!room.racers) room.racers = {};
-    if (!room.racers[user]) room.racers[user] = { tiles: generateBoard(room.layoutId, room.state.seed + Object.keys(room.racers).length * 104729) };
+    if (!room.racers[user]) room.racers[user] = { tiles: generateBoard(room.layoutId, room.state.seed + Object.keys(room.racers).length * 104729), stuckOut: false };
   }
   await upsertRoom(db, room);
 }

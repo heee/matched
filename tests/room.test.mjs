@@ -42,3 +42,20 @@ test("new rooms begin ready or waiting, not in progress", () => {
   assert.equal(shared.startedAt, null);
   assert.equal(solo.startedAt, null);
 });
+
+test("sudden death forces shuffle off, even if shuffle was requested on", () => {
+  const room = buildLocalRoom({ ...baseRoom, createdBy: "Alex", suddenDeath: true, shuffleAllowed: true });
+  assert.equal(room.suddenDeath, true);
+  assert.equal(room.shuffleAllowed, false);
+});
+
+test("sudden death defaults off and leaves shuffle as requested", () => {
+  const room = buildLocalRoom({ ...baseRoom, createdBy: "Alex", shuffleAllowed: true });
+  assert.equal(room.suddenDeath, false);
+  assert.equal(room.shuffleAllowed, true);
+});
+
+test("race mode racers start with stuckOut false", () => {
+  const room = buildLocalRoom({ ...baseRoom, createdBy: "Alex", mode: "race" });
+  assert.equal(room.racers.Alex.stuckOut, false);
+});

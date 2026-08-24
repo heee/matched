@@ -4,7 +4,7 @@
 import { el, avatarDot } from "./shared-ui.js";
 import { dailyLayoutFor, dailySeedFor, todayDateStr, msUntilNextReset } from "../game/daily.js";
 import { LAYOUTS } from "../game/layouts.js";
-import { buildLocalRoom } from "../game/room.js?v=7";
+import { buildLocalRoom } from "../game/room.js?v=8";
 
 export function renderDaily(root, ctx) {
   const date = todayDateStr();

@@ -3,7 +3,7 @@
 
 import { el, avatarDot } from "./shared-ui.js";
 import { LAYOUTS, defaultLayoutForDifficulty, DIFFICULTY_TILE_COUNTS } from "../game/layouts.js";
-import { buildLocalRoom } from "../game/room.js?v=7";
+import { buildLocalRoom } from "../game/room.js?v=8";
 import { BOT_DIFFICULTIES, BOT_NAME_POOL } from "../game/scoring.js";
 import { isActualPlayerName } from "../game/identity.js";
 
@@ -69,6 +69,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
     shuffleAllowed: true,
     openPairsAllowed: true,
     undoAllowed: true, // Solo/Live only — forced off for Shared/Race regardless
+    suddenDeath: false, // ends the game the instant no pairs are left; forces shuffleAllowed off while on
     openLink: true,
     bots: new Array(BOT_SEAT_COUNT).fill(null), // each slot: null (open) or { name, difficulty }
     pickerSeat: null, // seat index (0-based within bots[]) currently showing the difficulty popover
@@ -341,21 +342,47 @@ export function renderRoomSetup(root, ctx, params = {}) {
 
   // ---- toggles ----
   const toggles = el("div", { style: "display:flex;flex-direction:column;gap:1px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.07)" });
-  function toggleRow(label, key) {
+  function toggleRow(label, key, onToggle) {
     const row = el("div", { class: "toggle-row" });
     row.appendChild(el("span", { text: label }));
     const t = el("button", { class: `toggle${local[key] ? " on" : ""}`, type: "button" });
     t.appendChild(el("div", { class: "knob" }));
-    t.addEventListener("click", () => { local[key] = !local[key]; t.classList.toggle("on", local[key]); });
+    t.addEventListener("click", () => {
+      if (t.disabled) return;
+      local[key] = !local[key];
+      t.classList.toggle("on", local[key]);
+      onToggle?.(local[key]);
+    });
     row.appendChild(t);
+    row._toggleBtn = t;
     return row;
+  }
+  function setToggleDisabled(row, disabled) {
+    const btn = row._toggleBtn;
+    btn.disabled = disabled;
+    row.style.opacity = disabled ? "0.45" : "";
+    row.style.pointerEvents = disabled ? "none" : "";
   }
   toggles.appendChild(toggleRow("Free tiles glow", "freeTilesGlow"));
   toggles.appendChild(toggleRow("Hints allowed", "hintsAllowed"));
-  toggles.appendChild(toggleRow("Allow shuffle", "shuffleAllowed"));
+  const shuffleRow = toggleRow("Allow shuffle", "shuffleAllowed");
+  toggles.appendChild(shuffleRow);
   toggles.appendChild(toggleRow("Show open pairs", "openPairsAllowed"));
   undoRow = toggleRow("Allow undo", "undoAllowed");
   toggles.appendChild(undoRow);
+  // Sudden death ends the game the instant no pairs are left to match —
+  // Shuffle exists to rescue exactly that situation, so the two can't both
+  // be on. Turning Sudden death on forces Shuffle off and locks it; turning
+  // it back off just unlocks Shuffle (doesn't re-enable it on its own).
+  const suddenDeathRow = toggleRow("Sudden death", "suddenDeath", (on) => {
+    if (on) {
+      local.shuffleAllowed = false;
+      shuffleRow._toggleBtn.classList.remove("on");
+    }
+    setToggleDisabled(shuffleRow, on);
+  });
+  toggles.appendChild(suddenDeathRow);
+  setToggleDisabled(shuffleRow, local.suddenDeath);
   openLinkRow = toggleRow("Open to anyone with the link", "openLink");
   toggles.appendChild(openLinkRow);
   body.appendChild(toggles);
@@ -390,6 +417,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
           shuffleAllowed: local.shuffleAllowed,
           openPairsAllowed: local.openPairsAllowed,
           undoAllowed: local.undoAllowed,
+          suddenDeath: local.suddenDeath,
           bots: local.bots.filter(Boolean),
           players: live ? local.livePlayers : undefined,
           turnRule: live ? local.turnRule : undefined,
@@ -401,7 +429,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
         // unreachable), so this just skips the round-trip outright.
         if (!live && ctx.api.configured()) {
           try {
-            const result = await ctx.api.createRoom({ title: room.title, mode: room.mode, layoutId: room.layoutId, difficulty: room.difficulty, visibility: room.visibility, createdBy: room.createdBy, freeTilesGlow: room.freeTilesGlow, hintsAllowed: room.hintsAllowed, shuffleAllowed: room.shuffleAllowed, openPairsAllowed: room.openPairsAllowed, undoAllowed: room.undoAllowed, bots: local.bots.filter(Boolean) });
+            const result = await ctx.api.createRoom({ title: room.title, mode: room.mode, layoutId: room.layoutId, difficulty: room.difficulty, visibility: room.visibility, createdBy: room.createdBy, freeTilesGlow: room.freeTilesGlow, hintsAllowed: room.hintsAllowed, shuffleAllowed: room.shuffleAllowed, openPairsAllowed: room.openPairsAllowed, undoAllowed: room.undoAllowed, suddenDeath: room.suddenDeath, bots: local.bots.filter(Boolean) });
             // Keep the local board/bot setup, but use the persisted room id so
             // the completion snapshot updates the same D1 record.
             room.id = result.room.id;

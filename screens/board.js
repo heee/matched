@@ -430,6 +430,26 @@ export function renderBoard(root, ctx, params = {}) {
     const count = findHintPairs(room.state.tiles).length;
     movesBadge.textContent = `${count} playable ${count === 1 ? "pair" : "pairs"}`;
     movesBadge.style.display = local.showMoves ? "block" : "none";
+    if (!stuck) local.stuckWarned = false;
+    else if (room.suddenDeath && !room.completedAt && !local.stuckWarned) {
+      local.stuckWarned = true;
+      reportStuck();
+    }
+  }
+
+  // Sudden death: once nobody has a move left, the room is over. Shuffle
+  // exists to rescue exactly this situation, so room-setup never lets
+  // suddenDeath and shuffleAllowed both be on — reaching this point always
+  // means game over, no recovery.
+  function reportStuck() {
+    if (local.roomSocket) {
+      local.roomSocket.send({ type: "stuck" });
+      return;
+    }
+    if (room.completedAt) return;
+    room.completedAt = new Date().toISOString();
+    room.state.state = "completed";
+    finishRoom();
   }
 
   function fullRender() {

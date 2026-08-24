@@ -193,6 +193,106 @@ test("room creation carries configured bots into authoritative state", () => {
   assert.equal(room.botDifficulty.Bamboo, "hard");
 });
 
+function buildDo(room) {
+  const stored = new Map([["room", room]]);
+  const state = {
+    storage: {
+      get: async (key) => stored.get(key),
+      put: async (key, value) => stored.set(key, value),
+    },
+    getWebSockets: () => [],
+  };
+  const instance = new RoomDO(state, { DB: mockDb(room) });
+  instance.room = room;
+  return instance;
+}
+
+// Two free, non-adjacent, non-matching singleton tiles: nothing can ever
+// pair up, so hasMovesRemaining reads false without emptying the board.
+const STUCK_TILES = [
+  { id: "s1", x: 0, y: 0, z: 0, face: { id: "bamboo-1" } },
+  { id: "s2", x: 6, y: 0, z: 0, face: { id: "bamboo-2" } },
+];
+
+test("sudden death ends a stuck shared room when the client reports it", async () => {
+  const request = validateCreateRoom({
+    title: "Two Bridges", mode: "shared", layoutId: "two-bridges", difficulty: "easy",
+    visibility: "open", createdBy: "Henning", suddenDeath: true,
+  });
+  const room = buildRoom(request);
+  assert.equal(room.suddenDeath, true);
+  assert.equal(room.shuffleAllowed, false);
+  room.state.tiles = STUCK_TILES;
+
+  const frames = [];
+  const socket = { send: (frame) => frames.push(JSON.parse(frame)), deserializeAttachment: () => ({ user: "Henning", spectator: false }) };
+  const instance = buildDo(room);
+  instance.state.getWebSockets = () => [socket];
+
+  await instance.webSocketMessage(socket, JSON.stringify({ type: "stuck" }));
+
+  assert.ok(room.completedAt);
+  assert.equal(room.state.state, "completed");
+  assert.equal(frames.at(-1).type, "room-sync");
+});
+
+test("sudden death ignores a stuck report when moves are actually still available", async () => {
+  const request = validateCreateRoom({
+    title: "Two Bridges", mode: "shared", layoutId: "two-bridges", difficulty: "easy",
+    visibility: "open", createdBy: "Henning", suddenDeath: true,
+  });
+  const room = buildRoom(request); // a freshly generated board always has a move
+  const socket = { send: () => {}, deserializeAttachment: () => ({ user: "Henning", spectator: false }) };
+  const instance = buildDo(room);
+
+  await instance.webSocketMessage(socket, JSON.stringify({ type: "stuck" }));
+
+  assert.equal(room.completedAt, null);
+});
+
+test("sudden death marks a stuck racer out without ending the race for others", async () => {
+  const request = validateCreateRoom({
+    title: "Two Bridges", mode: "race", layoutId: "two-bridges", difficulty: "easy",
+    visibility: "open", createdBy: "Henning", suddenDeath: true,
+  });
+  const room = buildRoom(request);
+  room.racers.Christie = { tiles: JSON.parse(JSON.stringify(room.racers.Henning.tiles)), stuckOut: false };
+  room.racers.Henning.tiles = STUCK_TILES;
+
+  const frames = [];
+  const socket = { send: (frame) => frames.push(JSON.parse(frame)), deserializeAttachment: () => ({ user: "Henning", spectator: false }) };
+  const instance = buildDo(room);
+  instance.state.getWebSockets = () => [socket];
+
+  await instance.webSocketMessage(socket, JSON.stringify({ type: "race-stuck" }));
+
+  assert.equal(room.racers.Henning.stuckOut, true);
+  assert.equal(room.completedAt, null); // Christie can still finish
+  assert.equal(frames.at(-1).type, "race-racer-stuck");
+  assert.equal(frames.at(-1).completed, false);
+});
+
+test("sudden death ends a race once every remaining racer is stuck", async () => {
+  const request = validateCreateRoom({
+    title: "Two Bridges", mode: "race", layoutId: "two-bridges", difficulty: "easy",
+    visibility: "open", createdBy: "Henning", suddenDeath: true,
+  });
+  const room = buildRoom(request);
+  room.racers.Christie = { tiles: [{ id: "c1", x: 0, y: 0, z: 0, face: { id: "bamboo-3" } }], stuckOut: true };
+  room.racers.Henning.tiles = STUCK_TILES;
+
+  const frames = [];
+  const socket = { send: (frame) => frames.push(JSON.parse(frame)), deserializeAttachment: () => ({ user: "Henning", spectator: false }) };
+  const instance = buildDo(room);
+  instance.state.getWebSockets = () => [socket];
+
+  await instance.webSocketMessage(socket, JSON.stringify({ type: "race-stuck" }));
+
+  assert.equal(room.racers.Henning.stuckOut, true);
+  assert.ok(room.completedAt);
+  assert.equal(frames.at(-1).completed, true);
+});
+
 test("open-room reads filter in D1 before loading board payloads", async () => {
   const prepared = [];
   const db = {

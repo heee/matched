@@ -3,7 +3,7 @@
 
 import { el, avatarDot, formatDuration, roomInviteUrl } from "./shared-ui.js";
 import { colorForPlayer, highlightsFromLog, pointsToNextTier, nextTier, tierForPoints } from "../game/scoring.js";
-import { buildLocalRoom } from "../game/room.js?v=7";
+import { buildLocalRoom } from "../game/room.js?v=8";
 import { resultShareMessage } from "../game/share-messages.js";
 import { currentActiveMs } from "../game/time.js";
 

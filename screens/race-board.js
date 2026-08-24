@@ -7,7 +7,7 @@ import { freeTiles, findHintPair, findHintPairs, clearPair, hasMovesRemaining, s
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
 import { colorForPlayer, BOT_ACT_CHANCE, pointsForSession } from "../game/scoring.js";
 import { equippedMaterialName, materialCssVars } from "../game/materials.js";
-import { ensureRacer } from "../game/room.js?v=7";
+import { ensureRacer } from "../game/room.js?v=8";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { hasStartedRoom } from "../game/room-lists.js?v=6";
 import { equippedFeltName, feltCssVars } from "../game/felts.js";
@@ -35,7 +35,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
     ctx.persist();
   }
 
-  const local = { selectedId: null, lastStandingLeader: null, tileEls: new Map(), boardBox: null, fixedBoardBox: null, roomSocket: null, finished: false, showMoves: false };
+  const local = { selectedId: null, lastStandingLeader: null, tileEls: new Map(), boardBox: null, fixedBoardBox: null, roomSocket: null, finished: false, showMoves: false, stuckWarned: false };
   let clueController = null;
   root.classList.add("bg-felt");
   root.style.cssText += feltCssVars(equippedFeltName(ctx.state.points, ctx.state.equipped));
@@ -63,7 +63,11 @@ export function renderRaceBoard(root, ctx, params = {}) {
   boardViewport.appendChild(boardWrap);
   boardArea.appendChild(boardViewport);
   const stuckBanner = el("div", { style: "position:absolute;left:16px;right:16px;bottom:8px;padding:10px 14px;border-radius:12px;background:rgba(217,164,65,.18);border:1px solid rgba(217,164,65,.4);font:600 12.5px Figtree,sans-serif;color:#f2e6cc;text-align:center;display:none" });
-  stuckBanner.textContent = room.shuffleAllowed ? "No moves remaining — try Shuffle." : "No moves remaining.";
+  function stuckBannerText() {
+    if (room.racers[you]?.stuckOut) return "No moves left — you're out. Waiting for the others…";
+    return room.shuffleAllowed ? "No moves remaining — try Shuffle." : "No moves remaining.";
+  }
+  stuckBanner.textContent = stuckBannerText();
   boardArea.appendChild(stuckBanner);
   const movesBadge = el("div", { style: "position:absolute;top:10px;right:16px;padding:7px 11px;border-radius:999px;background:rgba(8,26,20,.82);border:1px solid rgba(232,200,135,.38);box-shadow:0 5px 16px rgba(0,0,0,.24);font:700 11.5px Figtree,sans-serif;color:#f2e6cc;display:none;z-index:20;pointer-events:none" });
   boardArea.appendChild(movesBadge);
@@ -89,7 +93,8 @@ export function renderRaceBoard(root, ctx, params = {}) {
       const info = el("div", { style: "flex:1;min-width:0" });
       const top = el("div", { style: "display:flex;justify-content:space-between;align-items:baseline" });
       top.appendChild(el("span", { style: `font:${name === you ? 700 : 500} 13px Figtree,sans-serif;color:#f0f4f3`, text: name }));
-      top.appendChild(el("span", { style: "font:600 11px Figtree,sans-serif;color:rgba(240,244,243,.6)", text: `${pct(name)}%` }));
+      const stuckOut = room.racers[name]?.stuckOut && room.racers[name]?.tiles.length > 0;
+      top.appendChild(el("span", { style: `font:600 11px Figtree,sans-serif;color:${stuckOut ? "#e08a6a" : "rgba(240,244,243,.6)"}`, text: stuckOut ? "Out" : `${pct(name)}%` }));
       info.appendChild(top);
       info.appendChild(el("div", { class: "progress-thin", style: "margin-top:5px;height:6px", html: `<div style="width:${pct(name)}%;background:${colorForPlayer(name, seat, ctx.state.store.users)}"></div>` }));
       row.appendChild(info);
@@ -164,12 +169,54 @@ export function renderRaceBoard(root, ctx, params = {}) {
   }
 
   function renderStuckBanner() {
-    const tiles = room.racers[you].tiles;
-    const stuck = tiles.length > 0 && !hasMovesRemaining(tiles);
+    const mine = room.racers[you];
+    const tiles = mine.tiles;
+    const stuck = (tiles.length > 0 && !hasMovesRemaining(tiles)) || !!mine.stuckOut;
+    stuckBanner.textContent = stuckBannerText();
     stuckBanner.style.display = stuck ? "block" : "none";
     const count = findHintPairs(tiles).length;
     movesBadge.textContent = `${count} playable ${count === 1 ? "pair" : "pairs"}`;
     movesBadge.style.display = local.showMoves ? "block" : "none";
+    if (room.suddenDeath && tiles.length > 0 && !hasMovesRemaining(tiles) && !mine.stuckOut && !local.stuckWarned) {
+      local.stuckWarned = true;
+      reportStuck();
+    }
+  }
+
+  // A racer is done for either by finishing (tiles.length === 0) or, under
+  // sudden death, by running out of moves (stuckOut). The race itself is
+  // only decided once someone actually finishes, or once every racer is
+  // done one way or the other with nobody having finished — an "everybody's
+  // stuck" draw, ranked by pairsCleared same as any other result.
+  function raceAttritionDecided() {
+    return Object.values(room.racers).every((r) => r.tiles.length === 0 || r.stuckOut);
+  }
+
+  function reportStuck() {
+    if (local.roomSocket) {
+      local.roomSocket.send({ type: "race-stuck" });
+      return;
+    }
+    const mine = room.racers[you];
+    if (mine.stuckOut || mine.tiles.length === 0) return;
+    mine.stuckOut = true;
+    ctx.persist();
+    renderRacers();
+    renderStuckBanner();
+    if (raceAttritionDecided()) finishRace();
+  }
+
+  function reportBotStuck(bot) {
+    if (local.roomSocket) {
+      local.roomSocket.send({ type: "race-stuck", user: bot });
+      return;
+    }
+    const racer = room.racers[bot];
+    if (!racer || racer.stuckOut || racer.tiles.length === 0) return;
+    racer.stuckOut = true;
+    ctx.persist();
+    renderRacers();
+    if (raceAttritionDecided()) finishRace();
   }
 
   function useShuffle() {
@@ -208,6 +255,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
 
   function tap(id) {
     const mine = room.racers[you];
+    if (mine.stuckOut) return;
     const free = freeTiles(mine.tiles).map((t) => t.id);
     if (!free.includes(id)) return;
     if (local.selectedId === id) { local.selectedId = null; updateTileSelection(); return; }
@@ -278,9 +326,12 @@ export function renderRaceBoard(root, ctx, params = {}) {
     const difficulty = room.botDifficulty || {};
     for (const bot of bots) {
       const racer = room.racers[bot];
-      if (!racer || racer.tiles.length === 0) continue;
+      if (!racer || racer.tiles.length === 0 || racer.stuckOut) continue;
       const pair = findHintPair(racer.tiles);
-      if (!pair) continue;
+      if (!pair) {
+        if (room.suddenDeath) reportBotStuck(bot);
+        continue;
+      }
       const chance = BOT_ACT_CHANCE[difficulty[bot]] ?? BOT_ACT_CHANCE.medium;
       if (Math.random() > chance) continue; // don't clear on every tick, keeps it a real race
       if (local.roomSocket) {
@@ -381,6 +432,17 @@ export function renderRaceBoard(root, ctx, params = {}) {
           if (message.completedAt) room.completedAt = message.completedAt;
           ctx.persist();
           renderRacers();
+          if (message.completed) finishRace();
+          return;
+        }
+        if (message.type === "race-racer-stuck") {
+          if (!room.racers[message.user]) room.racers[message.user] = { tiles: [], stuckOut: true };
+          else room.racers[message.user].stuckOut = true;
+          if (message.completedAt) room.completedAt = message.completedAt;
+          room.state.state = message.completed ? "completed" : room.state.state;
+          ctx.persist();
+          renderRacers();
+          if (message.user === you) renderStuckBanner();
           if (message.completed) finishRace();
           return;
         }

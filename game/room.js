@@ -11,7 +11,7 @@ function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "room";
 }
 
-export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed, shuffleAllowed, openPairsAllowed, undoAllowed, seed, isDaily, bots, players: livePlayers, turnRule, turnSeconds }) {
+export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed, shuffleAllowed, openPairsAllowed, undoAllowed, suddenDeath, seed, isDaily, bots, players: livePlayers, turnRule, turnSeconds }) {
   if (!isActualPlayerName(createdBy)) throw new TypeError("A human creator is required");
   const id = `${slugify(title)}-${Date.now().toString(36)}`;
   const resolvedSeed = seed ?? hashSeed(id);
@@ -58,7 +58,12 @@ export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, 
     activeWindow: null,
     freeTilesGlow: freeTilesGlow !== false,
     hintsAllowed: hintsAllowed !== false,
-    shuffleAllowed: shuffleAllowed !== false,
+    // Sudden death (game ends the instant no pairs are left to match) and
+    // shuffle (which exists to rescue a stuck board) are mutually
+    // exclusive — enforced here too, not just in room-setup's UI, so a
+    // sudden-death room can never accidentally carry a rescue valve.
+    suddenDeath: !!suddenDeath,
+    shuffleAllowed: suddenDeath ? false : shuffleAllowed !== false,
     openPairsAllowed: openPairsAllowed !== false,
     // Undo is a fairness/integrity concern in modes other people are also
     // playing in real time — only Solo (and hot-seat Live, where it's
@@ -88,7 +93,7 @@ export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, 
     room.racers = {};
     players.forEach((p, i) => {
       const racerBoard = generateBoard(layout, { rng: mulberry32(resolvedSeed + i * 104729) });
-      room.racers[p] = { tiles: racerBoard.tiles };
+      room.racers[p] = { tiles: racerBoard.tiles, stuckOut: false };
     });
   }
 
@@ -105,7 +110,7 @@ export function ensureRacer(room, player) {
   if (room.racers[player]) return;
   const seedOffset = Object.keys(room.racers).length * 104729;
   const racerBoard = generateBoard(room.layoutId, { rng: mulberry32(room.state.seed + seedOffset) });
-  room.racers[player] = { tiles: racerBoard.tiles };
+  room.racers[player] = { tiles: racerBoard.tiles, stuckOut: false };
 }
 
 export { DIFFICULTY_TILE_COUNTS };
