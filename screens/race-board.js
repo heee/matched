@@ -7,12 +7,12 @@ import { freeTiles, findHintPair, clearPair, hasMovesRemaining, shuffleRemaining
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
 import { PLAYER_COLORS, BOT_ACT_CHANCE, pointsForSession } from "../game/scoring.js";
 import { equippedMaterialName, materialCssVars } from "../game/materials.js";
-import { ensureRacer } from "../game/room.js?v=3";
+import { ensureRacer } from "../game/room.js?v=4";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { hasStartedRoom } from "../game/room-lists.js?v=2";
 import { equippedFeltName, feltCssVars } from "../game/felts.js";
 import { createIdleClueController } from "./idle-clues.js";
-import { elapsedMsSince, roomTimerStartMs, timestampMs } from "../game/time.js";
+import { roomTimerStartMs, timestampMs, currentActiveMs, openActiveWindow, closeActiveWindow } from "../game/time.js";
 import { createRoomSocket } from "../sync.js?v=41";
 
 const BOT_INTERVAL_MS = 4200;
@@ -217,6 +217,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
       if (startedAtMs == null) {
         startedAtMs = Date.now();
         room.startedAt = startedAtMs;
+        if (!document.hidden) openActiveWindow(room);
       }
       mine.tiles = result.tiles;
       room.pairsCleared[you] = (room.pairsCleared[you] || 0) + 1;
@@ -241,7 +242,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
     stopBots();
     room.completedAt = room.completedAt || new Date().toISOString();
     room.state.state = "completed";
-    const elapsedMs = elapsedMsSince(startedAtMs, Date.now());
+    const elapsedMs = currentActiveMs(room, Date.now());
     room.elapsedMs = elapsedMs;
     const myPairs = room.pairsCleared[you] || 0;
     const assistsUsed = room.assistsUsed[you] || 0;
@@ -275,6 +276,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
         if (startedAtMs == null) {
           startedAtMs = Date.now();
           room.startedAt = startedAtMs;
+          if (!document.hidden) openActiveWindow(room);
         }
         racer.tiles = result.tiles;
         room.pairsCleared[bot] = (room.pairsCleared[bot] || 0) + 1;
@@ -285,11 +287,31 @@ export function renderRaceBoard(root, ctx, params = {}) {
   }, BOT_INTERVAL_MS);
 
   function stopBots() { clearInterval(botTimer); botTimer = null; }
+
+  // Pauses the clock whenever nobody has this board on screen — mirrors
+  // board.js's handleVisibilityChange (see game/time.js for the model).
+  function handleVisibilityChange() {
+    if (local.roomSocket) {
+      local.roomSocket.send({ type: "visibility", visible: !document.hidden });
+      return;
+    }
+    if (document.hidden) closeActiveWindow(room);
+    else if (startedAtMs != null) openActiveWindow(room);
+    ctx.persist();
+  }
+
   window.addEventListener("resize", applyBoardScale);
   window.__matchedCleanup = () => {
     stopBots();
     clueController?.stop();
-    local.roomSocket?.close();
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+    if (local.roomSocket) {
+      local.roomSocket.send({ type: "visibility", visible: false });
+      local.roomSocket.close();
+    } else {
+      closeActiveWindow(room);
+      ctx.persist();
+    }
     window.removeEventListener("resize", applyBoardScale);
   };
 
@@ -298,6 +320,7 @@ export function renderRaceBoard(root, ctx, params = {}) {
   if (ctx.api.configured()) {
     local.roomSocket = createRoomSocket({
       url: ctx.api.wsUrl(room.id, you),
+      onOpen: () => local.roomSocket.send({ type: "visibility", visible: !document.hidden }),
       onMessage: (message) => {
         if (message.type === "init" || message.type === "room-sync") {
           if (message.room) {
@@ -315,12 +338,19 @@ export function renderRaceBoard(root, ctx, params = {}) {
           }
           return;
         }
+        if (message.type === "active-update") {
+          room.activeMs = message.activeMs;
+          room.activeWindow = message.activeWindow;
+          ctx.persist();
+          return;
+        }
         if (message.type === "race-cleared") {
           room.players = message.players || room.players;
           room.startedPlayers = message.startedPlayers || room.startedPlayers;
           room.pairsCleared = message.pairsCleared || room.pairsCleared;
           room.streaks = message.streaks || room.streaks;
           room.peakStreaks = message.peakStreaks || room.peakStreaks;
+          if (message.activeMs !== undefined) { room.activeMs = message.activeMs; room.activeWindow = message.activeWindow; }
           if (message.startedAt) {
             room.startedAt = message.startedAt;
             startedAtMs = timestampMs(message.startedAt) ?? startedAtMs;
@@ -351,7 +381,10 @@ export function renderRaceBoard(root, ctx, params = {}) {
         if (message.type === "room-deleted") ctx.navigate("home");
       },
     });
+  } else if (!document.hidden && startedAtMs != null) {
+    openActiveWindow(room);
   }
+  document.addEventListener("visibilitychange", handleVisibilityChange);
   clueController = createIdleClueController({
     enabled: ctx.state.settings.provideClues && room.hintsAllowed,
     getTiles: () => room.racers[you].tiles,

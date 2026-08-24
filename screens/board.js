@@ -14,7 +14,7 @@ import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { hasStartedRoom } from "../game/room-lists.js?v=2";
 import { equippedFeltName, feltCssVars } from "../game/felts.js";
 import { createIdleClueController } from "./idle-clues.js";
-import { elapsedMsSince, roomTimerStartMs, timestampMs } from "../game/time.js";
+import { roomTimerStartMs, timestampMs, currentActiveMs, openActiveWindow, closeActiveWindow } from "../game/time.js";
 import { createRoomSocket } from "../sync.js?v=41";
 
 const BOT_INTERVAL_MS = 5200;
@@ -359,8 +359,22 @@ export function renderBoard(root, ctx, params = {}) {
   function renderSub() {
     const remaining = room.state.tiles.length;
     const cleared = room.tileCount - remaining;
-    const elapsedS = Math.floor((elapsedMsSince(startedAtMs, Date.now()) ?? 0) / 1000);
+    const elapsedS = Math.floor(currentActiveMs(room, Date.now()) / 1000);
     subLine.textContent = `${cleared} of ${room.tileCount} cleared · ${formatClock(elapsedS)}`;
+  }
+
+  // Pauses the clock whenever nobody has the board on screen. Shared/race
+  // rooms hand this to the Worker (it unions visibility across every
+  // connected player); everything else — solo, or shared with no configured
+  // Worker — tracks its own single-device window locally.
+  function handleVisibilityChange() {
+    if (local.roomSocket) {
+      local.roomSocket.send({ type: "visibility", visible: !document.hidden });
+      return;
+    }
+    if (document.hidden) closeActiveWindow(room);
+    else if (startedAtMs != null) openActiveWindow(room);
+    ctx.persist();
   }
 
   function renderStuckBanner() {
@@ -433,6 +447,7 @@ export function renderBoard(root, ctx, params = {}) {
     if (startedAtMs == null) {
       startedAtMs = timestampMs(authoritative?.startedAt) ?? clearedAt;
       room.startedAt = startedAtMs;
+      if (!local.roomSocket && !document.hidden) openActiveWindow(room);
     }
     if (!room.players.includes(user)) room.players.push(user);
     room.startedPlayers = room.startedPlayers || [];
@@ -485,7 +500,7 @@ export function renderBoard(root, ctx, params = {}) {
   function finishRoom() {
     if (local.finished) return;
     local.finished = true;
-    const elapsedMs = elapsedMsSince(startedAtMs, Date.now());
+    const elapsedMs = currentActiveMs(room, Date.now());
     room.elapsedMs = elapsedMs;
     const myPairs = room.pairsCleared[you] || 0;
     const assistsUsed = room.assistsUsed[you] || 0;
@@ -782,12 +797,19 @@ export function renderBoard(root, ctx, params = {}) {
     stopBots();
     clueController?.stop();
     clearInterval(clockTimer);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
     if (local.persistTimer) {
       clearTimeout(local.persistTimer);
       local.persistTimer = null;
       ctx.reportRoomProgress(room);
     }
-    local.roomSocket?.close();
+    if (local.roomSocket) {
+      local.roomSocket.send({ type: "visibility", visible: false });
+      local.roomSocket.close();
+    } else {
+      closeActiveWindow(room);
+      ctx.persist();
+    }
     window.removeEventListener("resize", applyBoardScale);
   };
 
@@ -795,6 +817,7 @@ export function renderBoard(root, ctx, params = {}) {
   if (isShared && ctx.api.configured()) {
     local.roomSocket = createRoomSocket({
       url: ctx.api.wsUrl(room.id, you),
+      onOpen: () => local.roomSocket.send({ type: "visibility", visible: !document.hidden }),
       onMessage: (message) => {
         if (message.type === "init" || message.type === "room-sync") {
           if (message.room) {
@@ -818,7 +841,15 @@ export function renderBoard(root, ctx, params = {}) {
           renderScoreCards();
           return;
         }
+        if (message.type === "active-update") {
+          room.activeMs = message.activeMs;
+          room.activeWindow = message.activeWindow;
+          ctx.persist();
+          renderSub();
+          return;
+        }
         if (message.type === "cleared") {
+          if (message.activeMs !== undefined) { room.activeMs = message.activeMs; room.activeWindow = message.activeWindow; }
           if (!room.state.tiles.some((tile) => tile.id === message.idA || tile.id === message.idB)) return;
           flyToTray(message.idA, message.idB);
           performClear(message.idA, message.idB, message.user, message);
@@ -842,7 +873,10 @@ export function renderBoard(root, ctx, params = {}) {
         if (message.type === "room-deleted") ctx.navigate("home");
       },
     });
+  } else if (!document.hidden && startedAtMs != null) {
+    openActiveWindow(room);
   }
+  document.addEventListener("visibilitychange", handleVisibilityChange);
   clueController = createIdleClueController({
     enabled: ctx.state.settings.provideClues && room.hintsAllowed,
     getTiles: () => room.state.tiles,

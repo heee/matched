@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { elapsedMsSince, roomTimerStartMs, timestampMs } from "../game/time.js";
+import { elapsedMsSince, roomTimerStartMs, timestampMs, openActiveWindow, closeActiveWindow, currentActiveMs } from "../game/time.js";
 
 test("timestampMs accepts numeric and ISO room start times", () => {
   assert.equal(timestampMs(1_750_000_000_000), 1_750_000_000_000);
@@ -34,4 +34,29 @@ test("race room clocks also start at the first match, not invite time", () => {
     state: { matchLog: [{ user: "Christie", at: firstMatchAt }] },
   }), firstMatchAt);
   assert.equal(roomTimerStartMs({ mode: "race", startedAt: 1000, state: { matchLog: [] } }), null);
+});
+
+test("active window accumulates only the time it was open, ignoring gaps", () => {
+  const room = { activeMs: 0, activeWindow: null };
+  openActiveWindow(room, 1000);
+  assert.equal(currentActiveMs(room, 4000), 3000); // still open, ticking live
+  closeActiveWindow(room, 5000);
+  assert.equal(room.activeMs, 4000);
+  assert.equal(room.activeWindow, null);
+  // a long idle gap with no open window must not be counted
+  openActiveWindow(room, 50_000);
+  assert.equal(currentActiveMs(room, 51_000), 5000); // 4000 banked + 1000 of this window
+  closeActiveWindow(room, 51_000);
+  assert.equal(room.activeMs, 5000);
+});
+
+test("opening/closing an already-open/closed window is a no-op", () => {
+  const room = { activeMs: 0, activeWindow: null };
+  closeActiveWindow(room, 1000); // nothing open yet
+  assert.equal(room.activeMs, 0);
+  openActiveWindow(room, 1000);
+  openActiveWindow(room, 2000); // already open — must not reset the start
+  assert.equal(room.activeWindow.startedAt, 1000);
+  closeActiveWindow(room, 3000);
+  assert.equal(room.activeMs, 2000);
 });

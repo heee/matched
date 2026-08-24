@@ -18,9 +18,9 @@ import { renderRanking } from "./screens/ranking.js?v=44";
 import { renderHeadToHead } from "./screens/head-to-head.js?v=1";
 import { renderProfile } from "./screens/profile.js?v=46";
 import { renderManagePlayers } from "./screens/manage-players.js?v=38";
-import { renderBoard } from "./screens/board.js?v=55";
-import { renderRaceBoard } from "./screens/race-board.js?v=49";
-import { renderResults } from "./screens/results.js?v=40";
+import { renderBoard } from "./screens/board.js?v=56";
+import { renderRaceBoard } from "./screens/race-board.js?v=50";
+import { renderResults } from "./screens/results.js?v=41";
 import { renderInvite } from "./screens/invite.js?v=43";
 import { renderDaily } from "./screens/daily.js?v=42";
 import { renderContinuePlaying } from "./screens/continue-playing.js?v=40";
@@ -256,6 +256,8 @@ function commitRoomMembership(room) {
 function roomProgressPayload(room) {
   return {
     startedAt: room.startedAt,
+    activeMs: room.activeMs || 0,
+    activeWindow: room.activeWindow || null,
     state: room.state,
     players: room.players,
     startedPlayers: room.startedPlayers || [],
@@ -281,6 +283,8 @@ function completedRoomPayload(room) {
   return {
     completedAt: room.completedAt,
     startedAt: room.startedAt,
+    activeMs: room.activeMs || 0,
+    activeWindow: room.activeWindow || null,
     elapsedMs: room.elapsedMs,
     state: room.state,
     players: room.players,

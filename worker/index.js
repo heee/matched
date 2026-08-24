@@ -218,7 +218,7 @@ export default {
         if (!room) throw new Error("room not found");
         // Never let a late progress write reopen or replace a completed room.
         if (!room.completedAt) {
-          for (const key of ["startedAt", "state", "players", "startedPlayers", "botNames", "pairsCleared", "streaks", "peakStreaks", "assistsUsed", "racers"]) {
+          for (const key of ["startedAt", "activeMs", "activeWindow", "state", "players", "startedPlayers", "botNames", "pairsCleared", "streaks", "peakStreaks", "assistsUsed", "racers"]) {
             if (payload[key] !== undefined) room[key] = payload[key];
           }
           await upsertRoom(env.DB, room);
@@ -336,9 +336,14 @@ export class RoomDO {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.state.acceptWebSocket(server);
-    server.serializeAttachment({ user, spectator });
+    // Assume visible until told otherwise — the client sends an explicit
+    // "visibility" message right after connecting, but defaulting true here
+    // means a room already in progress starts its active window immediately
+    // instead of waiting a round trip.
+    server.serializeAttachment({ user, spectator, visible: true });
     this.sendTo(server, { type: "init", room: this.room, presence: this.presenceList() });
     this.broadcastPresence();
+    await this.applyActiveWindowChange();
 
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -351,6 +356,39 @@ export class RoomDO {
 
   broadcastPresence() {
     this.broadcast({ type: "presence", players: this.presenceList() }, null);
+  }
+
+  // Union of "is anyone currently looking at this board" across every
+  // connected socket (any player, on any device).
+  visibleSocketCount() {
+    return this.state.getWebSockets()
+      .filter((socket) => socket.deserializeAttachment()?.visible !== false)
+      .length;
+  }
+
+  // Opens/closes the room's active-time window as the visible-socket count
+  // crosses 0<->1. No-op before the first match (see repairRoomMetadata's
+  // comment on why the clock itself doesn't start until then). Returns
+  // whether anything changed, so callers only broadcast/persist when needed.
+  updateActiveWindow(now = Date.now()) {
+    if (!this.room || !this.room.startedAt) return false;
+    const visible = this.visibleSocketCount() > 0;
+    if (visible && !this.room.activeWindow) {
+      this.room.activeWindow = { startedAt: now };
+      return true;
+    }
+    if (!visible && this.room.activeWindow) {
+      this.room.activeMs = (this.room.activeMs || 0) + Math.max(0, now - this.room.activeWindow.startedAt);
+      this.room.activeWindow = null;
+      return true;
+    }
+    return false;
+  }
+
+  async applyActiveWindowChange(now = Date.now()) {
+    if (!this.updateActiveWindow(now)) return;
+    this.broadcast({ type: "active-update", activeMs: this.room.activeMs, activeWindow: this.room.activeWindow }, null);
+    await this.persist(false);
   }
 
   sendTo(socket, msg) {
@@ -372,11 +410,13 @@ export class RoomDO {
   async webSocketClose(socket, code, reason) {
     try { socket.close(code, reason); } catch (e) {}
     this.broadcastPresence();
+    await this.applyActiveWindowChange();
   }
 
   async webSocketError(socket) {
     try { socket.close(1011, "socket error"); } catch (e) {}
     this.broadcastPresence();
+    await this.applyActiveWindowChange();
   }
 
   async handleMessage(socket, metadata, evt) {
@@ -386,7 +426,7 @@ export class RoomDO {
     if (!this.room) return;
     const requestedUser = typeof msg.user === "string" ? msg.user : "";
     const user = this.room.botNames?.includes(requestedUser) ? requestedUser : metadata?.user || "anonymous";
-    if (metadata?.spectator && msg.type !== "reaction") return; // spectators watch only
+    if (metadata?.spectator && msg.type !== "reaction" && msg.type !== "visibility") return; // spectators watch only
 
     if (msg.type === "race-clear-pair") {
       if (this.room.mode !== "race") return;
@@ -406,6 +446,7 @@ export class RoomDO {
 
       const clearedAt = Date.now();
       if (!(this.room.state.matchLog || []).length) this.room.startedAt = this.room.startedAt || clearedAt;
+      this.updateActiveWindow(clearedAt);
       if (!this.room.players.includes(user)) this.room.players.push(user);
       this.room.startedPlayers = this.room.startedPlayers || [];
       if (!this.room.startedPlayers.includes(user)) this.room.startedPlayers.push(user);
@@ -425,6 +466,7 @@ export class RoomDO {
       this.broadcast({
         type: "race-cleared", idA, idB, user, at: clearedAt,
         startedAt: this.room.startedAt,
+        activeMs: this.room.activeMs, activeWindow: this.room.activeWindow,
         players: this.room.players, startedPlayers: this.room.startedPlayers,
         pairsCleared: this.room.pairsCleared, streaks: this.room.streaks,
         peakStreaks: this.room.peakStreaks, remaining: racer.tiles.length,
@@ -445,6 +487,7 @@ export class RoomDO {
       }
       const clearedAt = Date.now();
       if (!(this.room.state.matchLog || []).length) this.room.startedAt = clearedAt;
+      this.updateActiveWindow(clearedAt);
       if (!this.room.players.includes(user)) this.room.players.push(user);
       this.room.startedPlayers = this.room.startedPlayers || [];
       if (!this.room.startedPlayers.includes(user)) this.room.startedPlayers.push(user);
@@ -470,6 +513,7 @@ export class RoomDO {
       this.broadcast({
         type: "cleared", idA, idB, user, tray: trayEntry, at: trayEntry.at,
         startedAt: this.room.startedAt,
+        activeMs: this.room.activeMs, activeWindow: this.room.activeWindow,
         players: this.room.players, startedPlayers: this.room.startedPlayers,
         pairsCleared: this.room.pairsCleared, streaks: this.room.streaks,
         peakStreaks: this.room.peakStreaks, completed: isComplete,
@@ -505,6 +549,10 @@ export class RoomDO {
         this.broadcast({ type: "assist-used", user, kind: msg.kind, assistsUsed: this.room.assistsUsed }, null);
       }
       await this.persist(false);
+    } else if (msg.type === "visibility") {
+      const visible = !!msg.visible;
+      if (metadata?.visible !== visible) socket.serializeAttachment({ ...metadata, visible });
+      await this.applyActiveWindowChange();
     } else if (msg.type === "reaction") {
       this.broadcast({ type: "reaction", user, emoji: msg.emoji }, socket);
     } else if (msg.type === "checkpoint") {
@@ -527,6 +575,8 @@ export class RoomDO {
     room.players = this.room.players;
     room.startedPlayers = this.room.startedPlayers || [];
     room.startedAt = this.room.startedAt;
+    room.activeMs = this.room.activeMs || 0;
+    room.activeWindow = this.room.activeWindow || null;
     room.pairsCleared = this.room.pairsCleared;
     room.streaks = this.room.streaks;
     room.peakStreaks = this.room.peakStreaks || {};
@@ -633,6 +683,8 @@ function repairRoomMetadata(room) {
       changed = true;
     }
   }
+  if (typeof room.activeMs !== "number" || !Number.isFinite(room.activeMs)) { room.activeMs = 0; changed = true; }
+  if (room.activeWindow !== null && typeof room.activeWindow !== "object") { room.activeWindow = null; changed = true; }
   return changed;
 }
 
@@ -802,6 +854,8 @@ function buildRoom(req) {
     createdBy: req.createdBy,
     createdAt: new Date().toISOString(),
     startedAt: null,
+    activeMs: 0,
+    activeWindow: null,
     freeTilesGlow: req.freeTilesGlow,
     hintsAllowed: req.hintsAllowed,
     players: [req.createdBy, ...req.bots.map((bot) => bot.name)],

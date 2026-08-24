@@ -43,6 +43,10 @@ export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, 
     // Shared rooms may wait in the invite sheet indefinitely. Board screens
     // set this when play actually begins (the first match for Shared).
     startedAt: null,
+    // Accumulated/open "someone has the board on screen" windows — see
+    // game/time.js. Starts empty; the board screen opens the first window.
+    activeMs: 0,
+    activeWindow: null,
     freeTilesGlow: freeTilesGlow !== false,
     hintsAllowed: hintsAllowed !== false,
     players,

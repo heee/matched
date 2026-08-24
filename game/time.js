@@ -24,3 +24,27 @@ export function roomTimerStartMs(room) {
     .find((value) => value != null);
   return firstMatch ?? null;
 }
+
+// A room's clock should only run while someone actually has the board open —
+// a shared/race room left sitting for hours between matches must not count
+// that idle time. `room.activeMs` accumulates closed viewing windows;
+// `room.activeWindow` (null when nobody's watching) holds the currently-open
+// one. For shared/race rooms this pair is server-authoritative (the Worker's
+// RoomDO unions visibility across every connected player and broadcasts
+// updates); for solo play there's only one device, so the board screen
+// manages these fields itself via document.visibilitychange.
+export function openActiveWindow(room, now = Date.now()) {
+  if (room && !room.activeWindow) room.activeWindow = { startedAt: now };
+}
+
+export function closeActiveWindow(room, now = Date.now()) {
+  if (room?.activeWindow) {
+    room.activeMs = (room.activeMs || 0) + Math.max(0, now - room.activeWindow.startedAt);
+    room.activeWindow = null;
+  }
+}
+
+export function currentActiveMs(room, now = Date.now()) {
+  const base = room?.activeMs || 0;
+  return room?.activeWindow ? base + Math.max(0, now - room.activeWindow.startedAt) : base;
+}

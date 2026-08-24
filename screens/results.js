@@ -3,9 +3,9 @@
 
 import { el, avatarDot, formatDuration, roomInviteUrl } from "./shared-ui.js";
 import { PLAYER_COLORS, highlightsFromLog, pointsToNextTier, nextTier, tierForPoints } from "../game/scoring.js";
-import { buildLocalRoom } from "../game/room.js?v=3";
+import { buildLocalRoom } from "../game/room.js?v=4";
 import { resultShareMessage } from "../game/share-messages.js";
-import { elapsedMsSince } from "../game/time.js";
+import { currentActiveMs } from "../game/time.js";
 
 // Stroke-only action icons for the Board Cleared action row, same Lucide
 // convention as the board's control-row icons (currentColor, no fill).
@@ -25,7 +25,7 @@ export function renderResults(root, ctx, params = {}) {
   const top = el("div", { style: "padding:0 24px" });
   top.appendChild(el("div", { style: "font:700 11px Figtree,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#e8c887", text: "Board cleared" }));
   top.appendChild(el("div", { class: "title-serif", style: "font-size:38px;margin-top:8px", text: room.title }));
-  const elapsedS = Math.floor((lastResult?.elapsedMs ?? elapsedMsSince(room.startedAt, Date.now()) ?? 0) / 1000);
+  const elapsedS = Math.floor((lastResult?.elapsedMs ?? currentActiveMs(room, Date.now())) / 1000);
   top.appendChild(el("div", { style: "font:14px Figtree,sans-serif;color:rgba(246,241,228,.6);margin-top:8px", text: `${formatDuration(elapsedS)} · ${room.players.length} players · ${room.tileCount} tiles` }));
   root.appendChild(top);
 
