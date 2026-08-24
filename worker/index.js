@@ -6,6 +6,9 @@
 // periodically and on every clear.
 //
 //   GET  /data?scope=open|mine&user=NAME     -> current D1 contents (no auth to read)
+//   GET  /activity?limit=N                    -> recent activity feed: room starts/completions,
+//                                                  daily completions, and personal-best milestones,
+//                                                  merged and sorted, capped at N (default 15, max 30)
 //   GET  /daily?date=YYYY-MM-DD               -> shared daily board (client's local date) + registered-human results;
 //                                                  date is trusted only within a day of server UTC time, else UTC today is used
 //   POST /daily-result   { date, user, elapsedMs, pairsMatched } -> records one registered human completion; date is
@@ -87,6 +90,15 @@ export default {
       }
     }
 
+    if (url.pathname === "/activity" && request.method === "GET") {
+      try {
+        const limit = Math.max(1, Math.min(30, Math.round(Number(url.searchParams.get("limit"))) || 15));
+        return json(await loadActivity(env.DB, limit), 200, cors);
+      } catch (e) {
+        return json({ error: e.message }, 502, cors);
+      }
+    }
+
     const roomReadMatch = url.pathname.match(/^\/room\/([a-zA-Z0-9_-]+)$/);
     if (roomReadMatch && request.method === "GET") {
       try {
@@ -109,6 +121,7 @@ export default {
       }
       try {
         const saved = await saveDailyResult(env.DB, { date, user, elapsedMs, pairsMatched });
+        if (saved.isNew) await recordDailyMilestones(env.DB, { user, date, elapsedMs });
         return json({ ok: true, result: saved }, 200, cors);
       } catch (e) {
         return json({ error: e.message }, 502, cors);
@@ -221,6 +234,7 @@ export default {
         if (!room) throw new Error("room not found");
         Object.assign(room, payload);
         await upsertRoom(env.DB, room);
+        if (room.state?.state === "completed") await recordRaceMilestones(env.DB, room);
         return json({ ok: true }, 200, cors);
       } catch (e) {
         return json({ error: e.message }, 502, cors);
@@ -668,6 +682,7 @@ export class RoomDO {
       room.state.state = "completed";
     }
     await upsertRoom(this.env.DB, room);
+    if (completed) await recordRaceMilestones(this.env.DB, room);
   }
 }
 
@@ -1182,11 +1197,106 @@ async function dailyResults(db, date) {
 async function saveDailyResult(db, { date, user, elapsedMs, pairsMatched }) {
   const registered = await db.prepare("SELECT name FROM users WHERE name = ?").bind(user).first();
   if (!registered) throw new Error("registered player required");
+  const existing = await db.prepare("SELECT 1 FROM daily_results WHERE date = ? AND user_name = ?").bind(date, user).first();
   const completedAt = new Date().toISOString();
-  await db.prepare("INSERT OR IGNORE INTO daily_results (date, user_name, elapsed_ms, pairs_matched, completed_at) VALUES (?, ?, ?, ?, ?)")
-    .bind(date, user, elapsedMs, pairsMatched, completedAt).run();
+  if (!existing) {
+    await db.prepare("INSERT INTO daily_results (date, user_name, elapsed_ms, pairs_matched, completed_at) VALUES (?, ?, ?, ?, ?)")
+      .bind(date, user, elapsedMs, pairsMatched, completedAt).run();
+  }
   const row = await db.prepare("SELECT user_name, elapsed_ms, pairs_matched, completed_at FROM daily_results WHERE date = ? AND user_name = ?").bind(date, user).first();
-  return { name: row.user_name, elapsedMs: Number(row.elapsed_ms), pairsMatched: Number(row.pairs_matched), completedAt: row.completed_at };
+  return { name: row.user_name, elapsedMs: Number(row.elapsed_ms), pairsMatched: Number(row.pairs_matched), completedAt: row.completed_at, isNew: !existing };
 }
 
-export { loadData, registerUser, updateUserColor, upsertRoom, getRoom, joinRoom, deleteRoom, deleteUser, buildRoom, validateCreateRoom, generateBoard, getOrCreateDaily, dailyResults, saveDailyResult, repairRoomMetadata, isPlausibleDailyDate };
+// ===========================================================================
+// Activity feed — see the `/activity` route comment at the top of the file.
+// user_stats/activity_events live in migrations/0003_activity.sql. A
+// milestone event is only ever inserted when a value beats the player's own
+// prior record, so the feed never gets noisy with routine daily plays.
+// ===========================================================================
+
+function shiftDate(dateStr, days) {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+async function insertActivityEvent(db, user, kind, value, layoutId, createdAt) {
+  await db.prepare("INSERT INTO activity_events (user_name, kind, value, layout_id, created_at) VALUES (?, ?, ?, ?, ?)")
+    .bind(user, kind, value, layoutId || null, createdAt).run();
+}
+
+async function recordDailyMilestones(db, { user, date, elapsedMs }) {
+  const now = new Date().toISOString();
+  const board = await db.prepare("SELECT layout_id FROM daily_boards WHERE date = ?").bind(date).first();
+  const layoutId = board?.layout_id || null;
+  const stats = await db.prepare("SELECT daily_streak, daily_streak_date, best_streak, best_daily_ms, best_race_pairs FROM user_stats WHERE user_name = ?").bind(user).first();
+  const dailyStreak = stats?.daily_streak_date === shiftDate(date, -1) ? (stats.daily_streak || 0) + 1 : 1;
+  let bestStreak = stats?.best_streak || 0;
+  let streakEvent = null;
+  if (dailyStreak > bestStreak) { bestStreak = dailyStreak; streakEvent = dailyStreak; }
+  let bestMs = stats?.best_daily_ms ?? null;
+  let bestLayout = stats?.best_daily_layout_id ?? null;
+  let timeEvent = null;
+  if (bestMs == null || elapsedMs < bestMs) { bestMs = elapsedMs; bestLayout = layoutId; timeEvent = elapsedMs; }
+  await db.prepare(`
+    INSERT INTO user_stats (user_name, daily_streak, daily_streak_date, best_streak, best_daily_ms, best_daily_layout_id, best_race_pairs, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(user_name) DO UPDATE SET
+      daily_streak = excluded.daily_streak, daily_streak_date = excluded.daily_streak_date,
+      best_streak = excluded.best_streak, best_daily_ms = excluded.best_daily_ms,
+      best_daily_layout_id = excluded.best_daily_layout_id, updated_at = excluded.updated_at
+  `).bind(user, dailyStreak, date, bestStreak, bestMs, bestLayout, stats?.best_race_pairs ?? null, now).run();
+  if (streakEvent != null) await insertActivityEvent(db, user, "daily_streak", streakEvent, null, now);
+  if (timeEvent != null) await insertActivityEvent(db, user, "best_daily_time", timeEvent, layoutId, now);
+}
+
+async function recordRaceMilestones(db, room) {
+  if (room?.mode !== "race" || room?.state?.state !== "completed") return;
+  const now = new Date().toISOString();
+  for (const [user, rawPairs] of Object.entries(room.pairsCleared || {})) {
+    const pairs = Number(rawPairs);
+    if (!isActualPlayerName(user) || !Number.isFinite(pairs) || pairs <= 0) continue;
+    const registered = await db.prepare("SELECT name FROM users WHERE name = ?").bind(user).first();
+    if (!registered) continue;
+    const stats = await db.prepare("SELECT best_race_pairs FROM user_stats WHERE user_name = ?").bind(user).first();
+    const best = stats?.best_race_pairs ?? null;
+    if (best != null && pairs <= best) continue;
+    await db.prepare(`
+      INSERT INTO user_stats (user_name, best_race_pairs, updated_at) VALUES (?, ?, ?)
+      ON CONFLICT(user_name) DO UPDATE SET best_race_pairs = excluded.best_race_pairs, updated_at = excluded.updated_at
+    `).bind(user, pairs, now).run();
+    await insertActivityEvent(db, user, "best_race_pairs", pairs, room.layoutId || null, now);
+  }
+}
+
+async function loadActivity(db, limit) {
+  const [usersResult, startedResult, completedResult, dailyResult, milestoneResult] = await db.batch([
+    db.prepare("SELECT name FROM users"),
+    db.prepare("SELECT id, title, mode, created_by, created_at FROM rooms ORDER BY created_at DESC LIMIT ?").bind(limit),
+    db.prepare("SELECT id, title, mode, created_by, completed_at, tile_count FROM rooms WHERE state = 'completed' ORDER BY completed_at DESC LIMIT ?").bind(limit),
+    db.prepare("SELECT user_name, elapsed_ms, completed_at FROM daily_results ORDER BY completed_at DESC LIMIT ?").bind(limit),
+    db.prepare("SELECT user_name, kind, value, layout_id, created_at FROM activity_events ORDER BY created_at DESC LIMIT ?").bind(limit),
+  ]);
+  const registered = new Set((usersResult.results || []).map((r) => r.name));
+  const items = [];
+  for (const r of startedResult.results || []) {
+    if (!registered.has(r.created_by)) continue;
+    items.push({ type: "room_started", user: r.created_by, at: r.created_at, roomId: r.id, title: r.title, mode: r.mode });
+  }
+  for (const r of completedResult.results || []) {
+    if (!registered.has(r.created_by)) continue;
+    items.push({ type: "room_completed", user: r.created_by, at: r.completed_at, roomId: r.id, title: r.title, mode: r.mode, pairs: Math.round((r.tile_count || 0) / 2) });
+  }
+  for (const r of dailyResult.results || []) {
+    if (!registered.has(r.user_name)) continue;
+    items.push({ type: "daily_completed", user: r.user_name, at: r.completed_at, elapsedMs: Number(r.elapsed_ms) });
+  }
+  for (const r of milestoneResult.results || []) {
+    if (!registered.has(r.user_name)) continue;
+    items.push({ type: "milestone", user: r.user_name, at: r.created_at, kind: r.kind, value: Number(r.value), layoutId: r.layout_id || null });
+  }
+  items.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+  return { items: items.slice(0, limit) };
+}
+
+export { loadData, registerUser, updateUserColor, upsertRoom, getRoom, joinRoom, deleteRoom, deleteUser, buildRoom, validateCreateRoom, generateBoard, getOrCreateDaily, dailyResults, saveDailyResult, repairRoomMetadata, isPlausibleDailyDate, loadActivity, recordDailyMilestones, recordRaceMilestones };

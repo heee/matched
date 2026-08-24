@@ -220,6 +220,23 @@ export function formatDuration(totalSeconds) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+// "just now" / "12m ago" / "6h ago" / "6d ago" — coarse on purpose, this is
+// for a feed of past activity, not a live-updating clock.
+export function formatRelativeTime(isoString, now = Date.now()) {
+  const then = Date.parse(isoString);
+  if (!Number.isFinite(then)) return "";
+  const diffSec = Math.max(0, Math.round((now - then) / 1000));
+  if (diffSec < 60) return "just now";
+  const diffMin = Math.round(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.round(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.round(diffHr / 24);
+  if (diffDay < 30) return `${diffDay}d ago`;
+  const diffMonth = Math.round(diffDay / 30);
+  return `${diffMonth}mo ago`;
+}
+
 // Renders a tile's face content (glyph, pips, or an ART SLOT placeholder)
 // into an existing container node — used by both the board screen and any
 // layout thumbnail that wants a real tile face, not just a silhouette.

@@ -2,17 +2,17 @@
 // screens/ and game/; this file wires navigation, the bottom tab bar, and
 // the local-first store, then hands each screen its render call.
 
-import { createWorkerApi } from "./api.js?v=42";
+import { createWorkerApi } from "./api.js?v=43";
 import { createJsonStorage, normalizeSharedData, mergeSharedData, writeRoomCache, LOCAL_KEYS, DEFAULT_SETTINGS } from "./storage.js?v=46";
 import { createMutationQueue } from "./sync.js?v=41";
-import { el, TAB_DEFS } from "./screens/shared-ui.js?v=42";
+import { el, TAB_DEFS } from "./screens/shared-ui.js?v=43";
 import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.js?v=38";
 import { equippedFeltName, feltCssVars } from "./game/felts.js?v=39";
 import { PLAYER_HUES } from "./game/scoring.js";
 import { missingTrackedRoomIds, refreshableRoomsForUser, roomHasProgress, shouldAbandonRoomOnExit } from "./game/room-lists.js?v=6";
 
 import { renderNameEntry } from "./screens/name-entry.js?v=41";
-import { renderHome } from "./screens/home.js?v=59";
+import { renderHome } from "./screens/home.js?v=60";
 import { renderPlayCatalog } from "./screens/play-catalog.js?v=43";
 import { renderRoomSetup } from "./screens/room-setup.js?v=48";
 import { renderRanking } from "./screens/ranking.js?v=44";
@@ -176,8 +176,9 @@ function refreshRoomLists() {
   const trackedRooms = refreshableRoomsForUser(Object.values(state.store.rooms || {}), state.currentUser);
   roomListRefresh = Promise.allSettled([
     workerApi.fetchData("open"),
+    workerApi.fetchActivity(15),
     ...trackedRooms.map((room) => workerApi.fetchRoom(room.id)),
-  ]).then(([openResult, ...roomResults]) => {
+  ]).then(([openResult, activityResult, ...roomResults]) => {
     const openData = openResult?.status === "fulfilled" ? openResult.value : { users: {}, rooms: {} };
     const focusedRooms = {};
     for (const result of roomResults) {
@@ -192,6 +193,9 @@ function refreshRoomLists() {
       ...openData,
       rooms: { ...(openData.rooms || {}), ...focusedRooms },
     });
+    if (activityResult?.status === "fulfilled" && Array.isArray(activityResult.value?.items)) {
+      state.store.activity = activityResult.value.items;
+    }
     saveStore(state.store);
     if (ROOM_LIST_SCREENS.has(state.screen)) render();
   }).catch(() => {

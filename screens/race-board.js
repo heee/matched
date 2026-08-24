@@ -2,7 +2,7 @@
 // live progress bars ordered by position; standings surface in a bottom
 // strip instead of a toast; no tray. See docs/design-reference.html #1h.
 
-import { el, avatarDot, renderTileFace, formatClock, haptic, playMatchSound } from "./shared-ui.js?v=42";
+import { el, avatarDot, renderTileFace, formatClock, haptic, playMatchSound } from "./shared-ui.js?v=43";
 import { freeTiles, findHintPair, findHintPairs, clearPair, hasMovesRemaining, shuffleRemaining } from "../game/mahjong.js";
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
 import { colorForPlayer, BOT_ACT_CHANCE, pointsForSession } from "../game/scoring.js";

@@ -1,7 +1,7 @@
 // Matched — Home screen. Swipeable hero (live now / today's board),
 // continue playing, open rooms. See docs/design-reference.html #1d.
 
-import { el, avatarDot, formatClock, roomInviteUrl, modeIcon, bellButton, inviteNoticeDialog } from "./shared-ui.js";
+import { el, avatarDot, formatClock, formatRelativeTime, roomInviteUrl, modeIcon, bellButton, inviteNoticeDialog } from "./shared-ui.js";
 import { boardCompletion } from "../game/mahjong.js";
 import { dailyLayoutFor, dailySeedFor, todayDateStr, msUntilNextReset } from "../game/daily.js";
 import { LAYOUTS, layoutSilhouette } from "../game/layouts.js";
@@ -346,6 +346,31 @@ export function openRow(ctx, room) {
   return row;
 }
 
+function activityCopy(item) {
+  if (item.type === "room_started") return `started ${item.title}`;
+  if (item.type === "room_completed") return `completed a puzzle — ${item.pairs} pair${item.pairs === 1 ? "" : "s"}`;
+  if (item.type === "daily_completed") return `completed the daily puzzle in ${formatClock(Math.round(item.elapsedMs / 1000))}`;
+  if (item.type === "milestone") {
+    if (item.kind === "daily_streak") return `hit a new personal best — ${item.value}-day streak`;
+    if (item.kind === "best_daily_time") return `set a new personal best daily time — ${formatClock(Math.round(item.value / 1000))}`;
+    if (item.kind === "best_race_pairs") return `set a new personal best — ${item.value} pairs in a race`;
+  }
+  return "";
+}
+
+function activityRow(ctx, item) {
+  const row = el("div", { style: "display:flex;align-items:center;gap:13px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08)" });
+  row.appendChild(avatarDot(item.user, 0, 34, ctx.state.store.users));
+  const info = el("div", { style: "flex:1;min-width:0" });
+  info.appendChild(el("div", { style: "font:14px Figtree,sans-serif;color:#f6f1e4" }, [
+    el("span", { style: "font-weight:600", text: item.user }),
+    ` ${activityCopy(item)}`,
+  ]));
+  info.appendChild(el("div", { style: "font:11px Figtree,sans-serif;color:rgba(246,241,228,.45);margin-top:2px", text: formatRelativeTime(item.at) }));
+  row.appendChild(info);
+  return row;
+}
+
 // Invites are local-only for now (see storage.js) — this only reaches the
 // recipient if they're a profile on this same device/browser.
 function myPendingInvites(ctx) {
@@ -511,6 +536,13 @@ export function renderHome(root, ctx) {
   if (openRooms.length === 0) openList.appendChild(el("div", { class: "empty-note", style: "padding:0 4px", text: "No open rooms yet — create one from the + tab." }));
   featuredOpenRooms.forEach((r) => openList.appendChild(openRow(ctx, r)));
   root.appendChild(openList);
+
+  root.appendChild(el("div", { class: "section-label", style: "padding-top:20px", text: "Recent activity" }));
+  const activityItems = ctx.state.store.activity || [];
+  const activityList = el("div", { class: "row-list" });
+  if (activityItems.length === 0) activityList.appendChild(el("div", { class: "empty-note", style: "padding:0 4px", text: "Activity from you and other players will show up here." }));
+  activityItems.slice(0, 8).forEach((item) => activityList.appendChild(activityRow(ctx, item)));
+  root.appendChild(activityList);
 
   root.appendChild(el("div", { style: "flex:1" }));
 }
