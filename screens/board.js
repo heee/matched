@@ -8,7 +8,7 @@ import {
   hasMovesRemaining, boardCompletion,
 } from "../game/mahjong.js";
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
-import { PLAYER_COLORS, pointsForSession, highlightsFromLog, BOT_ACT_CHANCE, COMBO_WINDOW_MS, COMBO_BONUS_POINTS } from "../game/scoring.js";
+import { colorForPlayer, pointsForSession, highlightsFromLog, BOT_ACT_CHANCE, COMBO_WINDOW_MS, COMBO_BONUS_POINTS } from "../game/scoring.js";
 import { equippedMaterialName, materialCssVars } from "../game/materials.js";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { hasStartedRoom } from "../game/room-lists.js?v=6";
@@ -229,7 +229,7 @@ export function renderBoard(root, ctx, params = {}) {
       const streak = room.streaks[name] || 0;
       const card = el("div", { class: `player-card${name === active ? " me" : ""}` });
       const top = el("div", { style: "display:flex;align-items:center;gap:6px" });
-      top.appendChild(avatarDot(name, i, 18));
+      top.appendChild(avatarDot(name, i, 18, ctx.state.store.users));
       top.appendChild(el("span", { style: "font:700 13px Figtree,sans-serif;color:#f6f1e4", text: String(room.pairsCleared[name] || 0) }));
       card.appendChild(top);
       card.appendChild(el("div", { class: "pname", text: streak >= 2 ? `${streak} streak` : name }));
@@ -370,7 +370,7 @@ export function renderBoard(root, ctx, params = {}) {
         chip = el("div", {
           class: "tray-tile entering",
           "data-entry-id": entry.id,
-          style: `box-shadow:0 0 0 2px ${PLAYER_COLORS[seatIndex % PLAYER_COLORS.length]},0 2px 5px rgba(0,0,0,.35);color:${entry.face.color || "#23201c"}`,
+          style: `box-shadow:0 0 0 2px ${colorForPlayer(entry.user, seatIndex, ctx.state.store.users)},0 2px 5px rgba(0,0,0,.35);color:${entry.face.color || "#23201c"}`,
           text: trayFaceGlyph(entry.face),
         });
         chip.addEventListener("animationend", () => chip.classList.remove("entering"), { once: true });
@@ -427,10 +427,10 @@ export function renderBoard(root, ctx, params = {}) {
 
   // ===================== gameplay =====================
 
-  function showToast(text, seatIndex) {
+  function showToast(text, user, seatIndex) {
     local.toast = text;
     toastEl.textContent = text;
-    toastEl.style.borderColor = seatIndex == null ? "transparent" : PLAYER_COLORS[seatIndex % PLAYER_COLORS.length];
+    toastEl.style.borderColor = seatIndex == null ? "transparent" : colorForPlayer(user, seatIndex, ctx.state.store.users);
     toastEl.classList.add("show");
     clearTimeout(showToast._t);
     showToast._t = setTimeout(() => toastEl.classList.remove("show"), 2600);
@@ -443,7 +443,7 @@ export function renderBoard(root, ctx, params = {}) {
   // out top to bottom instead of blending into a single glyph.
   let activeReactionCount = 0;
   function floatReaction(emoji) {
-    const stackOffset = activeReactionCount * 32;
+    const stackOffset = activeReactionCount * 44;
     activeReactionCount++;
     const node = el("div", { class: "reaction-float", text: emoji, style: `bottom:${96 + stackOffset}px` });
     boardArea.appendChild(node);
@@ -515,7 +515,7 @@ export function renderBoard(root, ctx, params = {}) {
 
     if (!isLive && user !== you) {
       const streak = room.streaks[user];
-      showToast(`${user} took a pair${streak >= 3 ? ` · ${streak} streak` : ""}`, playerList().indexOf(user));
+      showToast(`${user} took a pair${streak >= 3 ? ` · ${streak} streak` : ""}`, user, playerList().indexOf(user));
     }
     schedulePersist();
     syncBoardTiles([idA, idB]);
@@ -862,7 +862,7 @@ export function renderBoard(root, ctx, params = {}) {
     handoffOverlay.innerHTML = "";
     const name = currentTurnPlayer();
     const seat = room.players.indexOf(name);
-    handoffOverlay.appendChild(avatarDot(name, seat, 72));
+    handoffOverlay.appendChild(avatarDot(name, seat, 72, ctx.state.store.users));
     handoffOverlay.appendChild(el("div", { class: "title-serif", style: "font-size:24px;color:#f6f1e4;margin-top:6px", text: `Pass to ${name}` }));
     handoffOverlay.appendChild(el("div", { style: "font:13px Figtree,sans-serif;color:rgba(246,241,228,.6);max-width:260px", text: "Hand the device over, then tap ready to reveal the board." }));
     const readyBtn = el("button", { class: "btn btn-primary btn-lg", style: "margin-top:10px;min-width:200px", text: "I'm ready" });

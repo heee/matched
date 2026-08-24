@@ -29,7 +29,7 @@ export function renderManagePlayers(root, ctx) {
   names.forEach((name, i) => {
     const isCurrent = name === ctx.state.currentUser;
     const row = el("div", { style: "display:flex;align-items:center;gap:12px;padding:12px 13px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07)" });
-    row.appendChild(avatarDot(name, i, 38));
+    row.appendChild(avatarDot(name, i, 38, users));
     const info = el("div", { style: "flex:1;min-width:0" });
     info.appendChild(el("div", { style: "font:600 14.5px Figtree,sans-serif;color:#f6f1e4", text: name }));
     info.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.45);margin-top:2px", text: isCurrent ? "Current profile" : "Tap to delete" }));

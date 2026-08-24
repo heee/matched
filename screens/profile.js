@@ -3,7 +3,7 @@
 // design-reference.html #1l.
 
 import { el, avatarDot, supportsHaptics } from "./shared-ui.js?v=42";
-import { tierForPoints, nextTier, pointsToNextTier, TIER_UNLOCKS, TIERS, nextCosmeticUnlock, cosmeticUnlockEvents } from "../game/scoring.js";
+import { tierForPoints, nextTier, pointsToNextTier, TIER_UNLOCKS, TIERS, nextCosmeticUnlock, cosmeticUnlockEvents, PLAYER_HUES, hueColor } from "../game/scoring.js";
 import { MATERIALS, equippedMaterialName } from "../game/materials.js";
 import { FELTS, equippedFeltName } from "../game/felts.js";
 import { roomElapsedSeconds } from "../game/ranking.js?v=43";
@@ -116,7 +116,7 @@ export function renderProfile(root, ctx) {
 
   const header = el("div", { style: "padding:8px 20px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:14px" });
   const headerLeft = el("div", { style: "display:flex;align-items:center;gap:14px;min-width:0" });
-  headerLeft.appendChild(avatarDot(user, 0, 62));
+  headerLeft.appendChild(avatarDot(user, 0, 62, ctx.state.store.users));
   const nameWrap = el("div");
   nameWrap.appendChild(el("div", { class: "title-serif", style: "font-size:26px", text: user }));
   nameWrap.appendChild(el("div", { style: "font:12.5px Figtree,sans-serif;color:rgba(246,241,228,.55);margin-top:5px", text: `${tier.name} tier · ${ctx.state.points.toLocaleString()} points` }));
@@ -194,6 +194,34 @@ export function renderProfile(root, ctx) {
   }, tier.name, rerender));
 
   root.appendChild(el("div", { class: "section-label", style: "padding-top:8px", text: "Settings" }));
+
+  // Avatar color — a swatch per player everywhere their name shows up
+  // (board, race, results, ranking...), so this needs to be a deliberate
+  // choice rather than the auto-assigned rotation. Picking one here writes
+  // straight to the same per-user hue that identity color resolution reads
+  // (colorForPlayer in game/scoring.js), and syncs to the Worker so other
+  // players/devices see it too.
+  const avatarColorRow = el("div", { style: "margin:0 16px 14px;padding:13px;border-radius:14px;background:rgba(255,255,255,.06);display:flex;flex-direction:column;gap:10px" });
+  avatarColorRow.appendChild(el("span", { style: "font:500 14px Figtree,sans-serif;color:#f6f1e4", text: "Avatar color" }));
+  const swatchRow = el("div", { style: "display:flex;gap:10px;flex-wrap:wrap" });
+  const currentHue = ctx.state.store.users?.[user]?.hue;
+  PLAYER_HUES.forEach((hue) => {
+    const isSelected = currentHue === hue;
+    const swatch = el("button", {
+      type: "button",
+      "aria-label": `Set avatar color ${hue}`,
+      style: `width:34px;height:34px;border-radius:50%;background:${hueColor(hue)};border:2px solid ${isSelected ? "#f6f1e4" : "transparent"};box-shadow:${isSelected ? "0 0 0 2px #d9a441" : "none"};cursor:pointer;padding:0`,
+    });
+    swatch.addEventListener("click", () => {
+      if (isSelected) return;
+      ctx.updateUserColor(hue);
+      rerender();
+    });
+    swatchRow.appendChild(swatch);
+  });
+  avatarColorRow.appendChild(swatchRow);
+  root.appendChild(avatarColorRow);
+
   const settingsCard = el("div", { style: "margin:0 16px 16px;display:flex;flex-direction:column;gap:1px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.07)" });
   const toggleRow = (label, key) => {
     const row = el("div", { class: "toggle-row" });

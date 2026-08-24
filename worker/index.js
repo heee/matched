@@ -11,6 +11,8 @@
 //   POST /daily-result   { date, user, elapsedMs, pairsMatched } -> records one registered human completion; date is
 //                                                                    the client's local date, same plausibility window as above
 //   POST /register-user   { user }                      -> creates the user if new, assigns a stable color hue
+//   POST /update-user-color { user, hue }                 -> sets a registered user's avatar color hue (0-359);
+//                                                             user must already be registered
 //   POST /create-room     { title, mode, layoutId, tileCount, difficulty, visibility, createdBy }
 //                                                          -> generates a solvable board server-side and seeds the room's DO
 //   POST /join-room       { roomId, user, started:true }   -> commits membership after the first cleared pair
@@ -120,6 +122,23 @@ export default {
       if (!isActualPlayerName(name)) return json({ error: "invalid user" }, 400, cors);
       try {
         const user = await registerUser(env.DB, name);
+        return json({ ok: true, user: { name, ...user } }, 200, cors);
+      } catch (e) {
+        return json({ error: e.message }, 502, cors);
+      }
+    }
+
+    if (url.pathname === "/update-user-color" && request.method === "POST") {
+      if (!checkAppKey(request, env)) return json({ error: "unauthorized" }, 401, cors);
+      const body = await safeJson(request);
+      const name = typeof body?.user === "string" ? body.user.trim().slice(0, 40) : "";
+      const hue = Math.round(Number(body?.hue));
+      if (!isActualPlayerName(name) || !Number.isFinite(hue) || hue < 0 || hue >= 360) {
+        return json({ error: "invalid payload" }, 400, cors);
+      }
+      try {
+        const user = await updateUserColor(env.DB, name, hue);
+        if (!user) return json({ error: "user not found" }, 404, cors);
         return json({ ok: true, user: { name, ...user } }, 200, cors);
       } catch (e) {
         return json({ error: e.message }, 502, cors);
@@ -1049,6 +1068,13 @@ async function deleteUser(db, name) {
   await db.prepare("DELETE FROM users WHERE name = ?").bind(name).run();
 }
 
+async function updateUserColor(db, name, hue) {
+  const updatedAt = new Date().toISOString();
+  await db.prepare("UPDATE users SET hue = ?, updated_at = ? WHERE name = ?").bind(hue, updatedAt, name).run();
+  const row = await db.prepare("SELECT name, hue, created_at, settings_json FROM users WHERE name = ?").bind(name).first();
+  return row ? userFromRow(row) : null;
+}
+
 // Daily dates are per-player local calendar dates (see game/daily.js), not a
 // single UTC instant, so this only rejects dates that couldn't be anyone's
 // "today" (bad format, or more than a day off UTC — every timezone's local
@@ -1087,4 +1113,4 @@ async function saveDailyResult(db, { date, user, elapsedMs, pairsMatched }) {
   return { name: row.user_name, elapsedMs: Number(row.elapsed_ms), pairsMatched: Number(row.pairs_matched), completedAt: row.completed_at };
 }
 
-export { loadData, registerUser, upsertRoom, getRoom, joinRoom, deleteRoom, deleteUser, buildRoom, validateCreateRoom, generateBoard, getOrCreateDaily, dailyResults, saveDailyResult, repairRoomMetadata, isPlausibleDailyDate };
+export { loadData, registerUser, updateUserColor, upsertRoom, getRoom, joinRoom, deleteRoom, deleteUser, buildRoom, validateCreateRoom, generateBoard, getOrCreateDaily, dailyResults, saveDailyResult, repairRoomMetadata, isPlausibleDailyDate };

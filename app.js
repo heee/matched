@@ -8,6 +8,7 @@ import { createMutationQueue } from "./sync.js?v=41";
 import { el, TAB_DEFS } from "./screens/shared-ui.js?v=42";
 import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.js?v=38";
 import { equippedFeltName, feltCssVars } from "./game/felts.js?v=39";
+import { PLAYER_HUES } from "./game/scoring.js";
 import { missingTrackedRoomIds, refreshableRoomsForUser, roomHasProgress, shouldAbandonRoomOnExit } from "./game/room-lists.js?v=6";
 
 import { renderNameEntry } from "./screens/name-entry.js?v=41";
@@ -163,6 +164,7 @@ const ctx = {
   refreshAppearance,
   refreshUsers,
   refreshRoom,
+  updateUserColor,
 };
 
 const ROOM_LIST_SCREENS = new Set(["home", "open-rooms"]);
@@ -326,6 +328,21 @@ function reportDailyResult(room, elapsedMs) {
   });
 }
 
+// Sets the current user's avatar color (Profile > Settings). Written
+// locally first so it applies immediately everywhere it renders, then
+// pushed to the Worker so other players/devices see the same color for
+// this player too — same offline-queued pattern as registerUser.
+function updateUserColor(hue) {
+  const user = state.currentUser;
+  if (!isActualPlayerName(user)) return;
+  state.store.users[user] = { ...(state.store.users[user] || {}), hue };
+  persist();
+  if (!workerApi.configured()) return;
+  workerApi.updateUserColor(user, hue).catch(() => {
+    mutationQueue.enqueue("update-user-color", { user, hue }, { id: `update-user-color:${user}` });
+  });
+}
+
 async function flushPendingMutations() {
   if (!workerApi.configured()) return;
   await mutationQueue.flush(({ type, payload }) => {
@@ -336,6 +353,7 @@ async function flushPendingMutations() {
     if (type === "register-user") return workerApi.registerUser(payload.user);
     if (type === "daily-result") return workerApi.reportDailyResult(payload);
     if (type === "delete-room") return workerApi.deleteRoom(payload.roomId);
+    if (type === "update-user-color") return workerApi.updateUserColor(payload.user, payload.hue);
     throw new Error(`Unsupported queued mutation: ${type}`);
   });
 }
@@ -439,11 +457,6 @@ async function afterLogin() {
   }
   navigate("home");
 }
-
-// Mirrors the Worker's registerUser() hue rotation (worker/index.js
-// PLAYER_HUES) so a locally-created profile gets the same stable color a
-// server round-trip would have assigned it.
-const PLAYER_HUES = [42, 155, 20, 213, 280, 190, 340, 95];
 
 function selectUser(name) {
   if (!isActualPlayerName(name)) {

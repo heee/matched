@@ -65,6 +65,7 @@ export function createWorkerApi({ baseUrl, appKey, timeoutMs = DEFAULT_TIMEOUT_M
     fetchUsers: () => request("/data?scope=users"),
     fetchRoom: (roomId) => request(`/room/${encodeURIComponent(roomId)}`),
     registerUser: (user) => request("/register-user", { method: "POST", body: { user } }),
+    updateUserColor: (user, hue) => request("/update-user-color", { method: "POST", body: { user, hue } }),
     createRoom: (room) => request("/create-room", { method: "POST", body: room }),
     joinRoom: (roomId, user) => request("/join-room", { method: "POST", body: { roomId, user, started: true } }),
     listRooms: (scope, user) => request(`/list-rooms?scope=${encodeURIComponent(scope)}${user ? `&user=${encodeURIComponent(user)}` : ""}`),

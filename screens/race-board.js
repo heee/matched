@@ -5,7 +5,7 @@
 import { el, avatarDot, renderTileFace, formatClock, haptic, playMatchSound } from "./shared-ui.js?v=42";
 import { freeTiles, findHintPair, clearPair, hasMovesRemaining, shuffleRemaining } from "../game/mahjong.js";
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
-import { PLAYER_COLORS, BOT_ACT_CHANCE, pointsForSession } from "../game/scoring.js";
+import { colorForPlayer, BOT_ACT_CHANCE, pointsForSession } from "../game/scoring.js";
 import { equippedMaterialName, materialCssVars } from "../game/materials.js";
 import { ensureRacer } from "../game/room.js?v=6";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
@@ -80,13 +80,13 @@ export function renderRaceBoard(root, ctx, params = {}) {
     ordered.forEach((name) => {
       const seat = room.players.indexOf(name);
       const row = el("div", { style: "display:flex;align-items:center;gap:9px" });
-      row.appendChild(avatarDot(name, seat, 26));
+      row.appendChild(avatarDot(name, seat, 26, ctx.state.store.users));
       const info = el("div", { style: "flex:1;min-width:0" });
       const top = el("div", { style: "display:flex;justify-content:space-between;align-items:baseline" });
       top.appendChild(el("span", { style: `font:${name === you ? 700 : 500} 13px Figtree,sans-serif;color:#f0f4f3`, text: name }));
       top.appendChild(el("span", { style: "font:600 11px Figtree,sans-serif;color:rgba(240,244,243,.6)", text: `${pct(name)}%` }));
       info.appendChild(top);
-      info.appendChild(el("div", { class: "progress-thin", style: "margin-top:5px;height:6px", html: `<div style="width:${pct(name)}%;background:${PLAYER_COLORS[seat % PLAYER_COLORS.length]}"></div>` }));
+      info.appendChild(el("div", { class: "progress-thin", style: "margin-top:5px;height:6px", html: `<div style="width:${pct(name)}%;background:${colorForPlayer(name, seat, ctx.state.store.users)}"></div>` }));
       row.appendChild(info);
       racersCard.appendChild(row);
     });

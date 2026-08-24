@@ -3,7 +3,7 @@
 
 import { isRetryableError } from "./api.js";
 
-const QUEUED_TYPES = new Set(["create-room", "join-room", "update-room", "complete-room", "register-user", "daily-result"]);
+const QUEUED_TYPES = new Set(["create-room", "join-room", "update-room", "complete-room", "register-user", "daily-result", "update-user-color"]);
 
 function fallbackId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;

@@ -159,14 +159,14 @@ export function renderRoomSetup(root, ctx, params = {}) {
     if (local.mode === "solo" || local.mode === "live") { local.pickerSeat = null; return; }
     seatRow.innerHTML = "";
     const you = el("div", { style: "display:flex;flex-direction:column;align-items:center;gap:5px" });
-    you.appendChild(avatarDot(ctx.state.currentUser, 0, 48));
+    you.appendChild(avatarDot(ctx.state.currentUser, 0, 48, ctx.state.store.users));
     you.appendChild(el("span", { style: "font:600 11px Figtree,sans-serif;color:rgba(246,241,228,.6)", text: "You" }));
     seatRow.appendChild(you);
     local.bots.forEach((bot, i) => {
       const seatIndex = i + 1;
       const seat = el("div", { style: "display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer" });
       if (bot) {
-        seat.appendChild(avatarDot(bot.name, seatIndex, 48));
+        seat.appendChild(avatarDot(bot.name, seatIndex, 48, ctx.state.store.users));
         seat.appendChild(el("span", { style: "font:600 11px Figtree,sans-serif;color:rgba(246,241,228,.85)", text: bot.name }));
         seat.appendChild(el("span", { style: "font:10px Figtree,sans-serif;color:rgba(246,241,228,.45);text-transform:capitalize;margin-top:-3px", text: bot.difficulty }));
         seat.addEventListener("click", () => { local.bots[i] = null; local.pickerSeat = null; renderPlayers(); });
@@ -213,7 +213,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
       const last = i === local.livePlayers.length - 1;
       const onlyTwo = local.livePlayers.length <= 2;
       const row = el("div", { style: "display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.06)" });
-      row.appendChild(avatarDot(name, i, 34));
+      row.appendChild(avatarDot(name, i, 34, ctx.state.store.users));
       row.appendChild(el("div", { style: "flex:1;min-width:0;font:600 13.5px Figtree,sans-serif;color:#f6f1e4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap", text: name }));
       const upBtn = el("button", { style: `background:none;border:none;padding:4px;color:${first ? "rgba(246,241,228,.25)" : "rgba(246,241,228,.75)"};cursor:pointer;font-size:14px`, text: "↑" });
       upBtn.addEventListener("click", () => {

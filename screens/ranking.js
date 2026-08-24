@@ -54,7 +54,7 @@ export function renderRanking(root, ctx) {
         row.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openComparison(); } });
       }
       row.appendChild(el("div", { style: `width:22px;font:700 15px Figtree,sans-serif;color:${i === 0 ? "#d9a441" : "rgba(246,241,228,.4)"}`, text: String(i + 1) }));
-      row.appendChild(avatarDot(r.name, i, 34));
+      row.appendChild(avatarDot(r.name, i, 34, ctx.state.store.users));
       const info = el("div", { style: "flex:1;min-width:0" });
       info.appendChild(el("div", { style: `font:${isMe ? 700 : 500} 15px Figtree,sans-serif;color:#f6f1e4`, text: r.name }));
       info.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.45);margin-top:2px", text: `${r.boards} board${r.boards === 1 ? "" : "s"} · ${metric === "speed" ? `${formatMetric(r.value, "speed")} avg` : `${r.pairs} pairs`}` }));

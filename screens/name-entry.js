@@ -4,6 +4,7 @@
 
 import { el, initialFor } from "./shared-ui.js";
 import { isActualPlayerName } from "../game/identity.js";
+import { hueColor } from "../game/scoring.js";
 
 export function renderNameEntry(root, ctx) {
   root.classList.add("bg-felt");
@@ -44,7 +45,7 @@ export function renderNameEntry(root, ctx) {
 
   for (const [name, user] of entries) {
     const card = el("div", { class: "profile-card" });
-    card.appendChild(el("div", { class: "profile-card-avatar", style: `background:oklch(58% .1 ${user.hue ?? 0})`, text: initialFor(name) }));
+    card.appendChild(el("div", { class: "profile-card-avatar", style: `background:${hueColor(user.hue ?? 0)}`, text: initialFor(name) }));
     card.appendChild(el("div", { class: "profile-card-name", text: name }));
     card.addEventListener("click", () => choose(name));
     grid.appendChild(card);

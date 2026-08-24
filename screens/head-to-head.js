@@ -50,7 +50,7 @@ export function renderHeadToHead(root, ctx, params = {}) {
     const people = el("div", { style: "display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px;padding:18px;border-radius:18px;background:linear-gradient(150deg,rgba(217,164,65,.16),rgba(255,255,255,.05));border:1px solid rgba(217,164,65,.28)" });
     const person = (name, seat, label) => {
       const node = el("div", { style: "display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0" });
-      node.appendChild(avatarDot(name, seat, 52));
+      node.appendChild(avatarDot(name, seat, 52, ctx.state.store.users));
       node.appendChild(el("div", { style: "font:700 14px Figtree,sans-serif;color:#f6f1e4;max-width:100%;overflow:hidden;text-overflow:ellipsis", text: label }));
       return node;
     };

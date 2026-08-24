@@ -5,7 +5,7 @@ import { el, avatarDot, formatClock, roomInviteUrl, modeIcon, bellButton, invite
 import { boardCompletion } from "../game/mahjong.js";
 import { dailyLayoutFor, dailySeedFor, todayDateStr, msUntilNextReset } from "../game/daily.js";
 import { LAYOUTS, layoutSilhouette } from "../game/layouts.js";
-import { TIERS, colorForSeat, levelProgress, nextCosmeticUnlock, nextTier, tierForPoints } from "../game/scoring.js";
+import { TIERS, colorForPlayer, levelProgress, nextCosmeticUnlock, nextTier, tierForPoints } from "../game/scoring.js";
 import { materialFor } from "../game/materials.js";
 import { continuePlayingRooms, openRoomsForUser, randomRoomSample, waitingForPlayersRooms } from "../game/room-lists.js?v=6";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
@@ -82,12 +82,12 @@ function groupRankingCard(ctx, metric, onChangeMetric) {
   rows.forEach((row) => {
     const isMe = row.name === ctx.state.currentUser;
     const seat = Math.max(0, userOrder.indexOf(row.name));
-    const color = colorForSeat(seat);
+    const color = colorForPlayer(row.name, seat, ctx.state.store.users);
     const width = row.value <= 0 || leaderValue <= 0
       ? 0
       : metric === "speed" ? Math.min(100, (leaderValue / row.value) * 100) : Math.min(100, (row.value / leaderValue) * 100);
     const rankRow = el("div", { class: `group-rank-row${isMe ? " me" : ""}` });
-    rankRow.appendChild(avatarDot(row.name, seat, 30));
+    rankRow.appendChild(avatarDot(row.name, seat, 30, ctx.state.store.users));
     const body = el("div", { class: "group-rank-body" });
     const line = el("div", { class: "group-rank-line" });
     line.appendChild(el("span", { text: isMe ? "You" : row.name }));
@@ -280,7 +280,7 @@ export function continueRow(ctx, room) {
     "aria-label": avatarEntries.map((entry) => entry.open ? "Open player seat" : entry.name).join(", "),
   });
   avatarEntries.forEach((entry, index) => {
-    const avatar = avatarDot(entry.name, entry.seat, 26);
+    const avatar = avatarDot(entry.name, entry.seat, 26, ctx.state.store.users);
     avatar.style.marginLeft = index === 0 ? "0" : "-7px";
     avatar.style.boxShadow = "0 0 0 2px #245b49";
     avatar.style.position = "relative";
@@ -303,7 +303,7 @@ function waitingRow(ctx, room) {
   row.appendChild(info);
   if (otherPlayers.length) {
     const seat = Math.max(0, room.players.indexOf(otherPlayers[0]));
-    row.appendChild(avatarDot(otherPlayers[0], seat, 26));
+    row.appendChild(avatarDot(otherPlayers[0], seat, 26, ctx.state.store.users));
   }
   row.appendChild(el("button", {
     class: "btn",
@@ -395,7 +395,7 @@ export function renderHome(root, ctx) {
     header.appendChild(bell);
   }
 
-  header.appendChild(avatarDot(ctx.state.currentUser, 0, 40));
+  header.appendChild(avatarDot(ctx.state.currentUser, 0, 40, ctx.state.store.users));
   header.children[header.children.length - 1].style.cursor = "pointer";
   header.children[header.children.length - 1].addEventListener("click", () => ctx.navigate("profile"));
   root.appendChild(header);

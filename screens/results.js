@@ -2,7 +2,7 @@
 // points + tier progress, Share/Rematch/Done. See design-reference #1m.
 
 import { el, avatarDot, formatDuration, roomInviteUrl } from "./shared-ui.js";
-import { PLAYER_COLORS, highlightsFromLog, pointsToNextTier, nextTier, tierForPoints } from "../game/scoring.js";
+import { colorForPlayer, highlightsFromLog, pointsToNextTier, nextTier, tierForPoints } from "../game/scoring.js";
 import { buildLocalRoom } from "../game/room.js?v=6";
 import { resultShareMessage } from "../game/share-messages.js";
 import { currentActiveMs } from "../game/time.js";
@@ -38,10 +38,10 @@ export function renderResults(root, ctx, params = {}) {
   results.forEach((r, i) => {
     const row = el("div", { style: "display:flex;align-items:center;gap:12px;text-align:left" });
     row.appendChild(el("div", { style: `width:22px;font:700 15px Figtree,sans-serif;color:${i === 0 ? "#d9a441" : "rgba(246,241,228,.4)"}`, text: String(i + 1) }));
-    row.appendChild(avatarDot(r.name, r.seat, 32));
+    row.appendChild(avatarDot(r.name, r.seat, 32, ctx.state.store.users));
     const info = el("div", { style: "flex:1;min-width:0" });
     info.appendChild(el("div", { style: `font:${r.name === ctx.state.currentUser ? 700 : 500} 14.5px Figtree,sans-serif;color:#f6f1e4`, text: r.name === ctx.state.currentUser ? "You" : r.name }));
-    info.appendChild(el("div", { class: "progress-thin", style: "margin-top:6px;height:6px", html: `<div style="width:${Math.round((r.pairs / maxPairs) * 100)}%;background:${PLAYER_COLORS[r.seat % PLAYER_COLORS.length]}"></div>` }));
+    info.appendChild(el("div", { class: "progress-thin", style: "margin-top:6px;height:6px", html: `<div style="width:${Math.round((r.pairs / maxPairs) * 100)}%;background:${colorForPlayer(r.name, r.seat, ctx.state.store.users)}"></div>` }));
     row.appendChild(info);
     const right = el("div", { style: "text-align:right" });
     right.appendChild(el("div", { style: "font:700 16px Figtree,sans-serif;color:#f6f1e4", text: String(r.pairs) }));

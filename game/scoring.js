@@ -217,6 +217,28 @@ export function colorForSeat(seatIndex) {
   return `oklch(74% 0.1 ${hue})`;
 }
 
+// Stable per-player hue rotation, assigned at registration (see
+// selectUser() in app.js and registerUser() in worker/index.js) and
+// user-selectable from Profile > Settings. This is the palette offered in
+// that picker, rendered as oklch(58% .1 hue) to match the swatch/avatar
+// format already used for saved profile cards (name-entry.js).
+export const PLAYER_HUES = [42, 155, 20, 213, 280, 190, 340, 95];
+
+export function hueColor(hue) {
+  return `oklch(58% .1 ${hue})`;
+}
+
+// Player color resolution, identity-first: a player's own chosen/assigned
+// hue (game/scoring.js's PLAYER_HUES, stored per-user) wins over the
+// seat-position rotation, so a given player reads the same color in every
+// room and every other player sees it the same way. Falls back to
+// colorForSeat for anyone with no stored hue yet (bots, unregistered
+// remote seats before their user record has synced).
+export function colorForPlayer(name, seatIndex, users) {
+  const hue = users?.[name]?.hue;
+  return Number.isFinite(hue) ? hueColor(hue) : colorForSeat(seatIndex);
+}
+
 // "Worth mentioning" highlight lines for the Results screen, generated from
 // a simple match log rather than hand-written per game. Written
 // competitively per spec ("not soft MVP callouts").

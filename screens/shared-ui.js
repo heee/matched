@@ -1,7 +1,7 @@
 // Matched — small DOM helpers shared across screen modules. Kept out of
 // app.js per the "app.js is orchestration only" convention.
 
-import { colorForSeat } from "../game/scoring.js";
+import { colorForPlayer } from "../game/scoring.js";
 import { TILE_W, TILE_H } from "../game/layouts.js";
 import { dotPips, bamSticks, RED } from "../game/tiles.js";
 import { inkOverrideFor, soundMaterialFor } from "../game/materials.js";
@@ -126,10 +126,10 @@ export function initialFor(name) {
   return (name || "?").trim().charAt(0).toUpperCase() || "?";
 }
 
-export function avatarDot(name, seatIndex, size = 34) {
+export function avatarDot(name, seatIndex, size = 34, users) {
   return el("div", {
     class: "avatar-dot",
-    style: `width:${size}px;height:${size}px;background:${colorForSeat(seatIndex)};font-size:${Math.round(size * 0.4)}px`,
+    style: `width:${size}px;height:${size}px;background:${colorForPlayer(name, seatIndex, users)};font-size:${Math.round(size * 0.4)}px`,
     text: initialFor(name),
   });
 }

@@ -60,7 +60,7 @@ export function renderDaily(root, ctx) {
       const me = result.name === ctx.state.currentUser;
       const row = el("div", { style: `display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:13px;background:${me ? "rgba(217,164,65,.13)" : "rgba(255,255,255,.05)"}` });
       row.appendChild(el("div", { style: `width:18px;font:700 13px Figtree,sans-serif;color:${i === 0 ? "#d9a441" : "rgba(246,241,228,.35)"}`, text: String(i + 1) }));
-      row.appendChild(avatarDot(result.name, i, 30));
+      row.appendChild(avatarDot(result.name, i, 30, ctx.state.store.users));
       const info = el("div", { style: "flex:1;min-width:0" });
       info.appendChild(el("div", { style: `font:${me ? 700 : 500} 14px Figtree,sans-serif;color:#f6f1e4`, text: me ? "You" : result.name }));
       info.appendChild(el("div", { style: "font:11.5px Figtree,sans-serif;color:rgba(246,241,228,.45);margin-top:2px", text: `${result.pairsMatched} pairs matched` }));

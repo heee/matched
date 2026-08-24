@@ -13,6 +13,8 @@ import {
   pointsForSession,
   boardCompletionShare,
   colorForSeat,
+  colorForPlayer,
+  hueColor,
   PLAYER_COLORS,
   highlightsFromLog,
 } from "../game/scoring.js";
@@ -93,6 +95,18 @@ test("colorForSeat uses the fixed rotation for the first four seats", () => {
   assert.equal(colorForSeat(3), PLAYER_COLORS[3]);
   assert.ok(colorForSeat(4).startsWith("oklch("));
   assert.notEqual(colorForSeat(4), colorForSeat(5));
+});
+
+test("colorForPlayer prefers a player's stored hue over seat position", () => {
+  const users = { Dana: { hue: 155 } };
+  assert.equal(colorForPlayer("Dana", 0, users), hueColor(155));
+  assert.notEqual(colorForPlayer("Dana", 0, users), PLAYER_COLORS[0]);
+});
+
+test("colorForPlayer falls back to colorForSeat when no hue is stored", () => {
+  assert.equal(colorForPlayer("Robin", 1, {}), colorForSeat(1));
+  assert.equal(colorForPlayer("Robin", 1, undefined), colorForSeat(1));
+  assert.equal(colorForPlayer("Robin", 1, { Robin: {} }), colorForSeat(1));
 });
 
 test("highlightsFromLog produces up to three competitive lines", () => {

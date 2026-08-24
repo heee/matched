@@ -6,6 +6,7 @@
 import { el, avatarDot, roomInviteUrl } from "./shared-ui.js";
 import { newBoardShareMessage } from "../game/share-messages.js";
 import { inviteSeatEntries } from "../game/invite-seats.js";
+import { repairCurrentPlayerAliases } from "../game/identity.js";
 
 const TOTAL_SEATS = 4; // you + up to 3 others, matching room-setup's bot-seat count
 
@@ -31,6 +32,7 @@ function sendInvite(ctx, room, toUser) {
 export function renderInvite(root, ctx, params = {}) {
   let room = ctx.state.store.rooms[params.roomId];
   if (!room) { ctx.navigate("home"); return; }
+  if (repairCurrentPlayerAliases(room, ctx.state.currentUser)) ctx.persist();
   const link = roomInviteUrl(room.id);
   const isHost = room.createdBy === ctx.state.currentUser;
   let pickerSeat = null; // which open seat index currently shows the invite picker
@@ -46,6 +48,7 @@ export function renderInvite(root, ctx, params = {}) {
       if (!freshRoom || !root.isConnected) return;
       const justStarted = !room.gameStarted && freshRoom.gameStarted;
       room = freshRoom;
+      if (repairCurrentPlayerAliases(room, ctx.state.currentUser)) ctx.persist();
       renderSeats?.();
       renderActions?.();
       // The host started the game while we were waiting here — follow them
@@ -94,14 +97,14 @@ export function renderInvite(root, ctx, params = {}) {
           pickerPanel.style.display = pickerSeat == null ? "none" : "flex";
           pickerPanel.innerHTML = "";
           if (pickerSeat == null) return;
-          const taken = new Set([...room.players, ...invitedNamesForRoom()]);
+          const taken = new Set([ctx.state.currentUser, ...room.players, ...invitedNamesForRoom()]);
           const candidates = Object.keys(ctx.state.store.users || {}).filter((name) => !taken.has(name));
           if (candidates.length === 0) {
             pickerPanel.appendChild(el("div", { style: "font:12.5px Figtree,sans-serif;color:rgba(246,241,228,.5);padding:6px 2px", text: "No other registered players to invite yet." }));
           }
           candidates.forEach((name) => {
             const row = el("button", { style: "display:flex;align-items:center;gap:10px;padding:8px;border-radius:9px;background:none;border:none;cursor:pointer;text-align:left" });
-            row.appendChild(avatarDot(name, 1, 28));
+            row.appendChild(avatarDot(name, 1, 28, ctx.state.store.users));
             row.appendChild(el("span", { style: "font:600 13px Figtree,sans-serif;color:#f6f1e4", text: name }));
             row.addEventListener("click", () => {
               sendInvite(ctx, room, name);
@@ -118,7 +121,7 @@ export function renderInvite(root, ctx, params = {}) {
         renderSeats = function renderSeats() {
           seatRow.innerHTML = "";
           const you = el("div", { style: "flex:1;padding:11px 6px;border-radius:13px;background:rgba(255,255,255,.06);display:flex;flex-direction:column;align-items:center;gap:6px" });
-          you.appendChild(avatarDot(ctx.state.currentUser, 0, 32));
+          you.appendChild(avatarDot(ctx.state.currentUser, 0, 32, ctx.state.store.users));
           you.appendChild(el("div", { style: "font:600 11px Figtree,sans-serif;color:rgba(246,241,228,.7)", text: "You" }));
           seatRow.appendChild(you);
 
@@ -129,7 +132,7 @@ export function renderInvite(root, ctx, params = {}) {
             if (entry?.kind === "bot" || entry?.kind === "joined") {
               const name = entry.name;
               const chip = el("div", { style: "flex:1;padding:11px 6px;border-radius:13px;background:rgba(255,255,255,.06);display:flex;flex-direction:column;align-items:center;gap:6px" });
-              chip.appendChild(avatarDot(name, Math.max(room.players.indexOf(name), i + 1), 32));
+              chip.appendChild(avatarDot(name, Math.max(room.players.indexOf(name), i + 1), 32, ctx.state.store.users));
               chip.appendChild(el("div", { style: "font:600 11px Figtree,sans-serif;color:rgba(246,241,228,.7)", text: name }));
               chip.appendChild(el("div", {
                 style: "font:9.5px Figtree,sans-serif;color:rgba(246,241,228,.4);text-transform:capitalize",
@@ -139,7 +142,7 @@ export function renderInvite(root, ctx, params = {}) {
             } else if (entry?.kind === "invited") {
               const name = entry.name;
               const chip = el("div", { style: "flex:1;padding:11px 6px;border-radius:13px;background:rgba(217,164,65,.1);border:1px dashed rgba(217,164,65,.4);display:flex;flex-direction:column;align-items:center;gap:6px" });
-              chip.appendChild(avatarDot(name, i + 1, 32));
+              chip.appendChild(avatarDot(name, i + 1, 32, ctx.state.store.users));
               chip.appendChild(el("div", { style: "font:600 11px Figtree,sans-serif;color:#e8c887", text: name }));
               chip.appendChild(el("div", { style: "font:9.5px Figtree,sans-serif;color:rgba(232,200,135,.7)", text: "Invited" }));
               seatRow.appendChild(chip);
