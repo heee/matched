@@ -16,11 +16,18 @@ export function dailySeedFor(dateStr) {
   return hashSeed(`daily-${dateStr}`);
 }
 
+// Local calendar date, not UTC — the puzzle resets shortly after midnight
+// wherever the player is, not at a fixed UTC instant (which landed at 6-7pm
+// for US timezones and confused everyone waiting on a "daily" reset).
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
 export function todayDateStr(now = new Date()) {
-  return now.toISOString().slice(0, 10);
+  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
 }
 
 export function msUntilNextReset(now = new Date()) {
-  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   return next.getTime() - now.getTime();
 }

@@ -72,7 +72,7 @@ export function createWorkerApi({ baseUrl, appKey, timeoutMs = DEFAULT_TIMEOUT_M
     deleteUser: (user) => request("/delete-user", { method: "POST", body: { user } }),
     completeRoom: (payload) => request("/complete-room", { method: "POST", body: payload }),
     updateRoom: (payload) => request("/update-room", { method: "POST", body: payload }),
-    fetchDaily: () => request("/daily"),
+    fetchDaily: (date) => request(`/daily${date ? `?date=${encodeURIComponent(date)}` : ""}`),
     reportDailyResult: (result) => request("/daily-result", { method: "POST", body: result }),
     wsUrl(roomId, user) {
       const httpBase = baseUrl.replace(/\/$/, "");

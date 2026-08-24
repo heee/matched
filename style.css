@@ -49,6 +49,9 @@ html, body {
   font-family: var(--font-ui);
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
+  /* Kills double-tap-to-zoom (no gameplay uses double-tap/double-click, so
+     nothing is lost) while leaving pinch-zoom alone for accessibility. */
+  touch-action: manipulation;
 }
 
 #app {

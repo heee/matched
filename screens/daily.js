@@ -82,7 +82,7 @@ export function renderDaily(root, ctx) {
   const localResults = [...localByName.values()];
   renderResults(localResults);
   if (ctx.api.configured()) {
-    ctx.api.fetchDaily().then((daily) => {
+    ctx.api.fetchDaily(date).then((daily) => {
       if (daily.date !== date) return;
       const merged = new Map((daily.results || []).map((result) => [result.name, result]));
       localResults.forEach((result) => { if (!merged.has(result.name)) merged.set(result.name, result); });

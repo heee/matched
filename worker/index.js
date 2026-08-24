@@ -6,8 +6,10 @@
 // periodically and on every clear.
 //
 //   GET  /data?scope=open|mine&user=NAME     -> current D1 contents (no auth to read)
-//   GET  /daily                              -> today's shared daily board + registered-human results
-//   POST /daily-result   { date, user, elapsedMs, pairsMatched } -> records one registered human completion
+//   GET  /daily?date=YYYY-MM-DD               -> shared daily board (client's local date) + registered-human results;
+//                                                  date is trusted only within a day of server UTC time, else UTC today is used
+//   POST /daily-result   { date, user, elapsedMs, pairsMatched } -> records one registered human completion; date is
+//                                                                    the client's local date, same plausibility window as above
 //   POST /register-user   { user }                      -> creates the user if new, assigns a stable color hue
 //   POST /create-room     { title, mode, layoutId, tileCount, difficulty, visibility, createdBy }
 //                                                          -> generates a solvable board server-side and seeds the room's DO
@@ -75,7 +77,9 @@ export default {
 
     if (url.pathname === "/daily" && request.method === "GET") {
       try {
-        return json(await getOrCreateDaily(env.DB), 200, cors);
+        const requested = url.searchParams.get("date");
+        const date = isPlausibleDailyDate(requested) ? requested : new Date().toISOString().slice(0, 10);
+        return json(await getOrCreateDaily(env.DB, date), 200, cors);
       } catch (e) {
         return json({ error: e.message }, 502, cors);
       }
@@ -94,12 +98,11 @@ export default {
     if (url.pathname === "/daily-result" && request.method === "POST") {
       if (!checkAppKey(request, env)) return json({ error: "unauthorized" }, 401, cors);
       const body = await safeJson(request);
-      const today = new Date().toISOString().slice(0, 10);
       const date = typeof body?.date === "string" ? body.date : "";
       const user = typeof body?.user === "string" ? body.user.trim().slice(0, 40) : "";
       const elapsedMs = Math.round(Number(body?.elapsedMs));
       const pairsMatched = Math.max(0, Math.round(Number(body?.pairsMatched)));
-      if (date !== today || !isActualPlayerName(user) || !Number.isFinite(elapsedMs) || elapsedMs <= 0 || !Number.isFinite(pairsMatched)) {
+      if (!isPlausibleDailyDate(date) || !isActualPlayerName(user) || !Number.isFinite(elapsedMs) || elapsedMs <= 0 || !Number.isFinite(pairsMatched)) {
         return json({ error: "invalid daily result" }, 400, cors);
       }
       try {
@@ -959,8 +962,20 @@ async function deleteUser(db, name) {
   await db.prepare("DELETE FROM users WHERE name = ?").bind(name).run();
 }
 
-async function getOrCreateDaily(db) {
-  const today = new Date().toISOString().slice(0, 10);
+// Daily dates are per-player local calendar dates (see game/daily.js), not a
+// single UTC instant, so this only rejects dates that couldn't be anyone's
+// "today" (bad format, or more than a day off UTC — every timezone's local
+// date is within one calendar day of UTC's).
+function isPlausibleDailyDate(dateStr) {
+  if (typeof dateStr !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+  const candidate = Date.parse(`${dateStr}T00:00:00Z`);
+  if (!Number.isFinite(candidate)) return false;
+  const utcToday = Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`);
+  return Math.abs(candidate - utcToday) <= 86400000;
+}
+
+async function getOrCreateDaily(db, date) {
+  const today = isPlausibleDailyDate(date) ? date : new Date().toISOString().slice(0, 10);
   const existing = await db.prepare("SELECT date, layout_id, seed FROM daily_boards WHERE date = ?").bind(today).first();
   if (existing) return { date: existing.date, layoutId: existing.layout_id, seed: existing.seed, tiles: generateBoard(existing.layout_id, existing.seed), results: await dailyResults(db, today) };
   const layoutIds = Object.keys(LAYOUT_POSITIONS);
@@ -985,4 +1000,4 @@ async function saveDailyResult(db, { date, user, elapsedMs, pairsMatched }) {
   return { name: row.user_name, elapsedMs: Number(row.elapsed_ms), pairsMatched: Number(row.pairs_matched), completedAt: row.completed_at };
 }
 
-export { loadData, registerUser, upsertRoom, getRoom, joinRoom, deleteRoom, deleteUser, buildRoom, validateCreateRoom, generateBoard, getOrCreateDaily, dailyResults, saveDailyResult, repairRoomMetadata };
+export { loadData, registerUser, upsertRoom, getRoom, joinRoom, deleteRoom, deleteUser, buildRoom, validateCreateRoom, generateBoard, getOrCreateDaily, dailyResults, saveDailyResult, repairRoomMetadata, isPlausibleDailyDate };
