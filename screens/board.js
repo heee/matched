@@ -587,11 +587,15 @@ export function renderBoard(root, ctx, params = {}) {
     const highlights = highlightsFromLog(room.state.matchLog || [], Object.fromEntries(playerList().map((p, i) => [i, { name: p }])));
     ctx.state.lastResult = { roomId: room.id, earned, highlights, elapsedMs };
     if (room.isDaily) {
-      const now = new Date();
-      const today = todayDateStr(now);
-      const yesterday = todayDateStr(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+      // Use the date the puzzle was generated for, not the clock at finish
+      // time — starting near midnight and finishing just after it rolls
+      // over must not stamp tomorrow's (i.e. the next time you open the
+      // app, today's) puzzle as already completed.
+      const puzzleDate = room.dailyDate || todayDateStr(new Date());
+      const [y, m, d] = puzzleDate.split("-").map(Number);
+      const yesterday = todayDateStr(new Date(y, m - 1, d - 1));
       ctx.state.dailyStreaks[you] = ctx.state.dailyCompletedByUser[you] === yesterday ? (ctx.state.dailyStreaks[you] || 0) + 1 : 1;
-      ctx.state.dailyCompletedByUser[you] = today;
+      ctx.state.dailyCompletedByUser[you] = puzzleDate;
       ctx.reportDailyResult(room, elapsedMs);
     } else if (isLive) {
       // Live never touches the Worker — no server room was ever created for
