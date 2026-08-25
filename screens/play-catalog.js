@@ -1,57 +1,48 @@
 // Matched — Play: layout catalog. Curated, not generated. See
 // docs/design-reference.html #1j and the layout-level design extension.
 
-import { el, isTabletViewport, renderTileFace, formatClock, avatarDot } from "./shared-ui.js";
-import { LAYOUTS, layoutSilhouette, isLayoutUnlocked, TILE_W, TILE_H } from "../game/layouts.js";
+import { el, isTabletViewport, formatClock, avatarDot, trayFaceGlyph } from "./shared-ui.js";
+import { LAYOUTS, isLayoutUnlocked } from "../game/layouts.js";
 import { layoutThemeFaces } from "../game/tiles.js";
 import { completedLayoutStats, layoutRecordStats } from "../game/layout-stats.js";
 import { layoutLevelProgress } from "../game/layout-levels.js";
 
 const FILTERS = ["All difficulties", "Easy", "Medium", "Hard"];
 
-// A thumbnail built from real tile faces (themed to the layout — dragons,
-// winds, character glyphs, ...) rather than flat cream dabs, sparsely
-// arranged onto the layout's footprint (layoutSilhouette, deliberately
-// coarse so it reads as a handful of real tiles rather than a dense
-// scatter) on a flat, recessed "well" — not the board's own bright
-// radial felt, which read as a different, glowing surface here. Tiles are
-// rendered at native 40x52 size and scaled down via CSS transform, so
-// they reuse the exact same face art the board itself uses.
-const THUMB_COLS = 4;
-const THUMB_ROWS = 3;
-const THUMB_TILE_SCALE = 0.3;
+// A thumbnail of a handful of real tiles (themed to the layout — dragons,
+// winds, character glyphs, ...), styled after the match tray's tray-tile
+// (see .tray-tile in style.css): a small flat cream chip with a centered
+// glyph, at its own true small size. An earlier version reused the board's
+// full-size .tile + renderTileFace scaled down 70% via a CSS transform —
+// at that size the tile's box-shadow/gradient and the CJK glyphs turned to
+// near-invisible sub-pixel noise, which is what actually shipped. Plain
+// small chips in a fixed grid stay crisp at any size and can't clip or
+// scatter the way absolute-positioned, layout-shape-mapped tiles could.
 const THUMB_W = 58;
 const THUMB_H = 46;
+const MINI_TILE_W = 11;
+const MINI_TILE_H = 15;
+const DIFFICULTY_MINI_COUNTS = { easy: 4, medium: 6, hard: 8, turtle: 8 };
 
-function thumbTile(face, leftPx, topPx, z) {
-  const wrap = el("div", {
-    style: `position:absolute;left:${leftPx}px;top:${topPx}px;width:${TILE_W}px;height:${TILE_H}px;transform:scale(${THUMB_TILE_SCALE});transform-origin:top left;z-index:${z}`,
+function miniGlyphTile(face) {
+  return el("div", {
+    style: `width:${MINI_TILE_W}px;height:${MINI_TILE_H}px;border-radius:2.5px;background:linear-gradient(160deg,#f9f4e6,#e7dec8);box-shadow:0 1px 0 rgba(0,0,0,.28);display:flex;align-items:center;justify-content:center;font:700 8px var(--font-tile);color:${face.color || "#23201c"}`,
+    text: trayFaceGlyph(face),
   });
-  const tileEl = el("div", { class: `tile${z > 0 ? " upper" : ""}`, style: "position:static" });
-  const faceEl = el("div", { class: "tile-face" });
-  renderTileFace(faceEl, face, null);
-  tileEl.appendChild(faceEl);
-  wrap.appendChild(tileEl);
-  return wrap;
 }
 
 function layoutThumb(layout, unlocked) {
+  const count = DIFFICULTY_MINI_COUNTS[layout.difficulty] || 6;
+  const cols = count <= 4 ? 2 : count <= 6 ? 3 : 4;
   const box = el("div", {
-    style: `width:${THUMB_W}px;height:${THUMB_H}px;position:relative;border-radius:10px;overflow:hidden;background:#0a2a1f`,
+    style: `width:${THUMB_W}px;height:${THUMB_H}px;position:relative;border-radius:10px;background:#0e3a2b;display:grid;grid-template-columns:repeat(${cols},${MINI_TILE_W}px);gap:3px;align-content:center;justify-content:center`,
   });
-  const miniW = TILE_W * THUMB_TILE_SCALE, miniH = TILE_H * THUMB_TILE_SCALE;
   const faces = layoutThemeFaces(layout);
-  const cells = layoutSilhouette(layout, THUMB_COLS, THUMB_ROWS).sort((a, b) => a.z - b.z || a.yPct - b.yPct || a.xPct - b.xPct);
-  cells.forEach((cell, i) => {
-    const cxPct = 12 + (cell.xPct / 100) * 76;
-    const cyPct = 14 + (cell.yPct / 100) * 72;
-    const leftPx = (cxPct / 100) * THUMB_W - miniW / 2 + cell.z * 2;
-    const topPx = (cyPct / 100) * THUMB_H - miniH / 2 - cell.z * 2;
-    const face = faces[Math.floor(i / 2) % faces.length];
-    box.appendChild(thumbTile(face, leftPx, topPx, cell.z * 10 + i));
-  });
+  for (let i = 0; i < count; i++) {
+    box.appendChild(miniGlyphTile(faces[Math.floor(i / 2) % faces.length]));
+  }
   if (!unlocked) {
-    box.appendChild(el("div", { style: "position:absolute;inset:0;background:rgba(8,26,20,.72);display:flex;align-items:center;justify-content:center;font-size:16px;z-index:999", text: "🔒" }));
+    box.appendChild(el("div", { style: "position:absolute;inset:0;border-radius:10px;background:rgba(8,26,20,.72);display:flex;align-items:center;justify-content:center;font-size:16px", text: "🔒" }));
   }
   return box;
 }
@@ -216,7 +207,6 @@ function layoutCard(ctx, layout, stats) {
 }
 
 export function renderPlayCatalog(root, ctx) {
-  root.classList.add("bg-flat");
   let filter = FILTERS[0];
   const layoutStats = completedLayoutStats(ctx.state.store.rooms, ctx.state.currentUser);
 
