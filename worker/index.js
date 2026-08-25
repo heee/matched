@@ -1272,20 +1272,30 @@ async function recordRaceMilestones(db, room) {
 async function loadActivity(db, limit) {
   const [usersResult, startedResult, completedResult, dailyResult, milestoneResult] = await db.batch([
     db.prepare("SELECT name FROM users"),
-    db.prepare("SELECT id, title, mode, created_by, created_at FROM rooms ORDER BY created_at DESC LIMIT ?").bind(limit),
-    db.prepare("SELECT id, title, mode, created_by, completed_at, tile_count FROM rooms WHERE state = 'completed' ORDER BY completed_at DESC LIMIT ?").bind(limit),
+    db.prepare("SELECT id, title, mode, created_by, created_at, payload_json FROM rooms ORDER BY created_at DESC LIMIT ?").bind(limit),
+    db.prepare("SELECT id, title, mode, created_by, completed_at, tile_count, payload_json FROM rooms WHERE state = 'completed' ORDER BY completed_at DESC LIMIT ?").bind(limit),
     db.prepare("SELECT user_name, elapsed_ms, completed_at FROM daily_results ORDER BY completed_at DESC LIMIT ?").bind(limit),
     db.prepare("SELECT user_name, kind, value, layout_id, created_at FROM activity_events ORDER BY created_at DESC LIMIT ?").bind(limit),
   ]);
   const registered = new Set((usersResult.results || []).map((r) => r.name));
+  // Room start/completion is credited to every real participant, not just
+  // the room's creator — otherwise a guest joining someone else's room
+  // never shows up in the feed at all.
+  const roomParticipants = (r) => {
+    const players = parseJson(r.payload_json, null)?.players;
+    const names = Array.isArray(players) && players.length ? players : [r.created_by];
+    return names.filter((name) => isActualPlayerName(name) && registered.has(name));
+  };
   const items = [];
   for (const r of startedResult.results || []) {
-    if (!registered.has(r.created_by)) continue;
-    items.push({ type: "room_started", user: r.created_by, at: r.created_at, roomId: r.id, title: r.title, mode: r.mode });
+    for (const user of roomParticipants(r)) {
+      items.push({ type: "room_started", user, at: r.created_at, roomId: r.id, title: r.title, mode: r.mode });
+    }
   }
   for (const r of completedResult.results || []) {
-    if (!registered.has(r.created_by)) continue;
-    items.push({ type: "room_completed", user: r.created_by, at: r.completed_at, roomId: r.id, title: r.title, mode: r.mode, pairs: Math.round((r.tile_count || 0) / 2) });
+    for (const user of roomParticipants(r)) {
+      items.push({ type: "room_completed", user, at: r.completed_at, roomId: r.id, title: r.title, mode: r.mode, pairs: Math.round((r.tile_count || 0) / 2) });
+    }
   }
   for (const r of dailyResult.results || []) {
     if (!registered.has(r.user_name)) continue;
