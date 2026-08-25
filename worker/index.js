@@ -448,6 +448,21 @@ export class RoomDO {
     return false;
   }
 
+  // Banks and closes the window the moment a room completes, on the
+  // Worker's own clock. A still-open window forces every client to compute
+  // elapsed time as `activeMs + (its own Date.now() - a server timestamp)`
+  // — any drift between that client's clock and the Worker's shows up
+  // directly in the "Board cleared" recap (in the worst case, a client
+  // clock that lags the server clamps the whole elapsed time to zero, see
+  // `currentActiveMs`'s `Math.max(0, ...)`). Closing here means every
+  // client instead just reads the already-final `activeMs`.
+  updateActiveWindowClosed(now = Date.now()) {
+    if (this.room?.activeWindow) {
+      this.room.activeMs = (this.room.activeMs || 0) + Math.max(0, now - this.room.activeWindow.startedAt);
+      this.room.activeWindow = null;
+    }
+  }
+
   async applyActiveWindowChange(now = Date.now()) {
     if (!this.updateActiveWindow(now)) return;
     this.broadcast({ type: "active-update", activeMs: this.room.activeMs, activeWindow: this.room.activeWindow }, null);
@@ -526,6 +541,13 @@ export class RoomDO {
       if (isComplete && !this.room.completedAt) {
         this.room.completedAt = new Date().toISOString();
         this.room.state.state = "completed";
+        // Bank the window now, on the Worker's own clock, rather than
+        // leaving it open until someone's visibility drops. A client that
+        // computes currentActiveMs(room, Date.now()) against a still-open
+        // window is mixing its own clock with this server timestamp — any
+        // client clock skew shows up as a wrong (even negative-clamped-to-
+        // zero) elapsed time on the results screen.
+        this.updateActiveWindowClosed(clearedAt);
       }
       this.broadcast({
         type: "race-cleared", idA, idB, user, at: clearedAt,
@@ -573,6 +595,7 @@ export class RoomDO {
       if (isComplete && !this.room.completedAt) {
         this.room.completedAt = new Date().toISOString();
         this.room.state.state = "completed";
+        this.updateActiveWindowClosed(clearedAt);
       }
       this.broadcast({
         type: "cleared", idA, idB, user, tray: trayEntry, at: trayEntry.at,
@@ -623,6 +646,7 @@ export class RoomDO {
       }
       this.room.completedAt = new Date().toISOString();
       this.room.state.state = "completed";
+      this.updateActiveWindowClosed(Date.now());
       this.broadcast({ type: "room-sync", room: this.room, presence: this.presenceList(), visible: this.visiblePresenceList() }, null);
       await this.persist(true);
     } else if (msg.type === "race-stuck") {
@@ -635,6 +659,7 @@ export class RoomDO {
       if (decided && !this.room.completedAt) {
         this.room.completedAt = new Date().toISOString();
         this.room.state.state = "completed";
+        this.updateActiveWindowClosed(Date.now());
       }
       this.broadcast({
         type: "race-racer-stuck", user,
