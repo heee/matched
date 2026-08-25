@@ -8,7 +8,7 @@ import {
   hasMovesRemaining, boardCompletion,
 } from "../game/mahjong.js";
 import { TILE_W, TILE_H, STEP_X, STEP_Y, LAYER_OFFSET } from "../game/layouts.js";
-import { colorForPlayer, pointsForSession, highlightsFromLog, BOT_ACT_CHANCE, COMBO_WINDOW_MS, COMBO_BONUS_POINTS } from "../game/scoring.js";
+import { colorForPlayer, pointsForSession, highlightsFromLog, BOT_ACT_CHANCE, COMBO_WINDOW_MS, COMBO_BONUS_POINTS, ASSIST_PENALTY_PER_USE } from "../game/scoring.js";
 import { equippedMaterialName, materialCssVars } from "../game/materials.js";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { hasStartedRoom } from "../game/room-lists.js?v=6";
@@ -17,6 +17,12 @@ import { todayDateStr } from "../game/daily.js";
 import { createIdleClueController } from "./idle-clues.js";
 import { roomTimerStartMs, timestampMs, currentActiveMs, openActiveWindow, closeActiveWindow } from "../game/time.js";
 import { createRoomSocket } from "../sync.js?v=41";
+
+// Shown in the hint/shuffle toast so the penalty is felt at the moment the
+// button is pressed, even though it's actually applied to the session's
+// final pointsForSession() tally (assistMultiplier) rather than deducted
+// from a live running score, since this screen never shows one.
+const ASSIST_PENALTY_LABEL = `-${Math.round(ASSIST_PENALTY_PER_USE * 100)}%`;
 
 const BOT_INTERVAL_MS = 5200;
 const REACTIONS = ["🔥", "😮", "👏", "😂", "😍", "🎉", "💪", "😱", "👍"];
@@ -772,6 +778,7 @@ export function renderBoard(root, ctx, params = {}) {
     if (!room.hintsAllowed) { ctx.toast("Hints are off for this room."); return; }
     if (local.roomSocket) local.roomSocket.send({ type: "assist", kind: "hint" });
     else room.assistsUsed[actingPlayer()] = (room.assistsUsed[actingPlayer()] || 0) + 1;
+    showToast(`Hint used — ${ASSIST_PENALTY_LABEL} points this round`);
     const pair = findHintPair(room.state.tiles);
     if (!pair) { ctx.toast("No matching pair is currently free."); return; }
     for (const id of pair) {
@@ -793,9 +800,11 @@ export function renderBoard(root, ctx, params = {}) {
     }
     if (local.roomSocket) {
       local.roomSocket.send({ type: "assist", kind: "shuffle" });
+      showToast(`Shuffle used — ${ASSIST_PENALTY_LABEL} points this round`);
       return;
     }
     room.assistsUsed[actingPlayer()] = (room.assistsUsed[actingPlayer()] || 0) + 1;
+    showToast(`Shuffle used — ${ASSIST_PENALTY_LABEL} points this round`);
     room.state.tiles = shuffleRemaining(room.state.tiles);
     local.selectedId = null;
     ctx.persist();

@@ -160,7 +160,7 @@ export function nextCosmeticUnlock(points) {
 // count). Speed multiplier rewards a faster clear. Solo play uses the same
 // formula, per spec ("Solo play reports into the same metrics").
 const BASE_POINTS_PER_PAIR = 10;
-const ASSIST_PENALTY_PER_USE = 0.05; // -5% credit per assist use, floor below
+export const ASSIST_PENALTY_PER_USE = 0.12; // -12% credit per assist use, floor below
 const ASSIST_PENALTY_FLOOR = 0.5; // never below half credit
 
 export function assistMultiplier(assistsUsed) {
