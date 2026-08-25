@@ -53,7 +53,7 @@ export function renderResults(root, ctx, params = {}) {
 
   const highlights = lastResult?.highlights?.length
     ? lastResult.highlights
-    : highlightsFromLog(room.state.matchLog || [], Object.fromEntries(room.players.map((p, i) => [i, { name: p }])));
+    : highlightsFromLog(room.state.matchLog || [], Object.fromEntries(room.players.map((p, i) => [i, { name: p }])), room.assistsUsed);
   const worthCard = el("div", { style: "margin:14px 16px 0;padding:15px;border-radius:16px;background:rgba(255,255,255,.06);display:flex;flex-direction:column;gap:9px;text-align:left" });
   worthCard.appendChild(el("div", { style: "font:700 10px Figtree,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:rgba(246,241,228,.45)", text: "Worth mentioning" }));
   if (highlights.length === 0) worthCard.appendChild(el("div", { style: "font:13.5px/1.45 Figtree,sans-serif;color:rgba(246,241,228,.6)", text: "A clean, quiet board — nothing dramatic happened." }));

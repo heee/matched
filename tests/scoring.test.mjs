@@ -126,3 +126,12 @@ test("highlightsFromLog produces up to three competitive lines", () => {
 test("highlightsFromLog handles an empty log", () => {
   assert.deepEqual(highlightsFromLog([], {}), []);
 });
+
+test("highlightsFromLog calls out the assist point penalty by name and percentage", () => {
+  const players = { 0: { name: "You" } };
+  const log = [{ seat: 0 }];
+  const clean = highlightsFromLog(log, players, {});
+  assert.ok(clean.some((l) => l === "Nobody used an assist this round."));
+  const assisted = highlightsFromLog(log, players, { You: 2 });
+  assert.ok(assisted.some((l) => l.includes("You") && l.includes("2 assists") && /-\d+%/.test(l)));
+});

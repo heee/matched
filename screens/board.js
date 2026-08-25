@@ -590,7 +590,7 @@ export function renderBoard(root, ctx, params = {}) {
     const earned = pointsForSession({ pairsCleared: myPairs, assistsUsed, elapsedMs, tileCount: room.tileCount }) + comboBonus;
     ctx.state.points += earned;
     ctx.state.activeRoomId = null;
-    const highlights = highlightsFromLog(room.state.matchLog || [], Object.fromEntries(playerList().map((p, i) => [i, { name: p }])));
+    const highlights = highlightsFromLog(room.state.matchLog || [], Object.fromEntries(playerList().map((p, i) => [i, { name: p }])), room.assistsUsed);
     ctx.state.lastResult = { roomId: room.id, earned, highlights, elapsedMs };
     if (room.isDaily) {
       // Use the date the puzzle was generated for, not the clock at finish

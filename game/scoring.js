@@ -242,7 +242,13 @@ export function colorForPlayer(name, seatIndex, users) {
 // "Worth mentioning" highlight lines for the Results screen, generated from
 // a simple match log rather than hand-written per game. Written
 // competitively per spec ("not soft MVP callouts").
-export function highlightsFromLog(matchLog, players) {
+//
+// assistsUsed is a name -> count map (room.assistsUsed) rather than
+// something derived from matchLog: per-clear "was this assisted" tracking
+// was never actually recorded on log entries, so counting from the log
+// silently always read as zero. The running per-player count the game
+// already keeps is the real source of truth.
+export function highlightsFromLog(matchLog, players, assistsUsed = {}) {
   const lines = [];
   if (!matchLog.length) return lines;
 
@@ -265,12 +271,15 @@ export function highlightsFromLog(matchLog, players) {
     lines.push(`${name} cleared the final pair.`);
   }
 
-  const assistUsers = new Set(matchLog.filter((e) => e.assisted).map((e) => e.seat));
-  if (assistUsers.size === 0) {
+  const assistEntries = Object.entries(assistsUsed).filter(([, n]) => n > 0);
+  if (assistEntries.length === 0) {
     lines.push("Nobody used an assist this round.");
   } else {
-    const names = [...assistUsers].map((seat) => players[seat]?.name || "Someone").join(", ");
-    lines.push(`${names} leaned on an assist along the way.`);
+    const bits = assistEntries.map(([name, n]) => {
+      const pct = Math.round((1 - assistMultiplier(n)) * 100);
+      return `${name} -${pct}% (${n} assist${n === 1 ? "" : "s"})`;
+    });
+    lines.push(`Assist penalty: ${bits.join(", ")}.`);
   }
 
   return lines.slice(0, 3);
