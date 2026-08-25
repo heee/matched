@@ -518,8 +518,13 @@ export function renderBoard(root, ctx, params = {}) {
     if (startedAtMs == null) {
       startedAtMs = timestampMs(authoritative?.startedAt) ?? clearedAt;
       room.startedAt = startedAtMs;
-      if (!local.roomSocket && !document.hidden) openActiveWindow(room);
     }
+    // Live rooms open their active window once, at mount — if that missed
+    // (e.g. document.hidden was still true mid-transition when the board
+    // rendered), nothing else ever retries it, so the whole game's time
+    // silently banks as 0. A real clear proves the board is actually being
+    // looked at, so treat every clear as a chance to open it if it isn't.
+    if (!local.roomSocket && !document.hidden) openActiveWindow(room);
     if (!room.players.includes(user)) room.players.push(user);
     room.startedPlayers = room.startedPlayers || [];
     if (!room.startedPlayers.includes(user)) room.startedPlayers.push(user);
