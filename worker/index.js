@@ -507,7 +507,7 @@ export class RoomDO {
     if (!this.room) return;
     const requestedUser = typeof msg.user === "string" ? msg.user : "";
     const user = this.room.botNames?.includes(requestedUser) ? requestedUser : metadata?.user || "anonymous";
-    if (metadata?.spectator && msg.type !== "reaction" && msg.type !== "visibility") return; // spectators watch only
+    if (metadata?.spectator && msg.type !== "reaction" && msg.type !== "visibility" && msg.type !== "chat") return; // spectators watch only
 
     if (msg.type === "race-clear-pair") {
       if (this.room.mode !== "race") return;
@@ -678,6 +678,12 @@ export class RoomDO {
       await this.applyActiveWindowChange();
     } else if (msg.type === "reaction") {
       this.broadcast({ type: "reaction", user, emoji: msg.emoji }, socket);
+    } else if (msg.type === "chat") {
+      // Lobby-only chat: relayed live, never written to room state or D1 —
+      // it has no existence once nobody's connected to hear it.
+      const text = typeof msg.text === "string" ? msg.text.trim().slice(0, 240) : "";
+      if (!text) return;
+      this.broadcast({ type: "chat", user, text, at: Date.now() }, socket);
     } else if (msg.type === "checkpoint") {
       await this.persist(this.room.state.tiles.length === 0);
       await this.commitSnapshot(this.room.state.tiles.length === 0);
