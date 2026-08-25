@@ -324,7 +324,18 @@ function waitingRow(ctx, room) {
 }
 
 export function openRow(ctx, room) {
-  const row = el("div", { style: "display:flex;align-items:center;gap:13px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08)" });
+  const join = () => {
+    repairCurrentPlayerAliases(room, ctx.state.currentUser);
+    ctx.state.store.rooms[room.id] = room;
+    ctx.commitRoomMembership(room);
+    if (room.mode === "shared" && !room.gameStarted) {
+      ctx.navigate("invite", { roomId: room.id });
+      return;
+    }
+    ctx.navigate(room.mode === "race" ? "race-board" : "board", { roomId: room.id });
+  };
+  const row = el("div", { style: "display:flex;align-items:center;gap:13px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08);cursor:pointer" });
+  row.addEventListener("click", join);
   row.appendChild(el("div", { style: "flex:none;width:40px;height:40px;border-radius:11px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font:700 13px Figtree,sans-serif;color:#e8c887", text: String(room.tileCount) }));
   const info = el("div", { style: "flex:1;min-width:0" });
   info.appendChild(el("div", { style: "font:600 15px Figtree,sans-serif;color:#f6f1e4", text: room.title }));
@@ -332,15 +343,9 @@ export function openRow(ctx, room) {
   row.appendChild(info);
   row.appendChild(el("button", {
     class: "btn", style: "background:none;border:none;font:600 12px Figtree,sans-serif;color:#d9a441;padding:0;height:auto", text: "Join",
-    onClick: () => {
-      repairCurrentPlayerAliases(room, ctx.state.currentUser);
-      ctx.state.store.rooms[room.id] = room;
-      ctx.commitRoomMembership(room);
-      if (room.mode === "shared" && !room.gameStarted) {
-        ctx.navigate("invite", { roomId: room.id });
-        return;
-      }
-      ctx.navigate(room.mode === "race" ? "race-board" : "board", { roomId: room.id });
+    onClick: (e) => {
+      e.stopPropagation();
+      join();
     },
   }));
   return row;
