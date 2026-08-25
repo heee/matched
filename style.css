@@ -213,6 +213,7 @@ a { color: var(--gold); }
 .tab-bar {
   height: calc(86px + env(safe-area-inset-bottom, 0));
   background: rgba(8,26,20,.85);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border-top: 1px solid rgba(255,255,255,.1);
   display: flex;
@@ -224,7 +225,11 @@ a { color: var(--gold); }
   bottom: 0;
   width: 100%;
   max-width: 480px;
-  transform: translateX(-50%);
+  /* translate3d (not translateX) forces its own GPU layer that iOS Safari
+     keeps pinned to the viewport during scroll — a 2D transform on a
+     backdrop-filter + position:fixed element is a known WebKit trigger for
+     the bar visibly lagging/floating mid-page while the page scrolls. */
+  transform: translate3d(-50%, 0, 0);
   box-shadow: 0 -10px 28px rgba(0,0,0,.4);
   z-index: 30;
 }
