@@ -76,6 +76,33 @@ export function dotPips(n) {
   return DOT_GRIDS[n] || DOT_GRIDS[1];
 }
 
+// Picks a suit ("theme") for a layout's catalog thumbnail, from its name
+// where the name plainly says so (Dragon's Nest -> dragons, Eight Winds ->
+// winds, ...), falling back to a stable hash rotation so every layout still
+// gets a consistent, distinct-looking suit rather than defaulting to one.
+function layoutThemeKind(layout) {
+  const name = (layout?.name || "").toLowerCase();
+  if (name.includes("dragon")) return "dragon";
+  if (name.includes("wind") || name.includes("compass")) return "wind";
+  if (name.includes("bamboo") || name.includes("cedar") || name.includes("grove") || name.includes("terrace")) return "bam";
+  if (name.includes("moon") || name.includes("lantern") || name.includes("jade") || name.includes("pearl") || name.includes("rain")) return "dot";
+  let hash = 0;
+  for (const ch of layout?.id || "") hash = (Math.imul(hash, 31) + ch.charCodeAt(0)) >>> 0;
+  return ["dot", "bam", "crak", "wind"][hash % 4];
+}
+
+// A handful of representative faces for a layout's theme — real tile faces
+// (not placeholder blocks), for catalog thumbnails that want to look like
+// an actual few tiles of that layout's board rather than an abstract shape.
+export function layoutThemeFaces(layout) {
+  const kind = layoutThemeKind(layout);
+  if (kind === "dragon") return DRAGONS.map((d, i) => ({ id: `dragon${i}`, kind: "char", top: d.glyph, bot: "", color: d.color }));
+  if (kind === "wind") return WINDS.map((w, i) => ({ id: `wind${i}`, kind: "char", top: w, bot: "", color: INK }));
+  if (kind === "crak") return [2, 5, 8].map((n) => ({ id: `crak${n}`, kind: "char", top: CRAK_NUMS[n - 1], bot: "萬", color: n % 2 ? BLUE : RED }));
+  if (kind === "dot") return [3, 5, 7].map((n) => ({ id: `dot${n}`, kind: "dot", n, color: n % 2 ? RED : GREEN }));
+  return [2, 4, 6].map((n) => ({ id: `bam${n}`, kind: "bam", n, color: GREEN }));
+}
+
 // Bamboo faces render as n vertical sticks in a wrapped grid.
 export function bamSticks(n) {
   const cols = n <= 3 ? n : n <= 6 ? Math.ceil(n / 2) : 3;

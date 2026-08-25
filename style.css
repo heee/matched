@@ -189,7 +189,7 @@ a { color: var(--gold); }
 .row { display: flex; align-items: center; }
 .row-list { display: flex; flex-direction: column; gap: 8px; padding: 0 16px; }
 
-.catalog-list { display: flex; flex-direction: column; gap: 10px; }
+.catalog-list { display: flex; flex-direction: column; gap: 8px; }
 .catalog-header {
   position: sticky;
   top: 0;
