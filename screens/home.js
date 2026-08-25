@@ -526,21 +526,22 @@ export function renderHome(root, ctx) {
     root.appendChild(waitingList);
   }
 
-  const openLabel = el("div", { class: "section-label section-label-row", style: "padding-top:20px" });
-  openLabel.appendChild(el("span", { text: "Other games for you to join" }));
-  if (openRooms.length > 3) {
-    openLabel.appendChild(el("button", {
-      class: "pill section-more",
-      text: "More",
-      "aria-label": "See all open rooms",
-      onClick: () => ctx.navigate("open-rooms"),
-    }));
+  if (openRooms.length > 0) {
+    const openLabel = el("div", { class: "section-label section-label-row", style: "padding-top:20px" });
+    openLabel.appendChild(el("span", { text: "Other games for you to join" }));
+    if (openRooms.length > 3) {
+      openLabel.appendChild(el("button", {
+        class: "pill section-more",
+        text: "More",
+        "aria-label": "See all open rooms",
+        onClick: () => ctx.navigate("open-rooms"),
+      }));
+    }
+    root.appendChild(openLabel);
+    const openList = el("div", { class: "row-list" });
+    featuredOpenRooms.forEach((r) => openList.appendChild(openRow(ctx, r)));
+    root.appendChild(openList);
   }
-  root.appendChild(openLabel);
-  const openList = el("div", { class: "row-list" });
-  if (openRooms.length === 0) openList.appendChild(el("div", { class: "empty-note", style: "padding:0 4px", text: "No open rooms yet — create one from the + tab." }));
-  featuredOpenRooms.forEach((r) => openList.appendChild(openRow(ctx, r)));
-  root.appendChild(openList);
 
   root.appendChild(el("div", { class: "section-label", style: "padding-top:20px", text: "Recent activity" }));
   const activityItems = ctx.state.store.activity || [];
