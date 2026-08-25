@@ -462,15 +462,28 @@ export function renderHome(root, ctx) {
   const cardSlot = el("div", { style: "flex:1;min-width:0" });
   const dots = el("div", { style: "display:flex;justify-content:center;gap:6px;margin-top:10px" });
 
+  // Whichever of the daily puzzle / level cards is more actionable right
+  // now leads the carousel: the daily puzzle by default, but once the
+  // current user has finished today's board there's nothing left to do
+  // there, so their level card (with the fresh XP/tier) leads instead.
+  const dailyDoneToday = ctx.state.dailyCompletedByUser?.[ctx.state.currentUser] === todayDateStr();
+
   function setHero(i) {
     heroIndex = (i + heroCount) % heroCount;
     cardSlot.innerHTML = "";
-    const cards = [
-      overallLevelCard(ctx),
-      dailyCard(ctx),
-      dailyOverviewCard(ctx),
-      groupRankingCard(ctx, groupMetric, (nextMetric) => { groupMetric = nextMetric; setHero(heroIndex); }),
-    ];
+    const cards = dailyDoneToday
+      ? [
+          overallLevelCard(ctx),
+          dailyCard(ctx),
+          dailyOverviewCard(ctx),
+          groupRankingCard(ctx, groupMetric, (nextMetric) => { groupMetric = nextMetric; setHero(heroIndex); }),
+        ]
+      : [
+          dailyCard(ctx),
+          overallLevelCard(ctx),
+          dailyOverviewCard(ctx),
+          groupRankingCard(ctx, groupMetric, (nextMetric) => { groupMetric = nextMetric; setHero(heroIndex); }),
+        ];
     cardSlot.appendChild(cards[heroIndex]);
     [...dots.children].forEach((d, i2) => {
       d.style.width = i2 === heroIndex ? "18px" : "6px";
