@@ -13,6 +13,7 @@ import { equippedMaterialName, materialCssVars } from "../game/materials.js";
 import { repairCurrentPlayerAliases } from "../game/identity.js";
 import { hasStartedRoom } from "../game/room-lists.js?v=6";
 import { equippedFeltName, feltCssVars } from "../game/felts.js";
+import { todayDateStr } from "../game/daily.js";
 import { createIdleClueController } from "./idle-clues.js";
 import { roomTimerStartMs, timestampMs, currentActiveMs, openActiveWindow, closeActiveWindow } from "../game/time.js";
 import { createRoomSocket } from "../sync.js?v=41";
@@ -581,8 +582,9 @@ export function renderBoard(root, ctx, params = {}) {
     const highlights = highlightsFromLog(room.state.matchLog || [], Object.fromEntries(playerList().map((p, i) => [i, { name: p }])));
     ctx.state.lastResult = { roomId: room.id, earned, highlights, elapsedMs };
     if (room.isDaily) {
-      const today = new Date().toISOString().slice(0, 10);
-      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      const now = new Date();
+      const today = todayDateStr(now);
+      const yesterday = todayDateStr(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
       ctx.state.dailyStreaks[you] = ctx.state.dailyCompletedByUser[you] === yesterday ? (ctx.state.dailyStreaks[you] || 0) + 1 : 1;
       ctx.state.dailyCompletedByUser[you] = today;
       ctx.reportDailyResult(room, elapsedMs);
