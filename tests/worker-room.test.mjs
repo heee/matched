@@ -50,12 +50,14 @@ test("RoomDO accepts a shared clear, commits the player, and broadcasts the resu
   const socket = {
     send: (frame) => frames.push(JSON.parse(frame)),
     deserializeAttachment: () => ({ user: "Christie", spectator: false }),
+    serializeAttachment: () => {},
   };
   const stored = new Map([["room", room]]);
   const state = {
     storage: {
       get: async (key) => stored.get(key),
       put: async (key, value) => stored.set(key, value),
+      setAlarm: async () => {},
     },
     getWebSockets: () => [socket],
   };
@@ -90,16 +92,19 @@ test("RoomDO broadcasts authoritative race progress without touching another rac
   const sender = {
     send: (frame) => frames.push(JSON.parse(frame)),
     deserializeAttachment: () => ({ user: "Henning", spectator: false }),
+    serializeAttachment: () => {},
   };
   const observer = {
     send: (frame) => frames.push(JSON.parse(frame)),
     deserializeAttachment: () => ({ user: "Christie", spectator: false }),
+    serializeAttachment: () => {},
   };
   const stored = new Map([["room", room]]);
   const state = {
     storage: {
       get: async (key) => stored.get(key),
       put: async (key, value) => stored.set(key, value),
+      setAlarm: async () => {},
     },
     getWebSockets: () => [sender, observer],
   };
@@ -133,16 +138,19 @@ test("RoomDO shuffle assist reshuffles only the requesting racer's own board", a
   const sender = {
     send: (frame) => frames.push(JSON.parse(frame)),
     deserializeAttachment: () => ({ user: "Henning", spectator: false }),
+    serializeAttachment: () => {},
   };
   const observer = {
     send: (frame) => frames.push(JSON.parse(frame)),
     deserializeAttachment: () => ({ user: "Christie", spectator: false }),
+    serializeAttachment: () => {},
   };
   const stored = new Map([["room", room]]);
   const state = {
     storage: {
       get: async (key) => stored.get(key),
       put: async (key, value) => stored.set(key, value),
+      setAlarm: async () => {},
     },
     getWebSockets: () => [sender, observer],
   };
@@ -159,6 +167,44 @@ test("RoomDO shuffle assist reshuffles only the requesting racer's own board", a
   assert.equal(frames.at(-1).type, "race-shuffled");
   assert.equal(frames.at(-1).user, "Henning");
   assert.deepEqual(frames.at(-1).tiles.map((t) => t.face.id), henningFacesAfter);
+});
+
+test("RoomDO's alarm evicts a socket that's gone quiet, closing the active window at its last heartbeat instead of the eviction time", async () => {
+  const request = validateCreateRoom({
+    title: "Two Bridges", mode: "shared", layoutId: "two-bridges", difficulty: "easy",
+    visibility: "open", createdBy: "Henning",
+  });
+  const room = buildRoom(request);
+  const now = Date.now();
+  // The socket's heartbeats stopped 95s ago (past the 90s staleness
+  // threshold) but the alarm only fires and notices every 30s, so there's
+  // a gap between "actually went quiet" and "got evicted". Only the first
+  // 5s (until the last real heartbeat) should count as active time — not
+  // the full 95s dead stretch, which is what left "Sun Court" showing a
+  // day-long timer.
+  const lastSeen = now - 95_000;
+  room.startedAt = lastSeen;
+  room.activeWindow = { startedAt: lastSeen };
+  room.activeMs = 0;
+
+  let closed = false;
+  let alarmSet = null;
+  const socket = {
+    send: () => {},
+    deserializeAttachment: () => ({ user: "Henning", spectator: false, visible: true, lastSeen }),
+    serializeAttachment: () => {},
+    close: () => { closed = true; },
+  };
+  const instance = buildDo(room);
+  instance.state.getWebSockets = () => (closed ? [] : [socket]);
+  instance.state.storage.setAlarm = async (when) => { alarmSet = when; };
+
+  await instance.alarm();
+
+  assert.equal(closed, true, "the stale socket should be force-closed");
+  assert.equal(room.activeWindow, null, "the active window should be closed instead of left running");
+  assert.equal(room.activeMs, 0, "no active time elapsed between the window opening and the last heartbeat");
+  assert.equal(alarmSet, null, "no sockets remain and the window is closed, so no further alarm is needed");
 });
 
 test("legacy shared room metadata is repaired from its authoritative match log", () => {
@@ -199,6 +245,7 @@ function buildDo(room) {
     storage: {
       get: async (key) => stored.get(key),
       put: async (key, value) => stored.set(key, value),
+      setAlarm: async () => {},
     },
     getWebSockets: () => [],
   };
@@ -225,7 +272,7 @@ test("sudden death ends a stuck shared room when the client reports it", async (
   room.state.tiles = STUCK_TILES;
 
   const frames = [];
-  const socket = { send: (frame) => frames.push(JSON.parse(frame)), deserializeAttachment: () => ({ user: "Henning", spectator: false }) };
+  const socket = { send: (frame) => frames.push(JSON.parse(frame)), deserializeAttachment: () => ({ user: "Henning", spectator: false }), serializeAttachment: () => {} };
   const instance = buildDo(room);
   instance.state.getWebSockets = () => [socket];
 
@@ -242,7 +289,7 @@ test("sudden death ignores a stuck report when moves are actually still availabl
     visibility: "open", createdBy: "Henning", suddenDeath: true,
   });
   const room = buildRoom(request); // a freshly generated board always has a move
-  const socket = { send: () => {}, deserializeAttachment: () => ({ user: "Henning", spectator: false }) };
+  const socket = { send: () => {}, deserializeAttachment: () => ({ user: "Henning", spectator: false }), serializeAttachment: () => {} };
   const instance = buildDo(room);
 
   await instance.webSocketMessage(socket, JSON.stringify({ type: "stuck" }));
@@ -260,7 +307,7 @@ test("sudden death marks a stuck racer out without ending the race for others", 
   room.racers.Henning.tiles = STUCK_TILES;
 
   const frames = [];
-  const socket = { send: (frame) => frames.push(JSON.parse(frame)), deserializeAttachment: () => ({ user: "Henning", spectator: false }) };
+  const socket = { send: (frame) => frames.push(JSON.parse(frame)), deserializeAttachment: () => ({ user: "Henning", spectator: false }), serializeAttachment: () => {} };
   const instance = buildDo(room);
   instance.state.getWebSockets = () => [socket];
 
@@ -282,7 +329,7 @@ test("sudden death ends a race once every remaining racer is stuck", async () =>
   room.racers.Henning.tiles = STUCK_TILES;
 
   const frames = [];
-  const socket = { send: (frame) => frames.push(JSON.parse(frame)), deserializeAttachment: () => ({ user: "Henning", spectator: false }) };
+  const socket = { send: (frame) => frames.push(JSON.parse(frame)), deserializeAttachment: () => ({ user: "Henning", spectator: false }), serializeAttachment: () => {} };
   const instance = buildDo(room);
   instance.state.getWebSockets = () => [socket];
 

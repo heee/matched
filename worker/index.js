@@ -40,6 +40,17 @@
 const PLAYER_HUES = [42, 155, 20, 213, 280, 190, 340, 95];
 const RESERVED_PLAYER_NAMES = new Set(["you", "anonymous"]);
 
+// A socket that goes quiet without a clean close/error event (network loss,
+// OS-killed app, laptop sleep) can sit in getWebSockets() indefinitely —
+// Cloudflare's hibernatable WebSocket API only fires webSocketClose/Error
+// once it actually detects the connection is gone, which can take a very
+// long time or never happen. Left unchecked, that keeps activeWindow open
+// and the room clock counting real wall-clock time against nobody. The
+// alarm below periodically evicts sockets that haven't been heard from
+// (message or client heartbeat ping) in STALE_SOCKET_MS.
+const STALE_SOCKET_MS = 90_000;
+const STALE_CHECK_INTERVAL_MS = 30_000;
+
 function isActualPlayerName(name) {
   return typeof name === "string" && !!name.trim() && !RESERVED_PLAYER_NAMES.has(name.trim().toLowerCase());
 }
@@ -395,7 +406,7 @@ export class RoomDO {
     // "visibility" message right after connecting, but defaulting true here
     // means a room already in progress starts its active window immediately
     // instead of waiting a round trip.
-    server.serializeAttachment({ user, spectator, visible: true });
+    server.serializeAttachment({ user, spectator, visible: true, lastSeen: Date.now() });
     this.sendTo(server, { type: "init", room: this.room, presence: this.presenceList(), visible: this.visiblePresenceList() });
     this.broadcastPresence();
     await this.applyActiveWindowChange();
@@ -436,11 +447,12 @@ export class RoomDO {
   // crosses 0<->1. No-op before the first match (see repairRoomMetadata's
   // comment on why the clock itself doesn't start until then). Returns
   // whether anything changed, so callers only broadcast/persist when needed.
-  updateActiveWindow(now = Date.now()) {
+  async updateActiveWindow(now = Date.now()) {
     if (!this.room || !this.room.startedAt) return false;
     const visible = this.visibleSocketCount() > 0;
     if (visible && !this.room.activeWindow) {
       this.room.activeWindow = { startedAt: now };
+      await this.state.storage.setAlarm(now + STALE_CHECK_INTERVAL_MS);
       return true;
     }
     if (!visible && this.room.activeWindow) {
@@ -467,7 +479,7 @@ export class RoomDO {
   }
 
   async applyActiveWindowChange(now = Date.now()) {
-    if (!this.updateActiveWindow(now)) return;
+    if (!(await this.updateActiveWindow(now))) return;
     this.broadcast({ type: "active-update", activeMs: this.room.activeMs, activeWindow: this.room.activeWindow }, null);
     await this.persist(false);
   }
@@ -485,7 +497,14 @@ export class RoomDO {
   }
 
   async webSocketMessage(socket, message) {
-    await this.handleMessage(socket, socket.deserializeAttachment(), { data: message });
+    const metadata = socket.deserializeAttachment();
+    if (metadata) socket.serializeAttachment({ ...metadata, lastSeen: Date.now() });
+    let msg;
+    try { msg = JSON.parse(message); } catch (e) { return; }
+    // Heartbeat only — keeps lastSeen fresh (above) so the room clock
+    // doesn't get evicted as stale during idle stretches between moves.
+    if (msg?.type === "ping") return;
+    await this.handleMessage(socket, metadata, { data: message });
   }
 
   async webSocketClose(socket, code, reason) {
@@ -498,6 +517,41 @@ export class RoomDO {
     try { socket.close(1011, "socket error"); } catch (e) {}
     this.broadcastPresence();
     await this.applyActiveWindowChange();
+  }
+
+  // Runs every STALE_CHECK_INTERVAL_MS while a room has an open active
+  // window or connected sockets. Evicts anything that's gone quiet for
+  // longer than STALE_SOCKET_MS (see the comment near STALE_SOCKET_MS) so a
+  // dead connection can't keep the room clock running against nobody.
+  async alarm() {
+    await this.loadRoom();
+    if (!this.room) return;
+    const now = Date.now();
+    let presenceChanged = false;
+    let lastStaleSeenAt = null;
+    for (const socket of this.state.getWebSockets()) {
+      const metadata = socket.deserializeAttachment();
+      if (!metadata) continue;
+      const lastSeen = metadata.lastSeen || 0;
+      if (now - lastSeen <= STALE_SOCKET_MS) continue;
+      lastStaleSeenAt = lastStaleSeenAt == null ? lastSeen : Math.max(lastStaleSeenAt, lastSeen);
+      if (metadata.visible !== false) {
+        socket.serializeAttachment({ ...metadata, visible: false });
+        presenceChanged = true;
+      }
+      try { socket.close(1000, "stale connection"); } catch (e) {}
+    }
+    if (presenceChanged) this.broadcastPresence();
+    // If everyone still connected is now stale, bank active time only up
+    // through the last moment we actually heard from someone (lastSeen),
+    // not this alarm's own fire time — otherwise the dead stretch between
+    // that heartbeat and eviction (up to STALE_SOCKET_MS) gets counted as
+    // active too, which is exactly the bug this alarm exists to prevent.
+    const closeAt = this.visibleSocketCount() > 0 ? now : (lastStaleSeenAt ?? now);
+    await this.applyActiveWindowChange(closeAt);
+    if (this.room.activeWindow || this.state.getWebSockets().length) {
+      await this.state.storage.setAlarm(now + STALE_CHECK_INTERVAL_MS);
+    }
   }
 
   async handleMessage(socket, metadata, evt) {
@@ -528,7 +582,7 @@ export class RoomDO {
 
       const clearedAt = Date.now();
       if (!(this.room.state.matchLog || []).length) this.room.startedAt = this.room.startedAt || clearedAt;
-      this.updateActiveWindow(clearedAt);
+      await this.updateActiveWindow(clearedAt);
       if (!this.room.players.includes(user)) this.room.players.push(user);
       this.room.startedPlayers = this.room.startedPlayers || [];
       if (!this.room.startedPlayers.includes(user)) this.room.startedPlayers.push(user);
@@ -576,7 +630,7 @@ export class RoomDO {
       }
       const clearedAt = Date.now();
       if (!(this.room.state.matchLog || []).length) this.room.startedAt = clearedAt;
-      this.updateActiveWindow(clearedAt);
+      await this.updateActiveWindow(clearedAt);
       if (!this.room.players.includes(user)) this.room.players.push(user);
       this.room.startedPlayers = this.room.startedPlayers || [];
       if (!this.room.startedPlayers.includes(user)) this.room.startedPlayers.push(user);

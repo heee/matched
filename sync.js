@@ -61,11 +61,20 @@ export function createMutationQueue({ jsonStorage, key, now = () => Date.now(), 
 // Reconnecting WebSocket wrapper for the live room. Exponential backoff,
 // caps at 8s, resubscribes automatically. Kept dependency-free so it works
 // the same in the browser and (mocked) in tests.
+// How often to ping while connected. Well under the Worker's
+// STALE_SOCKET_MS (90s) so a merely-idle-but-alive tab never gets evicted;
+// its only job is to keep the DO's per-socket lastSeen fresh so a dead
+// connection (network loss, OS-killed app, laptop sleep — anything that
+// doesn't fire a clean close/error event) gets noticed instead of leaving
+// the room clock running against nobody forever.
+const HEARTBEAT_MS = 20_000;
+
 export function createRoomSocket({ url, onMessage, onOpen, onClose, wsFactory = (u) => new WebSocket(u) }) {
   let socket = null;
   let closedByUser = false;
   let backoffMs = 500;
   let reconnectTimer = null;
+  let heartbeatTimer = null;
   const pending = [];
 
   function connect() {
@@ -74,6 +83,8 @@ export function createRoomSocket({ url, onMessage, onOpen, onClose, wsFactory = 
     socket.addEventListener("open", () => {
       backoffMs = 500;
       while (pending.length && socket.readyState === 1) socket.send(pending.shift());
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = setInterval(() => send({ type: "ping" }), HEARTBEAT_MS);
       onOpen?.();
     });
     socket.addEventListener("message", (evt) => {
@@ -84,6 +95,7 @@ export function createRoomSocket({ url, onMessage, onOpen, onClose, wsFactory = 
       }
     });
     socket.addEventListener("close", () => {
+      clearInterval(heartbeatTimer);
       onClose?.();
       if (closedByUser) return;
       reconnectTimer = setTimeout(connect, backoffMs);
@@ -104,6 +116,7 @@ export function createRoomSocket({ url, onMessage, onOpen, onClose, wsFactory = 
   function close() {
     closedByUser = true;
     clearTimeout(reconnectTimer);
+    clearInterval(heartbeatTimer);
     pending.length = 0;
     try { socket?.close(1000, "client closed"); } catch (e) {}
   }
