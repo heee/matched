@@ -5,8 +5,12 @@ const PERIODS = ["Today", "Week", "Month", "All time"];
 
 export function renderHeadToHead(root, ctx, params = {}) {
   const opponent = params.user;
+  // Comparisons are opened from more than one screen (Ranking, the Home
+  // activity feed) — remember which one so back returns there instead of
+  // always landing on Ranking.
+  const from = params.from === "home" ? "home" : "ranking";
   if (!opponent || opponent === ctx.state.currentUser || !ctx.state.store.users?.[opponent]) {
-    ctx.navigate("ranking");
+    ctx.navigate(from);
     return;
   }
 
@@ -15,7 +19,7 @@ export function renderHeadToHead(root, ctx, params = {}) {
   const currentUser = ctx.state.currentUser;
 
   const header = el("div", { style: "padding:6px 16px 14px;display:flex;align-items:center;gap:10px" });
-  header.appendChild(el("button", { class: "icon-btn", style: "width:38px;height:38px", text: "‹", "aria-label": "Back to Ranking", onClick: () => ctx.navigate("ranking") }));
+  header.appendChild(el("button", { class: "icon-btn", style: "width:38px;height:38px", text: "‹", "aria-label": from === "home" ? "Back to Home" : "Back to Ranking", onClick: () => ctx.navigate(from) }));
   header.appendChild(el("div", { class: "title-serif", style: "flex:1;font-size:27px", text: "Head to head" }));
   const periodDropdown = el("div", { style: "position:relative" });
   header.appendChild(periodDropdown);

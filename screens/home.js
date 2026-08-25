@@ -377,7 +377,7 @@ function activityRow(ctx, item, isLast) {
         style: "font:inherit;font-weight:600;color:#f6f1e4;background:none;border:none;padding:0;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(246,241,228,.35)",
         text: item.user,
         "aria-label": `Compare with ${item.user}`,
-        onClick: () => ctx.navigate("head-to-head", { user: item.user }),
+        onClick: () => ctx.navigate("head-to-head", { user: item.user, from: "home" }),
       })
     : el("span", { style: "font-weight:600;color:#f6f1e4", text: item.user });
   const info = el("div", { style: "flex:1;min-width:0;font:13px Figtree,sans-serif;color:rgba(246,241,228,.75)" }, [
