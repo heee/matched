@@ -2,47 +2,63 @@
 // docs/design-reference.html #1j and the layout-level design extension.
 
 import { el, isTabletViewport, formatClock, avatarDot, trayFaceGlyph } from "./shared-ui.js";
-import { LAYOUTS, isLayoutUnlocked } from "../game/layouts.js";
+import { LAYOUTS, layoutSilhouette, isLayoutUnlocked } from "../game/layouts.js";
 import { layoutThemeFaces } from "../game/tiles.js";
 import { completedLayoutStats, layoutRecordStats } from "../game/layout-stats.js";
 import { layoutLevelProgress } from "../game/layout-levels.js";
 
 const FILTERS = ["All difficulties", "Easy", "Medium", "Hard"];
 
-// A thumbnail of a handful of real tiles (themed to the layout — dragons,
-// winds, character glyphs, ...), styled after the match tray's tray-tile
-// (see .tray-tile in style.css): a small flat cream chip with a centered
-// glyph, at its own true small size. An earlier version reused the board's
-// full-size .tile + renderTileFace scaled down 70% via a CSS transform —
-// at that size the tile's box-shadow/gradient and the CJK glyphs turned to
-// near-invisible sub-pixel noise, which is what actually shipped. Plain
-// small chips in a fixed grid stay crisp at any size and can't clip or
-// scatter the way absolute-positioned, layout-shape-mapped tiles could.
+// A thumbnail of real tiles (themed to the layout — dragons, winds,
+// character glyphs, ...), styled after the match tray's tray-tile (see
+// .tray-tile in style.css): small flat cream chips with a centered glyph,
+// at their own true small size — never a CSS-scaled-down full board tile.
+// An earlier version reused the board's full-size .tile + renderTileFace
+// scaled down 70% via `transform: scale()`; at that size the box-shadow,
+// gradient, and CJK glyphs turned to near-invisible sub-pixel noise, which
+// is what actually shipped. These stay crisp at any size.
+//
+// Layout to layout, the base footprint (layoutSilhouette's z===0 cells) is
+// nearly always a filled rectangle — what actually varies is how tall the
+// pyramid built on top of it gets (maxZ), which is exactly what a real
+// player would recognize as "how complex is this board". So the thumbnail
+// maps layoutSilhouette's coarse grid straight onto the box (real footprint,
+// real per-cell layer height) rather than a synthetic uniform grid: taller
+// stacks sit higher (offset up-right) and glow brighter, echoing .tile.upper.
 const THUMB_W = 58;
 const THUMB_H = 46;
-const MINI_TILE_W = 11;
-const MINI_TILE_H = 15;
-const DIFFICULTY_MINI_COUNTS = { easy: 4, medium: 6, hard: 8, turtle: 8 };
+const THUMB_COLS = 4;
+const THUMB_ROWS = 3;
+const MINI_TILE_W = 8;
+const MINI_TILE_H = 11;
+const LAYER_OFFSET_PX = 1.6;
+const MARGIN_X = MINI_TILE_W * 0.9;
+const MARGIN_Y = MINI_TILE_H * 0.9;
 
-function miniGlyphTile(face) {
+function miniGlyphTile(face, leftPx, topPx, z) {
+  const lit = z > 0;
   return el("div", {
-    style: `width:${MINI_TILE_W}px;height:${MINI_TILE_H}px;border-radius:2.5px;background:linear-gradient(160deg,#f9f4e6,#e7dec8);box-shadow:0 1px 0 rgba(0,0,0,.28);display:flex;align-items:center;justify-content:center;font:700 8px var(--font-tile);color:${face.color || "#23201c"}`,
+    style: `position:absolute;left:${leftPx}px;top:${topPx}px;width:${MINI_TILE_W}px;height:${MINI_TILE_H}px;border-radius:2px;background:linear-gradient(160deg,${lit ? "#fffdf6,#f3ecd8" : "#f9f4e6,#e7dec8"});box-shadow:${lit ? "0 1px 0 rgba(0,0,0,.22),0 1.5px 2px rgba(0,0,0,.3)" : "0 1px 0 rgba(0,0,0,.22)"};display:flex;align-items:center;justify-content:center;font:700 6.5px var(--font-tile);color:${face.color || "#23201c"};z-index:${Math.round(z * 10)}`,
     text: trayFaceGlyph(face),
   });
 }
 
 function layoutThumb(layout, unlocked) {
-  const count = DIFFICULTY_MINI_COUNTS[layout.difficulty] || 6;
-  const cols = count <= 4 ? 2 : count <= 6 ? 3 : 4;
   const box = el("div", {
-    style: `width:${THUMB_W}px;height:${THUMB_H}px;position:relative;border-radius:10px;background:#0e3a2b;display:grid;grid-template-columns:repeat(${cols},${MINI_TILE_W}px);gap:3px;align-content:center;justify-content:center`,
+    style: `width:${THUMB_W}px;height:${THUMB_H}px;position:relative;border-radius:10px;overflow:hidden;background:#0e3a2b`,
   });
   const faces = layoutThemeFaces(layout);
-  for (let i = 0; i < count; i++) {
-    box.appendChild(miniGlyphTile(faces[Math.floor(i / 2) % faces.length]));
-  }
+  const cells = layoutSilhouette(layout, THUMB_COLS, THUMB_ROWS).sort((a, b) => a.z - b.z);
+  const usableW = THUMB_W - MARGIN_X * 2 - MINI_TILE_W;
+  const usableH = THUMB_H - MARGIN_Y * 2 - MINI_TILE_H;
+  cells.forEach((cell, i) => {
+    const leftPx = MARGIN_X + (cell.xPct / 100) * usableW + cell.z * LAYER_OFFSET_PX;
+    const topPx = MARGIN_Y + (cell.yPct / 100) * usableH - cell.z * LAYER_OFFSET_PX;
+    const face = faces[Math.floor(i / 2) % faces.length];
+    box.appendChild(miniGlyphTile(face, leftPx, topPx, cell.z));
+  });
   if (!unlocked) {
-    box.appendChild(el("div", { style: "position:absolute;inset:0;border-radius:10px;background:rgba(8,26,20,.72);display:flex;align-items:center;justify-content:center;font-size:16px", text: "🔒" }));
+    box.appendChild(el("div", { style: "position:absolute;inset:0;background:rgba(8,26,20,.72);display:flex;align-items:center;justify-content:center;font-size:16px;z-index:999", text: "🔒" }));
   }
   return box;
 }

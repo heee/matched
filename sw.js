@@ -8,7 +8,7 @@ const SHELL_FILES = [
   "./",
   "./index.html",
   "./style.css?v=58",
-  "./app.js?v=90",
+  "./app.js?v=91",
   "./config.js",
   "./api.js",
   "./storage.js",
