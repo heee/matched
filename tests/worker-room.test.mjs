@@ -169,6 +169,63 @@ test("RoomDO shuffle assist reshuffles only the requesting racer's own board", a
   assert.deepEqual(frames.at(-1).tiles.map((t) => t.face.id), henningFacesAfter);
 });
 
+// A single free, self-matching pair — clearing it empties a racer's board
+// in one race-clear-pair call.
+const ONE_PAIR_TILES = [
+  { id: "p1", x: 0, y: 0, z: 0, face: { id: "bamboo-1" } },
+  { id: "p2", x: 6, y: 0, z: 0, face: { id: "bamboo-1" } },
+];
+
+test("race-clear-pair leaves the room open for other racers when raceEndOnFirstFinish is off (default)", async () => {
+  const request = validateCreateRoom({
+    title: "Two Bridges", mode: "race", layoutId: "two-bridges", difficulty: "easy",
+    visibility: "open", createdBy: "Henning",
+  });
+  assert.equal(request.raceEndOnFirstFinish, false);
+  const room = buildRoom(request);
+  assert.equal(room.raceEndOnFirstFinish, false);
+  room.racers.Christie = { tiles: JSON.parse(JSON.stringify(room.racers.Henning.tiles)), stuckOut: false };
+  room.racers.Henning.tiles = ONE_PAIR_TILES;
+
+  const frames = [];
+  const socket = { send: (frame) => frames.push(JSON.parse(frame)), deserializeAttachment: () => ({ user: "Henning", spectator: false }), serializeAttachment: () => {} };
+  const instance = buildDo(room);
+  instance.state.getWebSockets = () => [socket];
+
+  await instance.webSocketMessage(socket, JSON.stringify({ type: "race-clear-pair", idA: "p1", idB: "p2" }));
+
+  assert.equal(room.racers.Henning.tiles.length, 0);
+  assert.equal(room.completedAt, null); // Christie hasn't finished yet
+  assert.equal(room.state.state, "in_progress");
+  assert.equal(typeof room.racerElapsedMs.Henning, "number");
+  assert.equal(frames.at(-1).completed, false);
+  assert.equal(frames.at(-1).remaining, 0);
+});
+
+test("race-clear-pair ends the room for everyone on the first finish when raceEndOnFirstFinish is on", async () => {
+  const request = validateCreateRoom({
+    title: "Two Bridges", mode: "race", layoutId: "two-bridges", difficulty: "easy",
+    visibility: "open", createdBy: "Henning", raceEndOnFirstFinish: true,
+  });
+  assert.equal(request.raceEndOnFirstFinish, true);
+  const room = buildRoom(request);
+  assert.equal(room.raceEndOnFirstFinish, true);
+  room.racers.Christie = { tiles: JSON.parse(JSON.stringify(room.racers.Henning.tiles)), stuckOut: false };
+  room.racers.Henning.tiles = ONE_PAIR_TILES;
+
+  const frames = [];
+  const socket = { send: (frame) => frames.push(JSON.parse(frame)), deserializeAttachment: () => ({ user: "Henning", spectator: false }), serializeAttachment: () => {} };
+  const instance = buildDo(room);
+  instance.state.getWebSockets = () => [socket];
+
+  await instance.webSocketMessage(socket, JSON.stringify({ type: "race-clear-pair", idA: "p1", idB: "p2" }));
+
+  assert.equal(room.racers.Henning.tiles.length, 0);
+  assert.ok(room.completedAt); // Christie is still mid-board but gets pushed to results too
+  assert.equal(room.state.state, "completed");
+  assert.equal(frames.at(-1).completed, true);
+});
+
 test("RoomDO's alarm evicts a socket that's gone quiet, closing the active window at its last heartbeat instead of the eviction time", async () => {
   const request = validateCreateRoom({
     title: "Two Bridges", mode: "shared", layoutId: "two-bridges", difficulty: "easy",

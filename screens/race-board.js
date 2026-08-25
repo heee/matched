@@ -293,14 +293,24 @@ export function renderRaceBoard(root, ctx, params = {}) {
     }
   }
 
-  function finishRace() {
+  // roomCompleted is false when raceEndOnFirstFinish is off and you finished
+  // before everyone else — your own board is done and you get pushed to
+  // results, but the shared room stays open (and its clock running) for
+  // whoever's still racing. elapsedMsOverride carries the Worker's own
+  // snapshot of your finish time so it matches what everyone else's results
+  // screen later reads out of room.racerElapsedMs.
+  function finishRace({ roomCompleted = true, elapsedMsOverride } = {}) {
     if (local.finished) return;
     local.finished = true;
     stopBots();
-    room.completedAt = room.completedAt || new Date().toISOString();
-    room.state.state = "completed";
-    const elapsedMs = currentActiveMs(room, Date.now());
+    if (roomCompleted) {
+      room.completedAt = room.completedAt || new Date().toISOString();
+      room.state.state = "completed";
+    }
+    const elapsedMs = elapsedMsOverride ?? currentActiveMs(room, Date.now());
     room.elapsedMs = elapsedMs;
+    room.racerElapsedMs = room.racerElapsedMs || {};
+    room.racerElapsedMs[you] = elapsedMs;
     const myPairs = room.pairsCleared[you] || 0;
     const assistsUsed = room.assistsUsed[you] || 0;
     const earned = pointsForSession({ pairsCleared: myPairs, assistsUsed, elapsedMs, tileCount: room.tileCount });
@@ -422,17 +432,23 @@ export function renderRaceBoard(root, ctx, params = {}) {
             room.startedAt = message.startedAt;
             startedAtMs = timestampMs(message.startedAt) ?? startedAtMs;
           }
-          if (message.user === you) {
+          const myFinish = message.user === you;
+          if (myFinish) {
             const result = clearPair(room.racers[you].tiles, message.idA, message.idB);
             if (result) room.racers[you].tiles = result.tiles;
             local.selectedId = null;
             renderMyBoard();
           }
+          if (message.racerElapsedMs) room.racerElapsedMs = message.racerElapsedMs;
           room.state.state = message.completed ? "completed" : "in_progress";
           if (message.completedAt) room.completedAt = message.completedAt;
           ctx.persist();
           renderRacers();
-          if (message.completed) finishRace();
+          if (message.completed) {
+            finishRace({ roomCompleted: true, elapsedMsOverride: message.racerElapsedMs?.[you] });
+          } else if (myFinish && message.remaining === 0) {
+            finishRace({ roomCompleted: false, elapsedMsOverride: message.racerElapsedMs?.[you] });
+          }
           return;
         }
         if (message.type === "race-racer-stuck") {

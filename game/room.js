@@ -11,7 +11,7 @@ function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "room";
 }
 
-export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed, shuffleAllowed, openPairsAllowed, undoAllowed, suddenDeath, seed, isDaily, bots, players: livePlayers, turnRule, turnSeconds }) {
+export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed, shuffleAllowed, openPairsAllowed, undoAllowed, suddenDeath, raceEndOnFirstFinish, seed, isDaily, bots, players: livePlayers, turnRule, turnSeconds }) {
   if (!isActualPlayerName(createdBy)) throw new TypeError("A human creator is required");
   const id = `${slugify(title)}-${Date.now().toString(36)}`;
   const resolvedSeed = seed ?? hashSeed(id);
@@ -95,6 +95,14 @@ export function buildLocalRoom({ title, mode, layoutId, difficulty, visibility, 
       const racerBoard = generateBoard(layout, { rng: mulberry32(resolvedSeed + i * 104729) });
       room.racers[p] = { tiles: racerBoard.tiles, stuckOut: false };
     });
+    // Default off: everyone races to their own finish and the results
+    // screen shows each racer's own time. On: the room ends the instant the
+    // first racer finishes and pushes everyone else to results.
+    room.raceEndOnFirstFinish = !!raceEndOnFirstFinish;
+    // Per-racer elapsed time at the moment each one personally finished —
+    // populated as racers finish (see race-board.js's finishRace) so the
+    // results screen can show everyone's own race time, not just pairs.
+    room.racerElapsedMs = {};
   }
 
   return room;

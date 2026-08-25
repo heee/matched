@@ -29,9 +29,21 @@ export function renderResults(root, ctx, params = {}) {
   top.appendChild(el("div", { style: "font:14px Figtree,sans-serif;color:rgba(246,241,228,.6);margin-top:8px", text: `${formatDuration(elapsedS)} · ${room.players.length} players · ${room.tileCount} tiles` }));
   root.appendChild(top);
 
+  // Race mode: each racer clears their own board, so pairs alone doesn't
+  // say who won once raceEndOnFirstFinish is off and racers finish at
+  // different times — rank by who finished (and fastest) first, falling
+  // back to pairs for anyone still mid-board when this screen was captured.
+  const isRace = room.mode === "race";
   const results = room.players
-    .map((name, i) => ({ name, pairs: room.pairsCleared[name] || 0, seat: i }))
-    .sort((a, b) => b.pairs - a.pairs);
+    .map((name, i) => ({ name, pairs: room.pairsCleared[name] || 0, seat: i, elapsedMs: room.racerElapsedMs?.[name] }))
+    .sort((a, b) => {
+      if (isRace && (a.elapsedMs != null || b.elapsedMs != null)) {
+        if (a.elapsedMs == null) return 1;
+        if (b.elapsedMs == null) return -1;
+        return a.elapsedMs - b.elapsedMs;
+      }
+      return b.pairs - a.pairs;
+    });
   const maxPairs = Math.max(1, ...results.map((r) => r.pairs));
 
   const rankCard = el("div", { style: "margin:22px 16px 0;padding:16px;border-radius:18px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:12px" });
@@ -44,8 +56,13 @@ export function renderResults(root, ctx, params = {}) {
     info.appendChild(el("div", { class: "progress-thin", style: "margin-top:6px;height:6px", html: `<div style="width:${Math.round((r.pairs / maxPairs) * 100)}%;background:${colorForPlayer(r.name, r.seat, ctx.state.store.users)}"></div>` }));
     row.appendChild(info);
     const right = el("div", { style: "text-align:right" });
-    right.appendChild(el("div", { style: "font:700 16px Figtree,sans-serif;color:#f6f1e4", text: String(r.pairs) }));
-    right.appendChild(el("div", { style: "font:10px Figtree,sans-serif;color:rgba(246,241,228,.45)", text: "pairs" }));
+    if (isRace && r.elapsedMs != null) {
+      right.appendChild(el("div", { style: "font:700 16px Figtree,sans-serif;color:#f6f1e4", text: formatDuration(Math.floor(r.elapsedMs / 1000)) }));
+      right.appendChild(el("div", { style: "font:10px Figtree,sans-serif;color:rgba(246,241,228,.45)", text: `${r.pairs} pairs` }));
+    } else {
+      right.appendChild(el("div", { style: "font:700 16px Figtree,sans-serif;color:#f6f1e4", text: String(r.pairs) }));
+      right.appendChild(el("div", { style: "font:10px Figtree,sans-serif;color:rgba(246,241,228,.45)", text: isRace ? "still racing" : "pairs" }));
+    }
     row.appendChild(right);
     rankCard.appendChild(row);
   });

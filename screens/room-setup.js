@@ -70,6 +70,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
     openPairsAllowed: true,
     undoAllowed: true, // Solo/Live only — forced off for Shared/Race regardless
     suddenDeath: false, // ends the game the instant no pairs are left; forces shuffleAllowed off while on
+    raceEndOnFirstFinish: false, // Race only: end the room the instant the first racer finishes, pushing everyone else to results
     openLink: true,
     bots: new Array(BOT_SEAT_COUNT).fill(null), // each slot: null (open) or { name, difficulty }
     pickerSeat: null, // seat index (0-based within bots[]) currently showing the difficulty popover
@@ -79,6 +80,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
   };
   let openLinkRow = null;
   let undoRow = null;
+  let raceEndRow = null;
   let primaryButton = null;
   let creating = false;
 
@@ -91,6 +93,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
     // hot-seat stays always-on, Shared/Race stay always-off; see
     // game/room.js's buildLocalRoom).
     if (undoRow) undoRow.style.display = solo ? "flex" : "none";
+    if (raceEndRow) raceEndRow.style.display = local.mode === "race" ? "flex" : "none";
     if (primaryButton) primaryButton.textContent = solo || live ? "Create and play" : "Create & invite";
   }
 
@@ -383,6 +386,12 @@ export function renderRoomSetup(root, ctx, params = {}) {
   });
   toggles.appendChild(suddenDeathRow);
   setToggleDisabled(shuffleRow, local.suddenDeath);
+  // Race only. Off by default: everyone races their own board to the end
+  // and the results screen shows each racer's own time. On: the room ends
+  // the instant the first racer finishes and pushes everyone else straight
+  // to results, same as Shared/Solo/Live completion.
+  raceEndRow = toggleRow("End when first racer finishes", "raceEndOnFirstFinish");
+  toggles.appendChild(raceEndRow);
   openLinkRow = toggleRow("Open to anyone with the link", "openLink");
   toggles.appendChild(openLinkRow);
   body.appendChild(toggles);
@@ -419,6 +428,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
           openPairsAllowed: local.openPairsAllowed,
           undoAllowed: local.undoAllowed,
           suddenDeath: local.suddenDeath,
+          raceEndOnFirstFinish: local.raceEndOnFirstFinish,
           bots: local.bots.filter(Boolean),
           players: live ? local.livePlayers : undefined,
           turnRule: live ? local.turnRule : undefined,
@@ -430,7 +440,7 @@ export function renderRoomSetup(root, ctx, params = {}) {
         // unreachable), so this just skips the round-trip outright.
         if (!live && ctx.api.configured()) {
           try {
-            const result = await ctx.api.createRoom({ title: room.title, mode: room.mode, layoutId: room.layoutId, difficulty: room.difficulty, visibility: room.visibility, createdBy: room.createdBy, freeTilesGlow: room.freeTilesGlow, hintsAllowed: room.hintsAllowed, shuffleAllowed: room.shuffleAllowed, openPairsAllowed: room.openPairsAllowed, undoAllowed: room.undoAllowed, suddenDeath: room.suddenDeath, bots: local.bots.filter(Boolean) });
+            const result = await ctx.api.createRoom({ title: room.title, mode: room.mode, layoutId: room.layoutId, difficulty: room.difficulty, visibility: room.visibility, createdBy: room.createdBy, freeTilesGlow: room.freeTilesGlow, hintsAllowed: room.hintsAllowed, shuffleAllowed: room.shuffleAllowed, openPairsAllowed: room.openPairsAllowed, undoAllowed: room.undoAllowed, suddenDeath: room.suddenDeath, raceEndOnFirstFinish: room.raceEndOnFirstFinish, bots: local.bots.filter(Boolean) });
             // Keep the local board/bot setup, but use the persisted room id so
             // the completion snapshot updates the same D1 record.
             room.id = result.room.id;

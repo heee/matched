@@ -287,6 +287,7 @@ function roomProgressPayload(room) {
     peakStreaks: room.peakStreaks || {},
     assistsUsed: room.assistsUsed || {},
     racers: room.racers,
+    racerElapsedMs: room.racerElapsedMs,
   };
 }
 
@@ -317,6 +318,7 @@ function completedRoomPayload(room) {
     assistsUsed: room.assistsUsed || {},
     comboBonus: room.comboBonus || {},
     racers: room.racers,
+    racerElapsedMs: room.racerElapsedMs,
   };
 }
 

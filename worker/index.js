@@ -81,6 +81,15 @@ export default {
       return stub.fetch(request);
     }
 
+    const roomResetClockMatch = url.pathname.match(/^\/room\/([a-zA-Z0-9_-]+)\/reset-clock$/);
+    if (roomResetClockMatch && request.method === "POST") {
+      if (!checkAppKey(request, env)) return json({ error: "unauthorized" }, 401, cors);
+      const id = env.ROOM.idFromName(roomResetClockMatch[1]);
+      const stub = env.ROOM.get(id);
+      const res = await stub.fetch("https://internal/reset-clock", { method: "POST" });
+      return res.status === 200 ? json({ ok: true }, 200, cors) : json({ error: "room not found" }, 404, cors);
+    }
+
     if (url.pathname === "/data" && request.method === "GET") {
       try {
         const scope = url.searchParams.get("scope") || "all";
@@ -265,7 +274,7 @@ export default {
         if (!room) throw new Error("room not found");
         // Never let a late progress write reopen or replace a completed room.
         if (!room.completedAt) {
-          for (const key of ["startedAt", "activeMs", "activeWindow", "state", "players", "startedPlayers", "botNames", "pairsCleared", "streaks", "peakStreaks", "assistsUsed", "racers", "gameStarted"]) {
+          for (const key of ["startedAt", "activeMs", "activeWindow", "state", "players", "startedPlayers", "botNames", "pairsCleared", "streaks", "peakStreaks", "assistsUsed", "racers", "racerElapsedMs", "gameStarted"]) {
             if (payload[key] !== undefined) room[key] = payload[key];
           }
           await upsertRoom(env.DB, room);
@@ -387,6 +396,20 @@ export class RoomDO {
       return new Response("ok");
     }
 
+    // Manual recovery for a room whose activeWindow got stuck open before
+    // the staleness alarm existed (see STALE_SOCKET_MS above) — zeroes the
+    // clock without touching tiles, scores, or players. Not reachable
+    // publicly; only the top-level Worker forwards here, gated by APP_KEY.
+    if (url.pathname === "/reset-clock" && request.method === "POST") {
+      await this.loadRoom();
+      if (!this.room) return new Response("room not found", { status: 404 });
+      this.room.activeMs = 0;
+      this.room.activeWindow = null;
+      await this.persist(false);
+      this.broadcast({ type: "active-update", activeMs: this.room.activeMs, activeWindow: this.room.activeWindow }, null);
+      return new Response("ok");
+    }
+
     if (request.headers.get("Upgrade") !== "websocket") {
       return new Response("expected websocket", { status: 426 });
     }
@@ -476,6 +499,17 @@ export class RoomDO {
       this.room.activeMs = (this.room.activeMs || 0) + Math.max(0, now - this.room.activeWindow.startedAt);
       this.room.activeWindow = null;
     }
+  }
+
+  // Read-only version of the activeMs math above — a snapshot of "how much
+  // active time has this room accumulated as of `now`" without closing the
+  // window. Used to timestamp an individual racer's own finish (Race mode,
+  // raceEndOnFirstFinish off) while the room's shared clock keeps running
+  // for everyone else still playing.
+  snapshotActiveMs(now = Date.now()) {
+    const base = this.room?.activeMs || 0;
+    if (!this.room?.activeWindow) return base;
+    return base + Math.max(0, now - this.room.activeWindow.startedAt);
   }
 
   async applyActiveWindowChange(now = Date.now()) {
@@ -594,7 +628,16 @@ export class RoomDO {
       this.room.state.state = "in_progress";
       this.room.state.matchLog = [...(this.room.state.matchLog || []), { user, at: clearedAt }].slice(-200);
 
-      const isComplete = racer.tiles.length === 0;
+      const finishedNow = racer.tiles.length === 0;
+      if (finishedNow) {
+        this.room.racerElapsedMs = this.room.racerElapsedMs || {};
+        if (this.room.racerElapsedMs[user] == null) this.room.racerElapsedMs[user] = this.snapshotActiveMs(clearedAt);
+      }
+      // Off (default): the room only completes once every racer has
+      // finished or dropped out — the finish above just ends that one
+      // racer's own board. On: the very first finish ends it for everyone.
+      const allDone = Object.values(this.room.racers).every((r) => r.tiles.length === 0 || r.stuckOut);
+      const isComplete = finishedNow && (this.room.raceEndOnFirstFinish || allDone);
       if (isComplete && !this.room.completedAt) {
         this.room.completedAt = new Date().toISOString();
         this.room.state.state = "completed";
@@ -613,6 +656,7 @@ export class RoomDO {
         players: this.room.players, startedPlayers: this.room.startedPlayers,
         pairsCleared: this.room.pairsCleared, streaks: this.room.streaks,
         peakStreaks: this.room.peakStreaks, remaining: racer.tiles.length,
+        racerElapsedMs: this.room.racerElapsedMs,
         completed: isComplete, completedAt: this.room.completedAt || null,
       }, null);
       await this.persist(isComplete);
@@ -1044,6 +1088,8 @@ function validateCreateRoom(body) {
   // game/room.js's buildLocalRoom.
   const suddenDeath = !!body.suddenDeath;
   const shuffleAllowed = suddenDeath ? false : body.shuffleAllowed !== false;
+  // Race only: off by default, same rule as game/room.js's buildLocalRoom.
+  const raceEndOnFirstFinish = mode === "race" && !!body.raceEndOnFirstFinish;
   const openPairsAllowed = body.openPairsAllowed !== false;
   // Same fairness rule as game/room.js's buildLocalRoom: only Solo/Live ever
   // get Undo, and only Solo's is client-toggleable.
@@ -1056,7 +1102,7 @@ function validateCreateRoom(body) {
       })
     : [];
   if (!title || !isActualPlayerName(createdBy)) return null;
-  return { title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed, shuffleAllowed, openPairsAllowed, undoAllowed, suddenDeath, bots };
+  return { title, mode, layoutId, difficulty, visibility, createdBy, freeTilesGlow, hintsAllowed, shuffleAllowed, openPairsAllowed, undoAllowed, suddenDeath, raceEndOnFirstFinish, bots };
 }
 
 function slugify(s) {
@@ -1102,6 +1148,8 @@ function buildRoom(req) {
   // straight back to home (see its `!room.racers` guard).
   if (req.mode === "race") {
     room.racers = { [req.createdBy]: { tiles: generateBoard(req.layoutId, seed + 104729), stuckOut: false } };
+    room.raceEndOnFirstFinish = req.raceEndOnFirstFinish;
+    room.racerElapsedMs = {};
   }
   return room;
 }
