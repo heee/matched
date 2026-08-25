@@ -13,7 +13,7 @@ import { missingTrackedRoomIds, refreshableRoomsForUser, roomHasProgress, should
 
 import { renderNameEntry } from "./screens/name-entry.js?v=41";
 import { renderHome } from "./screens/home.js?v=61";
-import { renderPlayCatalog } from "./screens/play-catalog.js?v=43";
+import { renderPlayCatalog } from "./screens/play-catalog.js?v=45";
 import { renderRoomSetup } from "./screens/room-setup.js?v=48";
 import { renderRanking } from "./screens/ranking.js?v=44";
 import { renderHeadToHead } from "./screens/head-to-head.js?v=1";

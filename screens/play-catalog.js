@@ -1,7 +1,7 @@
 // Matched — Play: layout catalog. Curated, not generated. See
 // docs/design-reference.html #1j and the layout-level design extension.
 
-import { el, isTabletViewport, renderTileFace, formatClock } from "./shared-ui.js";
+import { el, isTabletViewport, renderTileFace, formatClock, avatarDot } from "./shared-ui.js";
 import { LAYOUTS, layoutSilhouette, isLayoutUnlocked, TILE_W, TILE_H } from "../game/layouts.js";
 import { layoutThemeFaces } from "../game/tiles.js";
 import { completedLayoutStats, layoutRecordStats } from "../game/layout-stats.js";
@@ -10,37 +10,43 @@ import { layoutLevelProgress } from "../game/layout-levels.js";
 const FILTERS = ["All difficulties", "Easy", "Medium", "Hard"];
 
 // A thumbnail built from real tile faces (themed to the layout — dragons,
-// winds, character glyphs, ...) rather than flat cream dabs, arranged onto
-// the layout's actual footprint (layoutSilhouette) so its shape still
-// reads. Tiles are rendered at native 40x52 size and scaled down via CSS
-// transform, so they reuse the exact same face art the board itself uses.
-const THUMB_TILE_SCALE = 0.26;
+// winds, character glyphs, ...) rather than flat cream dabs, sparsely
+// arranged onto the layout's footprint (layoutSilhouette, deliberately
+// coarse so it reads as a handful of real tiles rather than a dense
+// scatter) on a flat, recessed "well" — not the board's own bright
+// radial felt, which read as a different, glowing surface here. Tiles are
+// rendered at native 40x52 size and scaled down via CSS transform, so
+// they reuse the exact same face art the board itself uses.
+const THUMB_COLS = 4;
+const THUMB_ROWS = 3;
+const THUMB_TILE_SCALE = 0.3;
+const THUMB_W = 58;
+const THUMB_H = 46;
 
 function thumbTile(face, leftPx, topPx, z) {
   const wrap = el("div", {
     style: `position:absolute;left:${leftPx}px;top:${topPx}px;width:${TILE_W}px;height:${TILE_H}px;transform:scale(${THUMB_TILE_SCALE});transform-origin:top left;z-index:${z}`,
   });
   const tileEl = el("div", { class: `tile${z > 0 ? " upper" : ""}`, style: "position:static" });
-  const face_ = el("div", { class: "tile-face" });
-  renderTileFace(face_, face, null);
-  tileEl.appendChild(face_);
+  const faceEl = el("div", { class: "tile-face" });
+  renderTileFace(faceEl, face, null);
+  tileEl.appendChild(faceEl);
   wrap.appendChild(tileEl);
   return wrap;
 }
 
 function layoutThumb(layout, unlocked) {
-  const thumbW = 58, thumbH = 46;
   const box = el("div", {
-    style: `width:${thumbW}px;height:${thumbH}px;position:relative;border-radius:10px;overflow:hidden;background:radial-gradient(120% 120% at 50% 25%,#1d6349,#0e3527)`,
+    style: `width:${THUMB_W}px;height:${THUMB_H}px;position:relative;border-radius:10px;overflow:hidden;background:#0a2a1f`,
   });
   const miniW = TILE_W * THUMB_TILE_SCALE, miniH = TILE_H * THUMB_TILE_SCALE;
   const faces = layoutThemeFaces(layout);
-  const cells = layoutSilhouette(layout, 8, 5).sort((a, b) => a.z - b.z || a.yPct - b.yPct || a.xPct - b.xPct);
+  const cells = layoutSilhouette(layout, THUMB_COLS, THUMB_ROWS).sort((a, b) => a.z - b.z || a.yPct - b.yPct || a.xPct - b.xPct);
   cells.forEach((cell, i) => {
-    const cxPct = 8 + (cell.xPct / 100) * 84;
-    const cyPct = 10 + (cell.yPct / 100) * 80;
-    const leftPx = (cxPct / 100) * thumbW - miniW / 2 + cell.z * 1.4;
-    const topPx = (cyPct / 100) * thumbH - miniH / 2 - cell.z * 1.4;
+    const cxPct = 12 + (cell.xPct / 100) * 76;
+    const cyPct = 14 + (cell.yPct / 100) * 72;
+    const leftPx = (cxPct / 100) * THUMB_W - miniW / 2 + cell.z * 2;
+    const topPx = (cyPct / 100) * THUMB_H - miniH / 2 - cell.z * 2;
     const face = faces[Math.floor(i / 2) % faces.length];
     box.appendChild(thumbTile(face, leftPx, topPx, cell.z * 10 + i));
   });
@@ -85,52 +91,65 @@ function levelBadge(completedGames, { locked = false, size = 42 } = {}) {
   return badge;
 }
 
-function chevronButton() {
+function chevronButton(active) {
   return el("button", {
     type: "button",
-    "aria-label": "Show layout stats",
+    "aria-label": active ? "Show layout stats" : "No stats yet for this layout",
     "aria-expanded": "false",
-    style: "flex:none;width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;color:rgba(246,241,228,.72);font:700 10px Figtree,sans-serif;cursor:pointer;transition:transform .2s ease",
+    disabled: active ? undefined : "true",
+    style: `flex:none;width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,${active ? ".13" : ".06"});background:rgba(255,255,255,${active ? ".07" : ".03"});display:flex;align-items:center;justify-content:center;color:rgba(246,241,228,${active ? ".72" : ".22"});font:700 10px Figtree,sans-serif;transition:transform .2s ease;${active ? "cursor:pointer" : "cursor:default"}`,
     text: "▾",
   });
 }
 
-function statCell(label, value, sub) {
-  const cell = el("div", { style: "flex:1;min-width:0" });
-  cell.appendChild(el("div", { style: "font:700 11px Figtree,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:rgba(246,241,228,.42)", text: label }));
-  cell.appendChild(el("div", { style: "font:700 15px Figtree,sans-serif;color:#f6f1e4;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap", text: value }));
-  if (sub) cell.appendChild(el("div", { style: "font:12px Figtree,sans-serif;color:rgba(246,241,228,.5);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap", text: sub }));
-  return cell;
+// One row of the expanded stat panel: a label on the left, a value with
+// the holder's avatar + name on the right (per the design reference —
+// "who set it" reads as a small avatar chip, not just a name string).
+function recordRow(ctx, label, value, holderName) {
+  const row = el("div", { style: "display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0" });
+  row.appendChild(el("div", { style: "font:13px Figtree,sans-serif;color:rgba(246,241,228,.6)", text: label }));
+  const right = el("div", { style: "display:flex;align-items:center;gap:8px;min-width:0" });
+  right.appendChild(el("div", { style: "font:700 16px Figtree,sans-serif;color:#f6f1e4;flex:none", text: value }));
+  if (holderName) {
+    const isYou = holderName === ctx.state.currentUser;
+    right.appendChild(avatarDot(holderName, 0, 20, ctx.state.store.users));
+    right.appendChild(el("div", {
+      style: "font:13px Figtree,sans-serif;color:rgba(246,241,228,.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px",
+      text: isYou ? "You" : holderName,
+    }));
+  }
+  row.appendChild(right);
+  return row;
 }
 
-function statsPanelContent(ctx, layout, unlocked) {
-  const wrap = el("div", { style: "padding:12px 16px 14px;border-top:1px solid rgba(255,255,255,.08)" });
-  if (!unlocked) {
-    wrap.appendChild(el("div", { style: "font:13px Figtree,sans-serif;color:rgba(224,138,106,.85)", text: `Unlocks at ${layout.tier} tier.` }));
-    return wrap;
-  }
-  const record = layoutRecordStats(ctx.state.store.rooms, layout.id, ctx.state.currentUser);
-  if (record.timesPlayed === 0) {
-    wrap.appendChild(el("div", { style: "font:13px Figtree,sans-serif;color:rgba(246,241,228,.5)", text: "No plays yet." }));
-    return wrap;
-  }
-  const row = el("div", { style: "display:flex;gap:14px" });
-  row.appendChild(statCell(
-    "Fastest",
+function statsPanelContent(ctx, layout, record) {
+  const wrap = el("div", { style: "padding:2px 16px 12px;border-top:1px solid rgba(255,255,255,.08)" });
+  wrap.appendChild(recordRow(
+    ctx,
+    "Fastest time",
     record.fastestSeconds != null ? formatClock(record.fastestSeconds) : "—",
-    record.fastestHolder || undefined,
+    record.fastestHolder,
   ));
-  row.appendChild(statCell("Played", String(record.timesPlayed)));
-  row.appendChild(statCell(
+  wrap.appendChild(recordRow(
+    ctx,
+    "Most active",
+    record.mostActive ? `${record.mostActive.count} plays` : "—",
+    record.mostActive?.name,
+  ));
+  wrap.appendChild(recordRow(
+    ctx,
     "Your best",
     record.personalBestSeconds != null ? formatClock(record.personalBestSeconds) : "—",
+    ctx.state.currentUser,
   ));
-  wrap.appendChild(row);
   return wrap;
 }
 
 function layoutCard(ctx, layout, stats) {
   const unlocked = isLayoutUnlocked(layout, ctx.state.points);
+  const record = layoutRecordStats(ctx.state.store.rooms, layout.id, ctx.state.currentUser);
+  const hasData = unlocked && record.totalPlays > 0;
+
   const card = el("div", {
     style: `width:100%;border-radius:15px;overflow:hidden;background:rgba(255,255,255,.06);border:1px solid ${unlocked ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.07)"}`,
   });
@@ -156,7 +175,7 @@ function layoutCard(ctx, layout, stats) {
   body.appendChild(copy);
   body.appendChild(levelBadge(stats.boards, { locked: !unlocked }));
 
-  const chevron = chevronButton();
+  const chevron = chevronButton(hasData);
   body.appendChild(chevron);
   row.appendChild(body);
   card.appendChild(row);
@@ -164,23 +183,22 @@ function layoutCard(ctx, layout, stats) {
   const panel = el("div", { style: "max-height:0;overflow:hidden;transition:max-height .22s ease" });
   card.appendChild(panel);
 
-  let expanded = false;
-  function toggle() {
-    expanded = !expanded;
-    chevron.style.transform = expanded ? "rotate(180deg)" : "";
-    chevron.setAttribute("aria-expanded", String(expanded));
-    if (expanded) {
-      panel.innerHTML = "";
-      panel.appendChild(statsPanelContent(ctx, layout, unlocked));
-      panel.style.maxHeight = "160px";
-    } else {
-      panel.style.maxHeight = "0";
-    }
+  if (hasData) {
+    let expanded = false;
+    chevron.addEventListener("click", (e) => {
+      e.stopPropagation();
+      expanded = !expanded;
+      chevron.style.transform = expanded ? "rotate(180deg)" : "";
+      chevron.setAttribute("aria-expanded", String(expanded));
+      if (expanded) {
+        panel.innerHTML = "";
+        panel.appendChild(statsPanelContent(ctx, layout, record));
+        panel.style.maxHeight = "160px";
+      } else {
+        panel.style.maxHeight = "0";
+      }
+    });
   }
-  chevron.addEventListener("click", (e) => {
-    e.stopPropagation();
-    toggle();
-  });
 
   function openRoom() {
     if (!unlocked) {
@@ -198,6 +216,7 @@ function layoutCard(ctx, layout, stats) {
 }
 
 export function renderPlayCatalog(root, ctx) {
+  root.classList.add("bg-flat");
   let filter = FILTERS[0];
   const layoutStats = completedLayoutStats(ctx.state.store.rooms, ctx.state.currentUser);
 
