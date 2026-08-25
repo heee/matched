@@ -228,15 +228,8 @@ export function renderPlayCatalog(root, ctx) {
 
   const header = el("div", { class: "catalog-header", style: "padding:calc(8px + env(safe-area-inset-top, 0px)) 20px 12px;display:flex;align-items:center;justify-content:space-between;gap:14px" });
   header.appendChild(el("div", { class: "title-serif", text: "Play" }));
-  const selectWrap = el("div", { style: "position:relative;flex:none" });
-  const select = el("select", {
-    "aria-label": "Filter layouts by difficulty",
-    style: "appearance:none;-webkit-appearance:none;height:40px;max-width:150px;padding:0 35px 0 14px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);font:600 13px Figtree,sans-serif;color:#f6f1e4;cursor:pointer",
-  });
-  FILTERS.forEach((name) => select.appendChild(el("option", { value: name, text: name, style: "background:#173c2d;color:#f6f1e4" })));
-  selectWrap.appendChild(select);
-  selectWrap.appendChild(el("span", { style: "position:absolute;right:14px;top:50%;transform:translateY(-52%);font:700 10px Figtree,sans-serif;color:rgba(246,241,228,.65);pointer-events:none", text: "▾" }));
-  header.appendChild(selectWrap);
+  const filterDropdown = el("div", { style: "position:relative;flex:none" });
+  header.appendChild(filterDropdown);
   root.appendChild(header);
 
   const grid = el("div", { class: "catalog-list", style: "padding:0 16px" });
@@ -247,10 +240,43 @@ export function renderPlayCatalog(root, ctx) {
       .filter((layout) => filter === FILTERS[0] || layout.difficulty === filter.toLowerCase())
       .forEach((layout) => grid.appendChild(layoutCard(ctx, layout, layoutStats[layout.id] || { boards: 0, pairs: 0 })));
   }
-  select.addEventListener("change", () => {
-    filter = select.value;
-    renderGrid();
-  });
+
+  // A small custom dropdown (not a native <select>, per house style — see
+  // the "Week" period dropdown in ranking.js) — click the trigger to open a
+  // popover menu, click an option or anywhere outside to close it.
+  let filterOpen = false;
+  function renderFilterDropdown() {
+    filterDropdown.innerHTML = "";
+    const trigger = el("button", {
+      "aria-label": "Filter layouts by difficulty",
+      style: "display:flex;align-items:center;gap:6px;height:40px;max-width:150px;padding:0 12px 0 14px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);font:600 13px Figtree,sans-serif;color:#f6f1e4;cursor:pointer",
+    });
+    trigger.appendChild(el("span", { text: filter }));
+    trigger.appendChild(el("span", { style: `font-size:10px;color:rgba(246,241,228,.65);display:inline-block;transition:transform .15s;transform:rotate(${filterOpen ? 180 : 0}deg)`, text: "▾" }));
+    trigger.addEventListener("click", (e) => { e.stopPropagation(); filterOpen = !filterOpen; renderFilterDropdown(); });
+    filterDropdown.appendChild(trigger);
+    if (filterOpen) {
+      const menu = el("div", { style: "position:absolute;top:calc(100% + 6px);right:0;min-width:150px;padding:6px;border-radius:12px;background:#183226;border:1px solid rgba(255,255,255,.12);box-shadow:0 10px 24px rgba(0,0,0,.4);z-index:40;display:flex;flex-direction:column;gap:2px" });
+      FILTERS.forEach((name) => {
+        const isActive = name === filter;
+        const item = el("button", { style: `text-align:left;padding:8px 10px;border-radius:8px;border:none;cursor:pointer;background:${isActive ? "rgba(217,164,65,.18)" : "none"};color:${isActive ? "#e8c887" : "#f6f1e4"};font:${isActive ? 700 : 600} 13px Figtree,sans-serif`, text: name });
+        item.addEventListener("click", (e) => {
+          e.stopPropagation();
+          filter = name;
+          filterOpen = false;
+          renderFilterDropdown();
+          renderGrid();
+        });
+        menu.appendChild(item);
+      });
+      filterDropdown.appendChild(menu);
+    }
+  }
+  const closeDropdownOnOutsideClick = () => { if (filterOpen) { filterOpen = false; renderFilterDropdown(); } };
+  document.addEventListener("click", closeDropdownOnOutsideClick);
+  window.__matchedCleanup = () => document.removeEventListener("click", closeDropdownOnOutsideClick);
+
+  renderFilterDropdown();
   root.appendChild(grid);
   renderGrid();
   root.appendChild(el("div", { style: "flex:1" }));
