@@ -351,9 +351,13 @@ function activityCopy(item) {
   if (item.type === "room_completed") return `completed a puzzle — ${item.pairs} pair${item.pairs === 1 ? "" : "s"}`;
   if (item.type === "daily_completed") return `completed the daily puzzle in ${formatClock(Math.round(item.elapsedMs / 1000))}`;
   if (item.type === "milestone") {
+    const layoutName = item.layoutId ? LAYOUTS[item.layoutId]?.name : null;
     if (item.kind === "daily_streak") return `hit a new personal best — ${item.value}-day streak`;
     if (item.kind === "best_daily_time") return `set a new personal best daily time — ${formatClock(Math.round(item.value / 1000))}`;
     if (item.kind === "best_race_pairs") return `set a new personal best — ${item.value} pairs in a race`;
+    if (item.kind === "best_layout_time") return `set a new personal best on ${layoutName || "a layout"} — ${formatClock(Math.round(item.value / 1000))}`;
+    if (item.kind === "first_game") return "completed their first game on Matched";
+    if (item.kind === "joined") return "joined Matched";
   }
   return "";
 }
@@ -367,8 +371,17 @@ function activityRow(ctx, item, isLast) {
     style: `display:flex;align-items:center;gap:10px;padding:9px 2px;${isLast ? "" : "border-bottom:1px solid rgba(255,255,255,.06)"}`,
   });
   row.appendChild(avatarDot(item.user, 0, 24, ctx.state.store.users));
+  const isOther = item.user !== ctx.state.currentUser && ctx.state.store.users?.[item.user];
+  const nameEl = isOther
+    ? el("button", {
+        style: "font:inherit;font-weight:600;color:#f6f1e4;background:none;border:none;padding:0;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(246,241,228,.35)",
+        text: item.user,
+        "aria-label": `Compare with ${item.user}`,
+        onClick: () => ctx.navigate("head-to-head", { user: item.user }),
+      })
+    : el("span", { style: "font-weight:600;color:#f6f1e4", text: item.user });
   const info = el("div", { style: "flex:1;min-width:0;font:13px Figtree,sans-serif;color:rgba(246,241,228,.75)" }, [
-    el("span", { style: "font-weight:600;color:#f6f1e4", text: item.user }),
+    nameEl,
     ` ${activityCopy(item)}`,
   ]);
   row.appendChild(info);

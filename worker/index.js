@@ -234,7 +234,10 @@ export default {
         if (!room) throw new Error("room not found");
         Object.assign(room, payload);
         await upsertRoom(env.DB, room);
-        if (room.state?.state === "completed") await recordRaceMilestones(env.DB, room);
+        if (room.state?.state === "completed") {
+          await recordRaceMilestones(env.DB, room);
+          await recordSharedRoomMilestones(env.DB, room);
+        }
         return json({ ok: true }, 200, cors);
       } catch (e) {
         return json({ error: e.message }, 502, cors);
@@ -707,7 +710,10 @@ export class RoomDO {
       room.state.state = "completed";
     }
     await upsertRoom(this.env.DB, room);
-    if (completed) await recordRaceMilestones(this.env.DB, room);
+    if (completed) {
+      await recordRaceMilestones(this.env.DB, room);
+      await recordSharedRoomMilestones(this.env.DB, room);
+    }
   }
 }
 
@@ -1126,6 +1132,7 @@ async function registerUser(db, name) {
     .bind(name, PLAYER_HUES[count % PLAYER_HUES.length], createdAt, JSON.stringify(settings), createdAt).run();
   const row = await db.prepare("SELECT name, hue, created_at, settings_json FROM users WHERE name = ?").bind(name).first();
   if (!row) throw new Error("user insert failed");
+  await insertActivityEvent(db, name, "joined", 0, null, createdAt);
   return userFromRow(row);
 }
 
@@ -1250,6 +1257,34 @@ async function insertActivityEvent(db, user, kind, value, layoutId, createdAt) {
     .bind(user, kind, value, layoutId || null, createdAt).run();
 }
 
+// Bumps the lifetime completed-games counter and fires a one-time
+// 'first_game' event the moment it leaves zero — called alongside every
+// other completion milestone below, whether or not that completion also
+// set a record.
+async function recordGameCompleted(db, user, now) {
+  const stats = await db.prepare("SELECT games_completed FROM user_stats WHERE user_name = ?").bind(user).first();
+  const wasFirst = !stats || !stats.games_completed;
+  await db.prepare(`
+    INSERT INTO user_stats (user_name, games_completed, updated_at) VALUES (?, 1, ?)
+    ON CONFLICT(user_name) DO UPDATE SET games_completed = games_completed + 1, updated_at = excluded.updated_at
+  `).bind(user, now).run();
+  if (wasFirst) await insertActivityEvent(db, user, "first_game", 0, null, now);
+}
+
+// Per-layout personal-best completion time, shared across daily play and
+// regular shared/solo rooms alike — whichever mode a player beats their own
+// record on, for a given layout, is worth calling out by name.
+async function recordLayoutBest(db, user, layoutId, elapsedMs, now) {
+  if (!layoutId || !Number.isFinite(elapsedMs) || elapsedMs <= 0) return;
+  const existing = await db.prepare("SELECT best_ms FROM layout_bests WHERE user_name = ? AND layout_id = ?").bind(user, layoutId).first();
+  if (existing && elapsedMs >= existing.best_ms) return;
+  await db.prepare(`
+    INSERT INTO layout_bests (user_name, layout_id, best_ms, updated_at) VALUES (?, ?, ?, ?)
+    ON CONFLICT(user_name, layout_id) DO UPDATE SET best_ms = excluded.best_ms, updated_at = excluded.updated_at
+  `).bind(user, layoutId, elapsedMs, now).run();
+  await insertActivityEvent(db, user, "best_layout_time", elapsedMs, layoutId, now);
+}
+
 async function recordDailyMilestones(db, { user, date, elapsedMs }) {
   const now = new Date().toISOString();
   const board = await db.prepare("SELECT layout_id FROM daily_boards WHERE date = ?").bind(date).first();
@@ -1273,6 +1308,8 @@ async function recordDailyMilestones(db, { user, date, elapsedMs }) {
   `).bind(user, dailyStreak, date, bestStreak, bestMs, bestLayout, stats?.best_race_pairs ?? null, now).run();
   if (streakEvent != null) await insertActivityEvent(db, user, "daily_streak", streakEvent, null, now);
   if (timeEvent != null) await insertActivityEvent(db, user, "best_daily_time", timeEvent, layoutId, now);
+  await recordLayoutBest(db, user, layoutId, elapsedMs, now);
+  await recordGameCompleted(db, user, now);
 }
 
 async function recordRaceMilestones(db, room) {
@@ -1283,6 +1320,7 @@ async function recordRaceMilestones(db, room) {
     if (!isActualPlayerName(user) || !Number.isFinite(pairs) || pairs <= 0) continue;
     const registered = await db.prepare("SELECT name FROM users WHERE name = ?").bind(user).first();
     if (!registered) continue;
+    await recordGameCompleted(db, user, now);
     const stats = await db.prepare("SELECT best_race_pairs FROM user_stats WHERE user_name = ?").bind(user).first();
     const best = stats?.best_race_pairs ?? null;
     if (best != null && pairs <= best) continue;
@@ -1291,6 +1329,24 @@ async function recordRaceMilestones(db, room) {
       ON CONFLICT(user_name) DO UPDATE SET best_race_pairs = excluded.best_race_pairs, updated_at = excluded.updated_at
     `).bind(user, pairs, now).run();
     await insertActivityEvent(db, user, "best_race_pairs", pairs, room.layoutId || null, now);
+  }
+}
+
+// Shared/solo rooms (everyone on one board, so the room's own active-time
+// clock is each participant's elapsed time) — the non-race counterpart to
+// recordRaceMilestones above. Layout-best tracking here shares the same
+// layout_bests table as daily play.
+async function recordSharedRoomMilestones(db, room) {
+  if (room?.mode === "race" || room?.state?.state !== "completed" || !room.layoutId) return;
+  const now = new Date().toISOString();
+  const elapsedMs = Number(room.activeMs);
+  const participants = new Set([...(room.startedPlayers || []), ...(room.players || [])]);
+  for (const user of participants) {
+    if (!isActualPlayerName(user)) continue;
+    const registered = await db.prepare("SELECT name FROM users WHERE name = ?").bind(user).first();
+    if (!registered) continue;
+    await recordGameCompleted(db, user, now);
+    await recordLayoutBest(db, user, room.layoutId, elapsedMs, now);
   }
 }
 
@@ -1334,4 +1390,4 @@ async function loadActivity(db, limit) {
   return { items: items.slice(0, limit) };
 }
 
-export { loadData, registerUser, updateUserColor, upsertRoom, getRoom, joinRoom, deleteRoom, deleteUser, buildRoom, validateCreateRoom, generateBoard, getOrCreateDaily, dailyResults, saveDailyResult, repairRoomMetadata, isPlausibleDailyDate, loadActivity, recordDailyMilestones, recordRaceMilestones };
+export { loadData, registerUser, updateUserColor, upsertRoom, getRoom, joinRoom, deleteRoom, deleteUser, buildRoom, validateCreateRoom, generateBoard, getOrCreateDaily, dailyResults, saveDailyResult, repairRoomMetadata, isPlausibleDailyDate, loadActivity, recordDailyMilestones, recordRaceMilestones, recordSharedRoomMilestones };
