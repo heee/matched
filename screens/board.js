@@ -2,7 +2,7 @@
 // tap-match-to-clear, tray attribution, hint/shuffle/undo, simulated
 // opponents, toasts, reactions. See docs/design-reference.html #1f.
 
-import { el, avatarDot, renderTileFace, trayFaceGlyph, formatClock, haptic, playMatchSound } from "./shared-ui.js?v=43";
+import { el, avatarDot, renderTileFace, trayFaceGlyph, formatClock, haptic, playMatchSound } from "./shared-ui.js?v=44";
 import {
   isFree, freeTiles, findHintPair, findHintPairs, clearPair, restorePair, shuffleRemaining,
   hasMovesRemaining, boardCompletion,

@@ -118,8 +118,13 @@ export function el(tag, attrs = {}, children = []) {
   return node;
 }
 
+// Query param, not a hash fragment: many messengers/social apps run
+// shared links through a redirector for unfurling or safety scanning, and
+// since fragments are never sent to a server, those redirects routinely
+// drop everything after "#" — landing the recipient on the bare app with
+// no room to join. Query strings survive that round-trip.
 export function roomInviteUrl(roomId) {
-  return `${location.origin}${location.pathname}#/r/${encodeURIComponent(roomId)}`;
+  return `${location.origin}${location.pathname}?r=${encodeURIComponent(roomId)}`;
 }
 
 export function initialFor(name) {

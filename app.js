@@ -5,7 +5,7 @@
 import { createWorkerApi } from "./api.js?v=43";
 import { createJsonStorage, normalizeSharedData, mergeSharedData, writeRoomCache, LOCAL_KEYS, DEFAULT_SETTINGS } from "./storage.js?v=46";
 import { createMutationQueue } from "./sync.js?v=41";
-import { el, TAB_DEFS } from "./screens/shared-ui.js?v=43";
+import { el, TAB_DEFS } from "./screens/shared-ui.js?v=44";
 import { isActualPlayerName, repairCurrentPlayerAliases } from "./game/identity.js?v=38";
 import { equippedFeltName, feltCssVars } from "./game/felts.js?v=39";
 import { PLAYER_HUES } from "./game/scoring.js";
@@ -422,6 +422,12 @@ function renderTabBar() {
 }
 
 function pendingRoomIdFromHash() {
+  // Query param is the current format (see shared-ui.js's roomInviteUrl) —
+  // survives redirector/unfurl round-trips that strip fragments. The old
+  // "#/r/:id" hash is still read here so links already sent before this
+  // switch keep working.
+  const fromQuery = new URLSearchParams(location.search).get("r");
+  if (fromQuery) return fromQuery;
   const m = location.hash.match(/^#\/r\/([^/?#]+)/);
   return m ? decodeURIComponent(m[1]) : null;
 }
@@ -455,7 +461,7 @@ async function joinRoomFromInvite(roomId) {
 async function afterLogin() {
   const roomId = pendingRoomIdFromHash();
   if (roomId) {
-    history.replaceState(null, "", location.pathname + location.search);
+    history.replaceState(null, "", location.pathname);
     await joinRoomFromInvite(roomId);
     return;
   }
