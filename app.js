@@ -43,14 +43,27 @@ if (savedCurrentUser && legacyActiveRoomId && !activeRoomIds[savedCurrentUser]) 
 }
 const savedDailyCompletedByUser = jsonStorage.read(LOCAL_KEYS.dailyCompletedByUser, {});
 const dailyCompletedByUser = savedDailyCompletedByUser && typeof savedDailyCompletedByUser === "object" ? savedDailyCompletedByUser : {};
+// Migrate the old single-user (pre-multi-profile) completion key exactly
+// once, when no per-user data has ever been recorded yet. Gating this on
+// "this particular user has no entry" instead (the old check) re-fires on
+// every load for any user who simply hasn't played today — copying
+// whichever other local player most recently finished the daily onto them.
 const legacyLastDailyCompleted = jsonStorage.read(LOCAL_KEYS.lastDailyCompleted, null);
-if (savedCurrentUser && legacyLastDailyCompleted && !dailyCompletedByUser[savedCurrentUser]) {
+if (savedCurrentUser && legacyLastDailyCompleted && Object.keys(dailyCompletedByUser).length === 0) {
   dailyCompletedByUser[savedCurrentUser] = legacyLastDailyCompleted;
 }
 const savedDailyStreaks = jsonStorage.read(LOCAL_KEYS.dailyStreaks, {});
 const dailyStreaks = savedDailyStreaks && typeof savedDailyStreaks === "object" ? savedDailyStreaks : {};
 const legacyDailyStreak = jsonStorage.read(LOCAL_KEYS.dailyStreak, 0);
-if (savedCurrentUser && legacyDailyStreak && !dailyStreaks[savedCurrentUser]) dailyStreaks[savedCurrentUser] = legacyDailyStreak;
+if (savedCurrentUser && legacyDailyStreak && Object.keys(dailyStreaks).length === 0) dailyStreaks[savedCurrentUser] = legacyDailyStreak;
+// Self-heal any completions the bug above already mis-assigned: a genuine
+// completion always writes a matching dailyResults[date:user] entry
+// (see reportDailyResult) in the same step that sets dailyCompletedByUser,
+// so an entry with no matching result never happened for that user.
+const dailyResultsForRepair = jsonStorage.read(LOCAL_KEYS.dailyResults, {});
+for (const [user, date] of Object.entries(dailyCompletedByUser)) {
+  if (!dailyResultsForRepair?.[`${date}:${user}`]) delete dailyCompletedByUser[user];
+}
 
 function loadStore() {
   const raw = jsonStorage.read(LOCAL_KEYS.cacheData, {});
