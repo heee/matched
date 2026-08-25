@@ -374,7 +374,7 @@ function activityRow(ctx, item, isLast) {
   const isOther = item.user !== ctx.state.currentUser && ctx.state.store.users?.[item.user];
   const nameEl = isOther
     ? el("button", {
-        style: "font:inherit;font-weight:600;color:#f6f1e4;background:none;border:none;padding:0;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(246,241,228,.35)",
+        style: "font:inherit;font-weight:600;color:#f6f1e4;background:none;border:none;padding:0;cursor:pointer;text-decoration:none",
         text: item.user,
         "aria-label": `Compare with ${item.user}`,
         onClick: () => ctx.navigate("head-to-head", { user: item.user, from: "home" }),
